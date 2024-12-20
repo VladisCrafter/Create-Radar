@@ -19,15 +19,9 @@ public class MonitorInputHandler {
         Vec3 hit = player.pick(5, 0.0F, false).getLocation();
         if (player.pick(5, 0.0F, false) instanceof BlockHitResult result) {
             if (level.getBlockEntity(result.getBlockPos()) instanceof MonitorBlockEntity be && level.getBlockEntity(be.getControllerPos()) instanceof MonitorBlockEntity monitor) {
-                Direction facing = level.getBlockState(monitor.getControllerPos())
-                        .getValue(MonitorBlock.FACING).getClockWise();
                 Direction monitorFacing = level.getBlockState(monitor.getControllerPos())
                         .getValue(MonitorBlock.FACING);
-                int size = monitor.getSize();
-                Vec3 center = Vec3.atCenterOf(monitor.getControllerPos())
-                        .add(facing.getStepX() * (size - 1) / 2.0, (size - 1) / 2.0, facing.getStepZ() * (size - 1) / 2.0);
-                Vec3 relative = hit.subtract(center);
-                relative = monitor.adjustRelativeVectorForFacing(relative, monitorFacing);
+                Vec3 relative = monitor.calculateRelativePosition(hit, monitorFacing);
                 if (monitor.radarPos == null)
                     return;
                 Vec3 RadarPos = monitor.radarPos.getCenter();

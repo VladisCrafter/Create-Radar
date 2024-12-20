@@ -130,8 +130,9 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         float scale = radar.getRange();
         Direction monitorFacing = monitor.getBlockState().getValue(MonitorBlock.FACING);
         Vec3 relativePos = track.position().subtract(radar.getBlockPos().getCenter());
-        float xOff = monitorFacing.getAxis() == Direction.Axis.Z ? getOffset(relativePos.x(), scale) : getOffset(relativePos.z(), scale);
-        float zOff = monitorFacing.getAxis() == Direction.Axis.Z ? getOffset(relativePos.z(), scale) : getOffset(relativePos.x(), scale);
+        relativePos = monitor.adjustRelativeVectorForFacing(relativePos, monitorFacing);
+        float xOff = (float) (relativePos.x() / scale) * size / 2.0f;
+        float zOff = (float) (relativePos.z() / scale) * size / 2.0f;
 
         //todo improve this, very hacky
         if (monitorFacing == Direction.NORTH) {

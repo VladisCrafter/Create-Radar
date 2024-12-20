@@ -168,13 +168,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
             return;
         if (radarPos == null)
             return;
-        Direction facing = level.getBlockState(getControllerPos())
-                .getValue(MonitorBlock.FACING).getClockWise();
-        int size = getSize();
-        Vec3 center = Vec3.atCenterOf(getControllerPos())
-                .add(facing.getStepX() * (size - 1) / 2.0, (size - 1) / 2.0, facing.getStepZ() * (size - 1) / 2.0);
-        Vec3 relative = location.subtract(center);
-        relative = adjustRelativeVectorForFacing(relative, monitorFacing);
+        Vec3 relative = calculateRelativePosition(location, monitorFacing);
         Vec3 RadarPos = radarPos.getCenter();
         float range = getRadar().map(RadarBearingBlockEntity::getRange).orElse(0f);
         Vec3 selected = RadarPos.add(relative.scale(range));
@@ -228,5 +222,16 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
 
     public void setFilter(MonitorFilter filter) {
         this.filter = filter;
+    }
+
+    public Vec3 calculateRelativePosition(Vec3 location, Direction monitorFacing) {
+        Direction facing = level.getBlockState(getControllerPos())
+                .getValue(MonitorBlock.FACING).getClockWise();
+        int size = getSize();
+        Vec3 center = Vec3.atCenterOf(getControllerPos())
+                .add(facing.getStepX() * (size - 1) / 2.0, (size - 1) / 2.0, facing.getStepZ() * (size - 1) / 2.0);
+        Vec3 relative = location.subtract(center);
+        relative = adjustRelativeVectorForFacing(relative, monitorFacing);
+        return relative.scale(2.0 / size);
     }
 }
