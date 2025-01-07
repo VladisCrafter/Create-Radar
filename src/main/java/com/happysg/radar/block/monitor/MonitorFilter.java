@@ -8,9 +8,9 @@ public enum MonitorFilter {
     ALL_ENTITIES(entity -> true),
     NO_MOBS(entity -> !(entity == RadarTrack.EntityType.MOB)),
     ONLY_MOBS(entity -> entity == RadarTrack.EntityType.MOB),
-    PLAYERS_ONLY(entity -> entity == RadarTrack.EntityType.PLAYER);
+    PLAYERS_ONLY(entity -> entity == RadarTrack.EntityType.PLAYER),
     //  PROJECTILES_ONLY(entity->entity instanceof Projectile),
-    //  VS2_ONLY(entity->false),
+    VS2_ONLY(entity -> entity == RadarTrack.EntityType.VS2);
     //  MOB_BOSSES_ONLY(entity->entity instanceof EnderDragon||entity instanceof WitherBoss);
 
     private final Predicate<RadarTrack.EntityType> predicate;

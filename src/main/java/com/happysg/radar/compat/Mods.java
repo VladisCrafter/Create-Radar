@@ -16,6 +16,7 @@ public enum Mods {
     CREATE_MECHAMAYHEM,
     VALKYRIENSKIES,
     VS_CLOCKWORK,
+    COMPUTERCRAFT,
     CREATEBIGCANNONS;
 
     private final String id;

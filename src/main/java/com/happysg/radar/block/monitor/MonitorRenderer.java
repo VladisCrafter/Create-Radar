@@ -2,6 +2,7 @@ package com.happysg.radar.block.monitor;
 
 import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 import com.happysg.radar.block.radar.bearing.RadarTrack;
+import com.happysg.radar.block.radar.bearing.VSRadarTracks;
 import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.registry.ModRenderTypes;
 import com.jozufozu.flywheel.util.Color;
@@ -115,8 +116,10 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
 
     private void renderRadarTracks(RadarBearingBlockEntity radar, MonitorBlockEntity monitor, PoseStack ms, MultiBufferSource bufferSource) {
         List<RadarTrack> tracks = radar.getEntityPositions();
+        List<VSRadarTracks> vsTracks = radar.getVS2Positions();
         AtomicInteger depthCounter = new AtomicInteger(0);
         tracks.stream().filter(track -> monitor.filter.test(track.entityType())).forEach(track -> renderTrack(track, monitor, radar, ms, bufferSource, depthCounter.getAndIncrement()));
+        vsTracks.stream().filter(track -> monitor.filter.test(RadarTrack.EntityType.VS2)).forEach(track -> renderVS2Track(track, monitor, radar, ms, bufferSource, depthCounter.getAndIncrement()));
 
     }
 
@@ -164,6 +167,53 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         if (track.entityId().equals(monitor.hoveredEntity))
             renderVertices(getBuffer(bufferSource, MonitorSprite.TARGET_HOVERED), m, n, new Color(255, 255, 0), alpha, deptY, xmin, zmin, xmax, zmax);
         if (track.entityId().equals(monitor.selectedEntity))
+            renderVertices(getBuffer(bufferSource, MonitorSprite.TARGET_SELECTED), m, n, new Color(255, 0, 0), alpha, deptY, xmin, zmin, xmax, zmax);
+    }
+
+    private void renderVS2Track(VSRadarTracks track, MonitorBlockEntity monitor, RadarBearingBlockEntity radar, PoseStack ms, MultiBufferSource bufferSource, int depthMultiplier) {
+        VertexConsumer buffer = getBuffer(bufferSource, MonitorSprite.CONTRAPTION_HITBOX);
+        Matrix4f m = ms.last().pose();
+        Matrix3f n = ms.last().normal();
+        Color color = track.color();
+        float alpha = 1f;
+        float deptY = 0.95f + (depthMultiplier * 0.0001f);
+        float size = monitor.getSize();
+        float scale = radar.getRange();
+        Direction monitorFacing = monitor.getBlockState().getValue(MonitorBlock.FACING);
+        Vec3 relativePos = track.position().subtract(VS2Utils.getWorldPos(radar).getCenter());
+        float xOff = monitorFacing.getAxis() == Direction.Axis.Z ? getOffset(relativePos.x(), scale) : getOffset(relativePos.z(), scale);
+        float zOff = monitorFacing.getAxis() == Direction.Axis.Z ? getOffset(relativePos.z(), scale) : getOffset(relativePos.x(), scale);
+
+        //todo improve this, very hacky
+        if (monitorFacing == Direction.NORTH) {
+            xOff = -xOff;
+            zOff = -zOff;
+        }
+        if (monitorFacing == Direction.WEST) {
+            zOff = -zOff;
+        }
+        if (monitorFacing == Direction.EAST) {
+            xOff = -xOff;
+        }
+
+        if (Math.abs(xOff) > .5f || Math.abs(zOff) > .5f)
+            return;
+
+        xOff = xOff * .75f;
+        zOff = zOff * .75f;
+
+        float xmin = 1 - size + (xOff * size);
+        float zmin = 1 - size + (zOff * size);
+        float xmax = xOff * size + 1;
+        float zmax = zOff * size + 1;
+
+        float fade = (track.scannedTime() - monitor.getLevel().getGameTime()) / 100f;
+
+        renderVertices(buffer, m, n, color, alpha - Math.abs(fade * .99f), deptY, xmin, zmin, xmax, zmax);
+
+        if (track.id().equals(monitor.hoveredEntity))
+            renderVertices(getBuffer(bufferSource, MonitorSprite.TARGET_HOVERED), m, n, new Color(255, 255, 0), alpha, deptY, xmin, zmin, xmax, zmax);
+        if (track.id().equals(monitor.selectedEntity))
             renderVertices(getBuffer(bufferSource, MonitorSprite.TARGET_SELECTED), m, n, new Color(255, 0, 0), alpha, deptY, xmin, zmin, xmax, zmax);
     }
 
