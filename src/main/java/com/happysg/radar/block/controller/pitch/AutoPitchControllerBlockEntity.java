@@ -9,7 +9,6 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
-import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
 
 public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
@@ -48,12 +47,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         if (contraption == null)
             return;
 
-        if (!(contraption.getContraption() instanceof AbstractMountedCannonContraption cannonContraption))
-            return;
-
         double currentPitch = contraption.pitch;
-        int invert = -cannonContraption.initialOrientation().getStepX() + cannonContraption.initialOrientation().getStepZ();
-        currentPitch = currentPitch * -invert;
         if (correctPitch(currentPitch) && correctYaw())
             tryFireCannon(mount);
         else
@@ -72,7 +66,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         } else {
             currentPitch = targetAngle;
         }
-
 
         mount.setPitch((float) currentPitch);
         mount.notifyUpdate();

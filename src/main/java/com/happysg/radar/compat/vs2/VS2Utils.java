@@ -4,10 +4,8 @@ import com.happysg.radar.compat.Mods;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.phys.AABB;
 import org.joml.Vector3d;
 import org.valkyrienskies.core.api.ships.LoadedShip;
-import org.valkyrienskies.core.api.ships.Ship;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import org.valkyrienskies.mod.common.util.VectorConversionsMCKt;
 
@@ -28,12 +26,6 @@ public class VS2Utils {
 
     public static BlockPos getWorldPos(BlockEntity blockEntity) {
         return getWorldPos(blockEntity.getLevel(), blockEntity.getBlockPos());
-    }
-
-    public static Iterable<Ship> getLoadedShips(Level level, AABB aabb) {
-        if (!Mods.VALKYRIENSKIES.isLoaded())
-            return null;
-        return VSGameUtilsKt.getShipsIntersecting(level, aabb);
     }
 
 }

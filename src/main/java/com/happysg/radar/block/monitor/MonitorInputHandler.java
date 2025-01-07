@@ -3,7 +3,6 @@ package com.happysg.radar.block.monitor;
 
 import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 import com.happysg.radar.block.radar.bearing.RadarTrack;
-import com.happysg.radar.block.radar.bearing.VSRadarTracks;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -37,40 +36,25 @@ public class MonitorInputHandler {
                 if (size == 2)
                     sizeadj = 0.75f;
                 Vec3 selected = RadarPos.add(relative.scale(range / (sizeadj)));
-
-                monitor.getRadar().ifPresent(radar -> {
-                    double bestDistance = 0.1f * range;
-                    for (RadarTrack track : radar.getEntityPositions()) {
-                        Vec3 entityPos = track.position();
-                        entityPos = entityPos.multiply(1, 0, 1);
-                        Vec3 selectedNew = selected.multiply(1, 0, 1);
-                        double newDistance = entityPos.distanceTo(selectedNew);
-                        if (monitor.hoveredEntity != null && monitor.hoveredEntity.equals(track.entityId()) && newDistance > bestDistance) {
-                            monitor.hoveredEntity = null;
-                        }
-                        if (newDistance < bestDistance) {
-                            bestDistance = newDistance;
-                            monitor.hoveredEntity = track.entityId();
-                        }
-                    }
-
-                    for (VSRadarTracks track : radar.getVS2Positions()) {
-                        Vec3 entityPos = track.position();
-                        entityPos = entityPos.multiply(1, 0, 1);
-                        Vec3 selectedNew = selected.multiply(1, 0, 1);
-                        double newDistance = entityPos.distanceTo(selectedNew);
-                        if (monitor.hoveredEntity != null && monitor.hoveredEntity.equals(track.id()) && newDistance > bestDistance) {
-                            monitor.hoveredEntity = null;
-                        }
-                        if (newDistance < bestDistance) {
-                            bestDistance = newDistance;
-                            monitor.hoveredEntity = track.id();
-                        }
-                    }
-
-                });
-                monitor.notifyUpdate();
-
+                monitor.getRadar().map(RadarBearingBlockEntity::getEntityPositions)
+                        .ifPresent(entityPositions -> {
+                            double distance = 0.1f * range;
+                            for (RadarTrack track : entityPositions) {
+                                Vec3 entityPos = track.position();
+                                entityPos = entityPos.multiply(1, 0, 1);
+                                Vec3 selectedNew = selected.multiply(1, 0, 1);
+                                double newDistance = entityPos.distanceTo(selectedNew);
+                                if (monitor.hoveredEntity != null && monitor.hoveredEntity.equals(track.entityId()) && newDistance > distance) {
+                                    monitor.hoveredEntity = null;
+                                    monitor.notifyUpdate();
+                                }
+                                if (newDistance < distance) {
+                                    distance = newDistance;
+                                    monitor.hoveredEntity = track.entityId();
+                                    monitor.notifyUpdate();
+                                }
+                            }
+                        });
             }
         }
 

@@ -3,7 +3,7 @@ plugins {
     id 'maven-publish'
     id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
     id 'org.parchmentmc.librarian.forgegradle' version '1.+'
-    id 'org.spongepowered.mixin' version '0.7.+'
+    id 'org.spongepowered.mixin' version '0.7.38'
 }
 
 String buildNumber = System.getenv("GITHUB_RUN_NUMBER")
@@ -71,7 +71,6 @@ repositories {
     maven {
         url = "https://api.modrinth.com/maven"
     }
-    maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
 
     maven {
         url 'https://maven.tterrag.com/'
@@ -115,12 +114,6 @@ repositories {
         }
     }
 
-    maven {
-        // location of maven for CC: Tweaked
-        name = "squiddev"
-        url = "https://squiddev.cc/maven/"
-    }
-
 }
 
 dependencies {
@@ -143,7 +136,7 @@ dependencies {
     //Clockwork
     compileOnly fg.deobf("maven.modrinth:create-clockwork:${minecraft_version}-${clockwork_version}")
 
-    //Valkyrien Skies
+
     implementation("org.valkyrienskies.core:api:${vs_core_version}")
     implementation("org.valkyrienskies.core:impl:${vs_core_version}")
     implementation("org.valkyrienskies.core:api-game:${vs_core_version}")
@@ -153,17 +146,11 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-annotations:2.13.3"
     implementation "thedarkcolour:kotlinforforge:${forge_kotlin_version}"
 
-    //CC
-    compileOnly("cc.tweaked:cc-tweaked-${minecraft_version}-core-api:${cc_tweaked_version}")
-    compileOnly fg.deobf("cc.tweaked:cc-tweaked-${minecraft_version}-forge-api:${cc_tweaked_version}")
-    runtimeOnly fg.deobf("cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cc_tweaked_version}")
-
-    annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
-
 }
 
+
 mixin {
-    add sourceSets.main, 'createradar.refmap.json'
+    add sourceSets.main, 'create_radar.refmap.json'
     config 'create_radar.mixins.json'
 }
 
@@ -196,8 +183,7 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Title'    : project.name,
                 'Implementation-Version'  : project.jar.archiveVersion,
                 'Implementation-Vendor'   : mod_authors,
-                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                'MixinConfigs'            : 'create_radar.mixins.json'
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])
     }
 

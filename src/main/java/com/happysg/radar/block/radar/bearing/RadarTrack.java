@@ -16,9 +16,10 @@ import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 
-public record RadarTrack(String entityId, Vec3 position, long scannedTime, Color color, boolean contraption, int id,
+public record RadarTrack(UUID entityId, Vec3 position, long scannedTime, Color color, boolean contraption, int id,
                          EntityType entityType) {
 
     public static int BLUE = 255;
@@ -28,7 +29,7 @@ public record RadarTrack(String entityId, Vec3 position, long scannedTime, Color
     public static int YELLOW = 16776960;
 
     public RadarTrack(Entity entity) {
-        this(entity.getStringUUID(), getPosition(entity), entity.level().getGameTime(), getColor(entity), isContraption(entity), entity.getId(), getEntityType(entity));
+        this(entity.getUUID(), getPosition(entity), entity.level().getGameTime(), getColor(entity), isContraption(entity), entity.getId(), getEntityType(entity));
     }
 
     private static EntityType getEntityType(Entity entity) {
@@ -65,7 +66,7 @@ public record RadarTrack(String entityId, Vec3 position, long scannedTime, Color
 
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
-        tag.putString("entityId", entityId);
+        tag.putUUID("entityId", entityId);
         tag.putDouble("x", position.x);
         tag.putDouble("y", position.y);
         tag.putDouble("z", position.z);
@@ -78,7 +79,7 @@ public record RadarTrack(String entityId, Vec3 position, long scannedTime, Color
     }
 
     public static RadarTrack deserializeNBT(CompoundTag tag) {
-        return new RadarTrack(tag.getString("entityId"), new Vec3(tag.getDouble("x"), tag.getDouble("y"), tag.getDouble("z")), tag.getLong("scannedTime"), new Color(tag.getInt("color")), tag.getBoolean("contraption"), tag.getInt("id"), EntityType.values()[tag.getInt("entityType")]);
+        return new RadarTrack(tag.getUUID("entityId"), new Vec3(tag.getDouble("x"), tag.getDouble("y"), tag.getDouble("z")), tag.getLong("scannedTime"), new Color(tag.getInt("color")), tag.getBoolean("contraption"), tag.getInt("id"), EntityType.values()[tag.getInt("entityType")]);
     }
 
     public static CompoundTag serializeNBTList(Collection<RadarTrack> tracks) {
@@ -106,6 +107,5 @@ public record RadarTrack(String entityId, Vec3 position, long scannedTime, Color
         PROJECTILE,
         MOB,
         CONTRAPTION,
-        VS2,
     }
 }

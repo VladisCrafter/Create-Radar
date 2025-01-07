@@ -36,6 +36,5 @@
   "create_radar.ponder.radar_linking.text_4": "Right click Display Link to activate",
   "create_radar.ponder.tag.radar_components": "Radars",
   "create_radar.ponder.tag.radar_components.description": "Components which allow the creation of Radar Tracking System",
-  "item.create_radar.guided_fuze": "Guided Fuze",
   "itemGroup.create_radar.radar": "Create: Radars"
 }

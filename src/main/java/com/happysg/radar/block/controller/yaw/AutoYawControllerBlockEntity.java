@@ -45,21 +45,9 @@ public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity {
         if (currentYaw == targetAngle)
             return;
 
-        // Normalize both currentYaw and targetAngle to [0, 360)
-        currentYaw = (currentYaw + 360) % 360;
-        targetAngle = (targetAngle + 360) % 360;
-
         double yawDifference = targetAngle - currentYaw;
-        // Normalize yawDifference to range [-180, 180]
-        yawDifference = (yawDifference + 180) % 360 - 180;
-
-        if (yawDifference > 180) {
-            yawDifference -= 360; // Rotate counterclockwise
-        } else if (yawDifference < -180) {
-            yawDifference += 360; // Rotate clockwise
-        }
-
         double speedFactor = Math.abs(getSpeed()) / 32.0;
+
 
         if (Math.abs(yawDifference) > TOLERANCE) {
             if (Math.abs(yawDifference) > speedFactor) {
@@ -71,8 +59,7 @@ public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity {
             currentYaw = targetAngle;
         }
 
-        // Set the new yaw back to the contraption
-        mount.setYaw((float) ((currentYaw + 360) % 360)); // Normalize back to [0, 360] if necessary
+        mount.setYaw((float) currentYaw);
         mount.notifyUpdate();
     }
 
