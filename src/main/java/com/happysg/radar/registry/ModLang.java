@@ -45,5 +45,9 @@ public class ModLang {
         REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.controller_linking.text_2", "Link using Display Links");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.controller_linking.text_3", "Repeat for pitch Controller");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.controller_linking.text_4", "Select Target on monitor for turret to aim/fire at");
+
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".pitch.powder_charge", "Powder Charge");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".guided_fuze.no_monitor", "No Monitor Linked");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar.no_receiver", "No Receiver Found");
     }
 }

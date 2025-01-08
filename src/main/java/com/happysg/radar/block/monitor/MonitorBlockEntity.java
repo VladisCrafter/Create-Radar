@@ -22,7 +22,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 
 public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoveringInformation {
@@ -32,8 +32,8 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     private int ticksSinceLastUpdate = 0;
     protected BlockPos radarPos;
     RadarBearingBlockEntity radar;
-    protected UUID hoveredEntity;
-    protected UUID selectedEntity;
+    protected String hoveredEntity;
+    protected String selectedEntity;
     MonitorFilter filter = MonitorFilter.ALL_ENTITIES;
 
     public MonitorBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -98,7 +98,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         if (tag.contains("radarPos"))
             radarPos = NbtUtils.readBlockPos(tag.getCompound("radarPos"));
         if (tag.contains("SelectedEntity"))
-            selectedEntity = tag.getUUID("SelectedEntity");
+            selectedEntity = tag.getString("SelectedEntity");
         filter = MonitorFilter.values()[tag.getInt("Filter")];
         radius = tag.getInt("Size");
     }
@@ -111,7 +111,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         if (radarPos != null)
             tag.put("radarPos", NbtUtils.writeBlockPos(radarPos));
         if (selectedEntity != null)
-            tag.putUUID("SelectedEntity", selectedEntity);
+            tag.putString("SelectedEntity", selectedEntity);
         tag.putInt("Filter", filter.ordinal());
         tag.putInt("Size", radius);
     }
@@ -155,6 +155,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     }
 
     public InteractionResult onUse(Player pPlayer, InteractionHand pHand, BlockHitResult pHit, Direction facing) {
+        Vec3 selected = pPlayer.pick(5, 0.0F, false).getLocation();
         if (pPlayer.isShiftKeyDown()) {
             selectedEntity = null;
         } else {
@@ -181,37 +182,32 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         if (size == 2)
             sizeadj = 0.75f;
         Vec3 selected = RadarPos.add(relative.scale(range / (sizeadj)));
-        getRadar().map(RadarBearingBlockEntity::getEntityPositions)
-                .ifPresent(entityPositions -> {
-                    double distance = .1f * range;
-                    for (RadarTrack track : entityPositions) {
-                        Vec3 entityPos = track.position();
-                        entityPos = entityPos.multiply(1, 0, 1);
-                        Vec3 selectedNew = selected.multiply(1, 0, 1);
-                        double newDistance = entityPos.distanceTo(selectedNew);
 
-                        if (newDistance < distance) {
-                            distance = newDistance;
-                            selectedEntity = track.entityId();
-                            notifyUpdate();
-                        }
-                    }
-                });
+        getRadar().ifPresent(radar -> {
+            double bestDistance = 0.1f * range;
+            for (RadarTrack track : radar.getEntityPositions()) {
+                Vec3 entityPos = track.position();
+                entityPos = entityPos.multiply(1, 0, 1);
+                Vec3 selectedNew = selected.multiply(1, 0, 1);
+                double newDistance = entityPos.distanceTo(selectedNew);
+                if (newDistance < bestDistance) {
+                    bestDistance = newDistance;
+                    selectedEntity = track.entityId();
+                }
+            }
+
+        });
+        notifyUpdate();
     }
 
     Vec3 adjustRelativeVectorForFacing(Vec3 relative, Direction monitorFacing) {
-        switch (monitorFacing) {
-            case NORTH:
-                return new Vec3(relative.x(), 0, relative.y());
-            case SOUTH:
-                return new Vec3(relative.x(), 0, -relative.y());
-            case WEST:
-                return new Vec3(relative.y(), 0, relative.z());
-            case EAST:
-                return new Vec3(-relative.y(), 0, relative.z());
-            default:
-                return relative;
-        }
+        return switch (monitorFacing) {
+            case NORTH -> new Vec3(relative.x(), 0, relative.y());
+            case SOUTH -> new Vec3(relative.x(), 0, -relative.y());
+            case WEST -> new Vec3(relative.y(), 0, relative.z());
+            case EAST -> new Vec3(-relative.y(), 0, relative.z());
+            default -> relative;
+        };
     }
 
     public MonitorBlockEntity getController() {
@@ -223,10 +219,18 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     }
 
     public Vec3 getTargetPos() {
-        return selectedEntity == null ? null : getRadar().map(radar -> radar.getEntityPositions().stream()
-                .filter(track -> track.entityId().equals(selectedEntity))
-                .map(RadarTrack::position)
-                .findFirst().orElse(null)).orElse(null);
+        AtomicReference<Vec3> targetPos = new AtomicReference<>();
+        getRadar().ifPresent(
+                radar -> {
+                    if (selectedEntity == null)
+                        return;
+                    for (RadarTrack track : radar.getEntityPositions()) {
+                        if (track.entityId().equals(selectedEntity))
+                            targetPos.set(track.position());
+                    }
+                }
+        );
+        return targetPos.get();
     }
 
     public void setFilter(MonitorFilter filter) {

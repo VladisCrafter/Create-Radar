@@ -1,5 +1,6 @@
 package com.happysg.radar.block.radar.bearing;
 
+import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.radar.receiver.AbstractRadarFrame;
 import com.happysg.radar.block.radar.receiver.RadarReceiverBlock;
 import com.happysg.radar.registry.ModContraptionTypes;
@@ -29,7 +30,7 @@ public class RadarContraption extends BearingContraption {
     public boolean assemble(Level world, BlockPos pos) throws AssemblyException {
         boolean assembled = super.assemble(world, pos);
         if (!hasReceiver()) {
-            throw new AssemblyException(Component.literal("No receiver found"));
+            throw new AssemblyException(Component.translatable(CreateRadar.MODID + ".radar.no_receiver"));
         }
         return assembled;
     }

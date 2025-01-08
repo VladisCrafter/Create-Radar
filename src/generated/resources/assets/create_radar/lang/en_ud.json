@@ -17,6 +17,8 @@
   "create_radar.filter.projectiles_only": "ʎןuO sǝןıʇɔǝظoɹԀ",
   "create_radar.filter.show": "ʍoɥS",
   "create_radar.filter.vs2_only": "ʎןuO ᄅSΛ",
+  "create_radar.guided_fuze.no_monitor": "pǝʞuıꞀ ɹoʇıuoW oN",
+  "create_radar.pitch.powder_charge": "ǝbɹɐɥƆ ɹǝpʍoԀ",
   "create_radar.ponder.controller_linking.header": "¡ɹoʇıuoW ɐ oʇ ɹǝןןoɹʇuoƆ ɐ buıʞuıꞀ",
   "create_radar.ponder.controller_linking.text_1": "ʇunoɯ ʇǝɹɹnʇ ɹǝpun ɹǝןןoɹʇuoƆ ʍɐʎ ǝɔɐןԀ",
   "create_radar.ponder.controller_linking.text_2": "sʞuıꞀ ʎɐןdsıᗡ buısn ʞuıꞀ",
@@ -36,5 +38,7 @@
   "create_radar.ponder.radar_linking.text_4": "ǝʇɐʌıʇɔɐ oʇ ʞuıꞀ ʎɐןdsıᗡ ʞɔıןɔ ʇɥbıᴚ",
   "create_radar.ponder.tag.radar_components": "sɹɐpɐᴚ",
   "create_radar.ponder.tag.radar_components.description": "ɯǝʇsʎS buıʞɔɐɹ⟘ ɹɐpɐᴚ ɟo uoıʇɐǝɹɔ ǝɥʇ ʍoןןɐ ɥɔıɥʍ sʇuǝuodɯoƆ",
+  "create_radar.radar.no_receiver": "punoℲ ɹǝʌıǝɔǝᴚ oN",
+  "item.create_radar.guided_fuze": "ǝznℲ pǝpın⅁",
   "itemGroup.create_radar.radar": "sɹɐpɐᴚ :ǝʇɐǝɹƆ"
 }

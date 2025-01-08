@@ -17,6 +17,8 @@
   "create_radar.filter.projectiles_only": "Projectiles Only",
   "create_radar.filter.show": "Show",
   "create_radar.filter.vs2_only": "VS2 Only",
+  "create_radar.guided_fuze.no_monitor": "No Monitor Linked",
+  "create_radar.pitch.powder_charge": "Powder Charge",
   "create_radar.ponder.controller_linking.header": "Linking a Controller to a Monitor!",
   "create_radar.ponder.controller_linking.text_1": "Place Yaw Controller under turret mount",
   "create_radar.ponder.controller_linking.text_2": "Link using Display Links",
@@ -36,5 +38,7 @@
   "create_radar.ponder.radar_linking.text_4": "Right click Display Link to activate",
   "create_radar.ponder.tag.radar_components": "Radars",
   "create_radar.ponder.tag.radar_components.description": "Components which allow the creation of Radar Tracking System",
+  "create_radar.radar.no_receiver": "No Receiver Found",
+  "item.create_radar.guided_fuze": "Guided Fuze",
   "itemGroup.create_radar.radar": "Create: Radars"
 }
