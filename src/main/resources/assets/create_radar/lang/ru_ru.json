@@ -17,6 +17,8 @@
   "create_radar.filter.projectiles_only": "Только снаряды",
   "create_radar.filter.show": "Отображать",
   "create_radar.filter.vs2_only": "Только конструкции VS2",
+  "create_radar.guided_fuze.no_monitor": "Монитор не привязан",
+  "create_radar.pitch.powder_charge": "Кол-во пороховых зарядов",
   "create_radar.ponder.controller_linking.header": "Привязкой контроллеров к монитору",
   "create_radar.ponder.controller_linking.text_1": "Разместите контроллер горизонтального прицеливания под креплением пушки",
   "create_radar.ponder.controller_linking.text_2": "Привяжите его с помощью передатчика информации",
@@ -36,6 +38,7 @@
   "create_radar.ponder.radar_linking.text_4": "Кликните по передатчику, чтобы активировать его",
   "create_radar.ponder.tag.radar_components": "Радар",
   "create_radar.ponder.tag.radar_components.description": "Компоненты, используемые при строительстве радиолокационных станций",
-  "item.create_radar.guided_fuze": "Наводящийся заряд",
+  "create_radar.radar.no_receiver": "Приёмник не найден",
+  "item.create_radar.guided_fuze": "Наводящий взрыватель",
   "itemGroup.create_radar.radar": "Create: Radars"
 }

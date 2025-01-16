@@ -2,6 +2,8 @@ package com.happysg.radar.block.monitor;
 
 import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 import com.happysg.radar.block.radar.bearing.RadarTrack;
+import com.happysg.radar.block.radar.bearing.VSRadarTracks;
+import com.happysg.radar.block.radar.link.screens.TargetingConfig;
 import com.simibubi.create.content.equipment.goggles.IHaveHoveringInformation;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -34,7 +36,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     RadarBearingBlockEntity radar;
     protected String hoveredEntity;
     protected String selectedEntity;
-    MonitorFilter filter = MonitorFilter.ALL_ENTITIES;
+    MonitorFilter filter = MonitorFilter.DEFAULT;
 
     public MonitorBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -58,7 +60,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     @Override
     public void tick() {
         super.tick();
-        if (ticksSinceLastUpdate > 60)
+        if (ticksSinceLastUpdate > 20)
             setRadarPos(null);
         ticksSinceLastUpdate++;
     }
@@ -99,7 +101,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
             radarPos = NbtUtils.readBlockPos(tag.getCompound("radarPos"));
         if (tag.contains("SelectedEntity"))
             selectedEntity = tag.getString("SelectedEntity");
-        filter = MonitorFilter.values()[tag.getInt("Filter")];
+        filter = MonitorFilter.fromTag(tag.getCompound("Filter"));
         radius = tag.getInt("Size");
     }
 
@@ -112,7 +114,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
             tag.put("radarPos", NbtUtils.writeBlockPos(radarPos));
         if (selectedEntity != null)
             tag.putString("SelectedEntity", selectedEntity);
-        tag.putInt("Filter", filter.ordinal());
+        tag.put("Filter", filter.toTag());
         tag.putInt("Size", radius);
     }
 
@@ -186,6 +188,8 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         getRadar().ifPresent(radar -> {
             double bestDistance = 0.1f * range;
             for (RadarTrack track : radar.getEntityPositions()) {
+                if (!filter.test(track.entityType()))
+                    continue;
                 Vec3 entityPos = track.position();
                 entityPos = entityPos.multiply(1, 0, 1);
                 Vec3 selectedNew = selected.multiply(1, 0, 1);
@@ -193,6 +197,19 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
                 if (newDistance < bestDistance) {
                     bestDistance = newDistance;
                     selectedEntity = track.entityId();
+                }
+            }
+
+            for (VSRadarTracks track : radar.getVS2Positions()) {
+                if (!filter.test(RadarTrack.EntityType.VS2))
+                    continue;
+                Vec3 entityPos = track.position();
+                entityPos = entityPos.multiply(1, 0, 1);
+                Vec3 selectedNew = selected.multiply(1, 0, 1);
+                double newDistance = entityPos.distanceTo(selectedNew);
+                if (newDistance < bestDistance) {
+                    bestDistance = newDistance;
+                    selectedEntity = track.id();
                 }
             }
 
@@ -215,25 +232,61 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
             return this;
         if (level.getBlockEntity(controller) instanceof MonitorBlockEntity controller)
             return controller;
-        return null;
+        return this;
     }
 
-    public Vec3 getTargetPos() {
+    public Vec3 getTargetPos(TargetingConfig targetingConfig) {
         AtomicReference<Vec3> targetPos = new AtomicReference<>();
         getRadar().ifPresent(
                 radar -> {
+                    if (selectedEntity == null)
+                        tryFindAutoTarget(targetingConfig);
                     if (selectedEntity == null)
                         return;
                     for (RadarTrack track : radar.getEntityPositions()) {
                         if (track.entityId().equals(selectedEntity))
                             targetPos.set(track.position());
                     }
+
+                    for (VSRadarTracks track : radar.getVS2Positions()) {
+                        if (track.id().equals(selectedEntity))
+                            targetPos.set(track.position());
+                    }
+
                 }
         );
+        if (targetPos.get() == null)
+            selectedEntity = null;
         return targetPos.get();
     }
 
+    private void tryFindAutoTarget(TargetingConfig targetingConfig) {
+        if (!targetingConfig.autoTarget())
+            return;
+        final double[] distance = {Double.MAX_VALUE};
+        getRadar().ifPresent(
+                radar -> {
+                    for (RadarTrack track : radar.getEntityPositions()) {
+                        if (targetingConfig.test(track.entityType()) && track.position().distanceTo(Vec3.atCenterOf(getControllerPos())) < distance[0]) {
+                            selectedEntity = track.entityId();
+                            distance[0] = track.position().distanceTo(Vec3.atCenterOf(getControllerPos()));
+                        }
+                    }
+
+                    for (VSRadarTracks track : radar.getVS2Positions()) {
+                        if (targetingConfig.test(RadarTrack.EntityType.VS2) && track.position().distanceTo(Vec3.atCenterOf(getControllerPos())) < distance[0]) {
+                            selectedEntity = track.id();
+                            distance[0] = track.position().distanceTo(Vec3.atCenterOf(getControllerPos()));
+                        }
+                    }
+                }
+        );
+        if (selectedEntity != null)
+            notifyUpdate();
+    }
+
     public void setFilter(MonitorFilter filter) {
+        this.getController().filter = filter;
         this.filter = filter;
     }
 }

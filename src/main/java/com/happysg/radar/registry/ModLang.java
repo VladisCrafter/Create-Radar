@@ -22,8 +22,8 @@ public class ModLang {
         REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.radar_linking.header", "Linking a Radar to a Monitor!");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.radar_linking.text_1", "Place Monitor");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.radar_linking.text_2", "Build Radar Contraption");
-        REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.radar_linking.text_3", "Link using Display Link");
-        REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.radar_linking.text_4", "Right click Display Link to activate");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.radar_linking.text_3", "Link using Radar Link");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.radar_linking.text_4", "Right click Radar Link to configure");
 
         REGISTRATE.addRawLang(CreateRadar.MODID + ".display_source.radar", "Radar");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".display_source.yaw_controller", "Auto Yaw Controller");
@@ -42,12 +42,29 @@ public class ModLang {
 
         REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.controller_linking.header", "Linking a Controller to a Monitor!");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.controller_linking.text_1", "Place Yaw Controller under turret mount");
-        REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.controller_linking.text_2", "Link using Display Links");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.controller_linking.text_2", "Link using Radar Links");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.controller_linking.text_3", "Repeat for pitch Controller");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".ponder.controller_linking.text_4", "Select Target on monitor for turret to aim/fire at");
 
         REGISTRATE.addRawLang(CreateRadar.MODID + ".pitch.powder_charge", "Powder Charge");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".guided_fuze.no_monitor", "No Monitor Linked");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".radar.no_receiver", "No Receiver Found");
+
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_link.fail", "Radar Link has no valid target, try placing it again");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_link.no_source", "Not a Radar Source");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_link.no_target", "Not a Radar Target");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_link.title", "Radar Link");
+
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.player", "Player");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.vs2", "VS2");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.contraption", "Contraption");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.mob", "Mob");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.projectile", "Projectile");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.animal", "Animal");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.auto_target", "Auto Target");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.auto_fire", "Auto Fire");
+
+
+
     }
 }

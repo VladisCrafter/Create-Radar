@@ -1,25 +1,62 @@
 package com.happysg.radar.block.monitor;
 
 import com.happysg.radar.block.radar.bearing.RadarTrack;
+import net.minecraft.nbt.CompoundTag;
 
-import java.util.function.Predicate;
+import java.util.List;
 
-public enum MonitorFilter {
-    ALL_ENTITIES(entity -> true),
-    NO_MOBS(entity -> !(entity == RadarTrack.EntityType.MOB)),
-    ONLY_MOBS(entity -> entity == RadarTrack.EntityType.MOB),
-    PLAYERS_ONLY(entity -> entity == RadarTrack.EntityType.PLAYER);
-    //  PROJECTILES_ONLY(entity->entity instanceof Projectile),
-    //  VS2_ONLY(entity->false),
-    //  MOB_BOSSES_ONLY(entity->entity instanceof EnderDragon||entity instanceof WitherBoss);
+public record MonitorFilter(boolean player, boolean vs2, boolean contraption, boolean mob, boolean projectile,
+                            List<String> blacklistPlayers, List<String> whitelistPlayers, List<String> blacklistVS2,
+                            List<String> whitelistVS) {
+    public static final MonitorFilter DEFAULT = new MonitorFilter(true, true, true, true, true);
 
-    private final Predicate<RadarTrack.EntityType> predicate;
-
-    MonitorFilter(Predicate<RadarTrack.EntityType> test) {
-        this.predicate = test;
+    public MonitorFilter(boolean player, boolean vs2, boolean contraption, boolean mob, boolean projectile) {
+        this(player, vs2, contraption, mob, projectile, List.of(), List.of(), List.of(), List.of());
     }
 
-    public boolean test(RadarTrack.EntityType entity) {
-        return predicate.test(entity);
+    public CompoundTag toTag() {
+        CompoundTag tag = new CompoundTag();
+        tag.putBoolean("player", player);
+        tag.putBoolean("vs2", vs2);
+        tag.putBoolean("contraption", contraption);
+        tag.putBoolean("mob", mob);
+        tag.putBoolean("projectile", projectile);
+        CompoundTag playersListTag = new CompoundTag();
+        blacklistPlayers.forEach(player -> playersListTag.putBoolean(player, false));
+        whitelistPlayers.forEach(player -> playersListTag.putBoolean(player, true));
+        tag.put("playerList", playersListTag);
+        CompoundTag vs2ListTag = new CompoundTag();
+        blacklistVS2.forEach(vs2 -> vs2ListTag.putBoolean(vs2, false));
+        whitelistVS.forEach(vs2 -> vs2ListTag.putBoolean(vs2, true));
+        tag.put("vs2Ships", vs2ListTag);
+        return tag;
+    }
+
+    public static MonitorFilter fromTag(CompoundTag tag) {
+        boolean player = tag.getBoolean("player");
+        boolean vs2 = tag.getBoolean("vs2");
+        boolean contraption = tag.getBoolean("contraption");
+        boolean mob = tag.getBoolean("mob");
+        boolean projectile = tag.getBoolean("projectile");
+        List<String> blacklistPlayers = tag.getCompound("playerList").getAllKeys().stream().filter(key -> !tag.getCompound("playerList").getBoolean(key)).toList();
+        List<String> whitelistPlayers = tag.getCompound("playerList").getAllKeys().stream().filter(key -> tag.getCompound("playerList").getBoolean(key)).toList();
+        List<String> blacklistVS2 = tag.getCompound("vs2Ships").getAllKeys().stream().filter(key -> !tag.getCompound("vs2Ships").getBoolean(key)).toList();
+        List<String> whitelistVS = tag.getCompound("vs2Ships").getAllKeys().stream().filter(key -> tag.getCompound("vs2Ships").getBoolean(key)).toList();
+        return new MonitorFilter(player, vs2, contraption, mob, projectile, blacklistPlayers, whitelistPlayers, blacklistVS2, whitelistVS);
+    }
+
+    public boolean test(RadarTrack.EntityType entityType) {
+        if (entityType == RadarTrack.EntityType.PLAYER) {
+            return player;
+        } else if (entityType == RadarTrack.EntityType.VS2) {
+            return vs2;
+        } else if (entityType == RadarTrack.EntityType.CONTRAPTION) {
+            return contraption;
+        } else if (entityType == RadarTrack.EntityType.MOB || entityType == RadarTrack.EntityType.ANIMAL) {
+            return mob;
+        } else if (entityType == RadarTrack.EntityType.PROJECTILE) {
+            return projectile;
+        }
+        return false;
     }
 }

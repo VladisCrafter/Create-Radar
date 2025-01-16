@@ -3,6 +3,8 @@ package com.happysg.radar.block.monitor;
 import com.happysg.radar.CreateRadar;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.Locale;
+
 public enum MonitorSprite {
     CONTRAPTION_HITBOX,
     ENTITY_HITBOX,
@@ -15,6 +17,6 @@ public enum MonitorSprite {
 
 
     public ResourceLocation getTexture() {
-        return CreateRadar.asResource("textures/monitor_sprite/" + name().toLowerCase() + ".png");
+        return CreateRadar.asResource("textures/monitor_sprite/" + name().toLowerCase(Locale.ROOT) + ".png");
     }
 }

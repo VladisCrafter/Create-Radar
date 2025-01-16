@@ -7,7 +7,7 @@ import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCan
 @Mixin(AbstractMountedCannonContraption.class)
 public interface AbstractCannonAccessor {
 
-    @Accessor("frontExtensionLength")
+    @Accessor(value = "frontExtensionLength", remap = false)
     int getFrontBarrelCount();
 
 }

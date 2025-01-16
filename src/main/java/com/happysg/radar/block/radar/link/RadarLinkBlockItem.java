@@ -1,14 +1,12 @@
-package com.happysg.radar.mixin;
+package com.happysg.radar.block.radar.link;
 
-import com.happysg.radar.CreateRadar;
-import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
-import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
-import com.happysg.radar.block.monitor.MonitorBlockEntity;
-import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
-import com.simibubi.create.content.redstone.displayLink.DisplayLinkBlockItem;
+import com.happysg.radar.config.RadarConfig;
+import com.happysg.radar.registry.AllRadarBehaviors;
+import com.happysg.radar.registry.ModBlocks;
+import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.utility.Lang;
-import com.simibubi.create.infrastructure.config.AllConfigs;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
@@ -20,25 +18,32 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
-import org.spongepowered.asm.mixin.Unique;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+public class RadarLinkBlockItem extends BlockItem {
 
-@Mixin(DisplayLinkBlockItem.class)
-public abstract class DisplayLinkBlockItemMixin extends BlockItem {
-
-    public DisplayLinkBlockItemMixin(Block pBlock, Properties pProperties) {
+    public RadarLinkBlockItem(Block pBlock, Properties pProperties) {
         super(pBlock, pProperties);
     }
 
-    /**
-     * @author happysg
-     * @reason Add the ability to link to MonitorBlockEntity regardless of the distance
-     * and links source without opening the screen
-     */
-    //TODO use proper Mixin instead of Overwrite
-    @Overwrite
+    @SubscribeEvent
+    public static void gathererItemAlwaysPlacesWhenUsed(PlayerInteractEvent.RightClickBlock event) {
+        ItemStack usedItem = event.getItemStack();
+        if (usedItem.getItem() instanceof RadarLinkBlockItem) {
+            if (ModBlocks.RADAR_LINK.has(event.getLevel()
+                    .getBlockState(event.getPos())))
+                return;
+            event.setUseBlock(Event.Result.DENY);
+        }
+    }
+
+    @Override
     public InteractionResult useOn(UseOnContext pContext) {
         ItemStack stack = pContext.getItemInHand();
         BlockPos pos = pContext.getClickedPos();
@@ -73,29 +78,12 @@ public abstract class DisplayLinkBlockItemMixin extends BlockItem {
         BlockPos selectedPos = NbtUtils.readBlockPos(tag.getCompound("SelectedPos"));
         BlockPos placedPos = pos.relative(pContext.getClickedFace(), state.canBeReplaced() ? 0 : 1);
 
-        if (!selectedPos.closerThan(placedPos, AllConfigs.server().logistics.displayLinkRange.get()) && !create_Radar$isMonitor(level, selectedPos)) {
+        if (!selectedPos.closerThan(placedPos, RadarConfig.server().radarLinkRange.get())) {
             player.displayClientMessage(Lang.translateDirect("display_link.too_far")
                     .withStyle(ChatFormatting.RED), true);
             return InteractionResult.FAIL;
         }
 
-
-        //fixme poor design
-        //no need open screen to link
-        CompoundTag data = new CompoundTag();
-        if (level.getBlockEntity(pos) instanceof RadarBearingBlockEntity) {
-            data.putString("Id", CreateRadar.asResource("radar").toString());
-            data.putInt("Filter", 0);
-            teTag.put("Source", data);
-        }
-        if (level.getBlockEntity(pos) instanceof AutoYawControllerBlockEntity) {
-            data.putString("Id", CreateRadar.asResource("yaw_controller").toString());
-            teTag.put("Source", data);
-        }
-        if (level.getBlockEntity(pos) instanceof AutoPitchControllerBlockEntity) {
-            data.putString("Id", CreateRadar.asResource("pitch_controller").toString());
-            teTag.put("Source", data);
-        }
         teTag.put("TargetOffset", NbtUtils.writeBlockPos(selectedPos.subtract(placedPos)));
         tag.put("BlockEntityTag", teTag);
 
@@ -111,8 +99,49 @@ public abstract class DisplayLinkBlockItemMixin extends BlockItem {
         return useOn;
     }
 
-    @Unique
-    private boolean create_Radar$isMonitor(Level level, BlockPos selectedPos) {
-        return level.getBlockEntity(selectedPos) instanceof MonitorBlockEntity;
+    private static BlockPos lastShownPos = null;
+    private static AABB lastShownAABB = null;
+
+    @OnlyIn(Dist.CLIENT)
+    public static void clientTick() {
+        Player player = Minecraft.getInstance().player;
+        if (player == null)
+            return;
+        ItemStack heldItemMainhand = player.getMainHandItem();
+        if (!(heldItemMainhand.getItem() instanceof RadarLinkBlockItem))
+            return;
+        if (!heldItemMainhand.hasTag())
+            return;
+        CompoundTag stackTag = heldItemMainhand.getOrCreateTag();
+        if (!stackTag.contains("SelectedPos"))
+            return;
+
+        BlockPos selectedPos = NbtUtils.readBlockPos(stackTag.getCompound("SelectedPos"));
+
+        if (!selectedPos.equals(lastShownPos)) {
+            lastShownAABB = getBounds(selectedPos);
+            lastShownPos = selectedPos;
+        }
+
+        CreateClient.OUTLINER.showAABB("target", lastShownAABB)
+                .colored(0x6fa8dc)
+                .lineWidth(1 / 16f);
     }
+
+    @OnlyIn(Dist.CLIENT)
+    private static AABB getBounds(BlockPos pos) {
+        Level world = Minecraft.getInstance().level;
+        RadarTarget target = AllRadarBehaviors.targetOf(world, pos);
+
+        if (target != null)
+            return target.getMultiblockBounds(world, pos);
+
+        BlockState state = world.getBlockState(pos);
+        VoxelShape shape = state.getShape(world, pos);
+        return shape.isEmpty() ? new AABB(BlockPos.ZERO)
+                : shape.bounds()
+                .move(pos);
+    }
+
 }
+

@@ -29,7 +29,7 @@ public class CannonTargeting {
             double airtimeDown = computeAirtimeDown(power, pitch, dY, length, gravity);
 
             if (airtimeUp != -1) {
-                double projection = computeProjection(power, pitch, airtimeUp);
+                double projection = computeProjection(power, pitch, airtimeUp, length);
                 double accuracy = Math.abs(projection - distance);
                 if (accuracy < bestAccuracy) {
                     bestAccuracy = accuracy;
@@ -38,7 +38,7 @@ public class CannonTargeting {
             }
 
             if (airtimeDown != -1) {
-                double projection = computeProjection(power, pitch, airtimeDown);
+                double projection = computeProjection(power, pitch, airtimeDown, length);
                 double accuracy = Math.abs(projection - distance);
                 if (accuracy < bestAccuracy) {
                     bestAccuracy = accuracy;
@@ -58,7 +58,7 @@ public class CannonTargeting {
             double airtimeDown = computeAirtimeDown(power, pitch, dY, length, gravity);
 
             if (airtimeUp != -1) {
-                double projection = computeProjection(power, pitch, airtimeUp);
+                double projection = computeProjection(power, pitch, airtimeUp, length);
                 double accuracy = Math.abs(projection - distance);
                 if (accuracy < bestAccuracy) {
                     bestAccuracy = accuracy;
@@ -67,7 +67,7 @@ public class CannonTargeting {
             }
 
             if (airtimeDown != -1) {
-                double projection = computeProjection(power, pitch, airtimeDown);
+                double projection = computeProjection(power, pitch, airtimeDown, length);
                 double accuracy = Math.abs(projection - distance);
                 if (accuracy < bestAccuracy) {
                     bestAccuracy = accuracy;
@@ -106,26 +106,27 @@ public class CannonTargeting {
         double vertPosition = 0.0;
         dY -= length * Math.sin(Math.toRadians(pitch));
 
-        double ticks = 0;
         boolean passed = false;
+        double ticks = 0;
 
         while (true) {
             ticks++;
             vertPosition += vertVelocity;
             vertVelocity = vertVelocity * DRAG + gravity;
 
-            if (!passed && vertVelocity < 0) break;
-            if (vertVelocity > 0 && vertPosition > dY) passed = true;
-            if (passed && vertVelocity < 0 && vertPosition < dY) return ticks;
+            if(vertPosition > dY && vertVelocity < 0) passed = true;
+            if(vertVelocity < 0 && vertPosition < dY && passed) return ticks;
+            if(vertPosition < dY && vertVelocity < 0 ) break;
+
         }
 
         return -1;
     }
 
     // Calculate the horizontal projection
-    private static double computeProjection(double power, double pitch, double airtime) {
+    private static double computeProjection(double power, double pitch, double airtime, double length) {
         double horizVelocity = power * Math.cos(Math.toRadians(pitch));
-        double horizPosition = 0.0;
+        double horizPosition = Math.sin(Math.abs(pitch))*length;
 
         for (int ticks = 1; ticks <= airtime; ticks++) {
             horizPosition += horizVelocity;

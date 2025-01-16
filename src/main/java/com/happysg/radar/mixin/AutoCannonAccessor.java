@@ -8,7 +8,7 @@ import rbasamoyai.createbigcannons.cannons.autocannon.material.AutocannonMateria
 @Mixin(MountedAutocannonContraption.class)
 public interface AutoCannonAccessor {
 
-    @Accessor("cannonMaterial")
+    @Accessor(value = "cannonMaterial", remap = false)
     AutocannonMaterial getMaterial();
 
 }

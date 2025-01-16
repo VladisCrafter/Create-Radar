@@ -7,7 +7,6 @@ import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCan
 import rbasamoyai.createbigcannons.cannon_control.contraption.MountedAutocannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.MountedBigCannonContraption;
 import rbasamoyai.createbigcannons.cannons.autocannon.IAutocannonBlockEntity;
-import rbasamoyai.createbigcannons.cannons.autocannon.breech.AbstractAutocannonBreechBlockEntity;
 import rbasamoyai.createbigcannons.cannons.autocannon.material.AutocannonMaterialProperties;
 
 public class CannonUtil {
@@ -53,10 +52,8 @@ public class CannonUtil {
         if (autocannon == null)
             return 0;
 
-        if (autocannon.getStartPos() == null
-                || ((AutoCannonAccessor) autocannon).getMaterial() == null
-                || !(autocannon.presentBlockEntities.get(autocannon.getStartPos()) instanceof AbstractAutocannonBreechBlockEntity breech)
-                || !breech.canFire()) return 0;
+        if (((AutoCannonAccessor) autocannon).getMaterial() == null)
+            return 0;
 
         AutocannonMaterialProperties properties = ((AutoCannonAccessor) autocannon).getMaterial().properties();
         float speed = properties.baseSpeed();

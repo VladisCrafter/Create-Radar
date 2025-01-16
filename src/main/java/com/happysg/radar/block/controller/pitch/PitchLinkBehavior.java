@@ -1,35 +1,25 @@
 package com.happysg.radar.block.controller.pitch;
 
-import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
-import com.simibubi.create.content.redstone.displayLink.DisplayLinkContext;
-import com.simibubi.create.content.redstone.displayLink.source.DisplaySource;
-import com.simibubi.create.content.redstone.displayLink.target.DisplayTarget;
-import com.simibubi.create.content.redstone.displayLink.target.DisplayTargetStats;
-import com.simibubi.create.foundation.gui.ModularGuiLineBuilder;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
+import com.happysg.radar.block.radar.link.RadarLinkBlockEntity;
+import com.happysg.radar.block.radar.link.RadarLinkContext;
+import com.happysg.radar.block.radar.link.RadarSource;
+import com.happysg.radar.block.radar.link.RadarTarget;
+import com.happysg.radar.block.radar.link.screens.AbstractRadarLinkScreen;
+import com.happysg.radar.block.radar.link.screens.RadarTargetScreen;
+import com.happysg.radar.block.radar.link.screens.TargetingConfig;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-
-public class PitchLinkBehavior extends DisplaySource {
+public class PitchLinkBehavior extends RadarSource {
 
     @Override
-    public List<MutableComponent> provideText(DisplayLinkContext context, DisplayTargetStats stats) {
-        return List.of();
+    protected AbstractRadarLinkScreen getScreen(RadarLinkBlockEntity be) {
+        return new RadarTargetScreen(be);
     }
 
     @Override
-    public int getPassiveRefreshTicks() {
-        return 1;
-    }
-
-    @Override
-    public void transferData(DisplayLinkContext context, DisplayTarget activeTarget, int line) {
-        super.transferData(context, activeTarget, line);
+    protected void transferData(@NotNull RadarLinkContext context, @NotNull RadarTarget activeTarget) {
         if (!(context.getSourceBlockEntity() instanceof AutoPitchControllerBlockEntity controller))
             return;
 
@@ -41,24 +31,11 @@ public class PitchLinkBehavior extends DisplaySource {
         if (monitor == null)
             return;
 
-        Vec3 targetPos = monitor.getTargetPos();
+        TargetingConfig targetingConfig = TargetingConfig.fromTag(context.sourceConfig().getCompound("targeting"));
+
+        Vec3 targetPos = monitor.getTargetPos(targetingConfig);
         controller.setTarget(targetPos);
-        controller.chargeCount = context.blockEntity().getSourceConfig().getInt("charge");
-    }
+        controller.setTargetingConfig(targetingConfig);
 
-    @Override
-    @OnlyIn(Dist.CLIENT)
-    public void initConfigurationWidgets(DisplayLinkContext context, ModularGuiLineBuilder builder, boolean isFirstLine) {
-        if (isFirstLine)
-            addFilterConfig(builder);
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    protected void addFilterConfig(ModularGuiLineBuilder builder) {
-        builder.addSelectionScrollInput(0, 100,
-                (si, l) -> si
-                        .forOptions(List.of(Component.literal("0"), Component.literal("1"), Component.literal("2"), Component.literal("3"), Component.literal("4")))
-                        .titled(Component.translatable(CreateRadar.MODID + ".pitch.powder_charge"))
-                , "charge");
     }
 }

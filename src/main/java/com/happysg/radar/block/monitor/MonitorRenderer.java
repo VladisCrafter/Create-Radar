@@ -3,6 +3,7 @@ package com.happysg.radar.block.monitor;
 import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 import com.happysg.radar.block.radar.bearing.RadarTrack;
 import com.happysg.radar.compat.vs2.VS2Utils;
+import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.registry.ModRenderTypes;
 import com.jozufozu.flywheel.util.Color;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -54,7 +55,7 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
     private void renderGrid(RadarBearingBlockEntity radar, MonitorBlockEntity blockEntity, PoseStack ms, MultiBufferSource bufferSource) {
         int size = blockEntity.getSize();
         float range = radar.getRange();
-        final int GRID_BLOCK_SIZE = 50;
+        final int GRID_BLOCK_SIZE = RadarConfig.client().gridBoxScale.get();
 
         float gridSpacing = range / GRID_BLOCK_SIZE;
         VertexConsumer buffer = bufferSource.getBuffer(ModRenderTypes.entityTranslucent(MonitorSprite.GRID_SQUARE.getTexture()));
@@ -62,7 +63,7 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         Matrix3f n = ms.last().normal();
 
 
-        Color color = new Color(0, 255, 0);
+        Color color = new Color(RadarConfig.client().groundRadarColor.get());
         float alpha = .5f;
         float deptY = 0.94f;
 
@@ -217,7 +218,7 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         int size = blockEntity.getSize();
         Matrix4f m = ms.last().pose();
         Matrix3f n = ms.last().normal();
-        Color color = new Color(0, 255, 0);
+        Color color = new Color(RadarConfig.client().groundRadarColor.get());
         float alpha = .6f;
         float deptY = 0.94f;
 
@@ -233,10 +234,11 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
     public void renderSweep(RadarBearingBlockEntity radar, MonitorBlockEntity controller, PoseStack ms, MultiBufferSource bufferSource) {
         if (!radar.isRunning())
             return;
+
         VertexConsumer buffer = bufferSource.getBuffer(ModRenderTypes.polygonOffset(MonitorSprite.RADAR_SWEEP.getTexture()));
         Matrix4f m = ms.last().pose();
         Matrix3f n = ms.last().normal();
-        Color color = new Color(0, 255, 0);
+        Color color = new Color(RadarConfig.client().groundRadarColor.get());
         float alpha = 0.8f;
         Direction monitorFacing = controller.getBlockState().getValue(MonitorBlock.FACING);
         Direction radarFacing = radar.getReceiverFacing();

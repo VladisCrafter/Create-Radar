@@ -1,5 +1,6 @@
 package com.happysg.radar.block.radar.bearing;
 
+import com.happysg.radar.config.RadarConfig;
 import com.jozufozu.flywheel.util.Color;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import net.minecraft.nbt.CompoundTag;
@@ -22,11 +23,6 @@ import java.util.UUID;
 public record RadarTrack(UUID entityId, Vec3 position, long scannedTime, Color color, boolean contraption, int id,
                          EntityType entityType) {
 
-    public static int BLUE = 255;
-    public static int WHITE = 16777215;
-    public static int RED = 16711680;
-    public static int GREEN = 65280;
-    public static int YELLOW = 16776960;
 
     public RadarTrack(Entity entity) {
         this(entity.getUUID(), getPosition(entity), entity.level().getGameTime(), getColor(entity), isContraption(entity), entity.getId(), getEntityType(entity));
@@ -37,6 +33,8 @@ public record RadarTrack(UUID entityId, Vec3 position, long scannedTime, Color c
             return EntityType.PLAYER;
         if (entity instanceof Projectile)
             return EntityType.PROJECTILE;
+        if (entity instanceof Animal)
+            return EntityType.ANIMAL;
         if (entity instanceof Mob)
             return EntityType.MOB;
         if (entity instanceof AbstractContraptionEntity)
@@ -52,12 +50,16 @@ public record RadarTrack(UUID entityId, Vec3 position, long scannedTime, Color c
 
     private static Color getColor(Entity entity) {
         if (entity instanceof Player)
-            return new Color(BLUE);
+            return new Color(RadarConfig.client().playerColor.get());
         if (entity instanceof Animal)
-            return new Color(GREEN);
+            return new Color(RadarConfig.client().friendlyColor.get());
         if (entity instanceof Enemy)
-            return new Color(RED);
-        return new Color(WHITE);
+            return new Color(RadarConfig.client().hostileColor.get());
+        if (entity instanceof Projectile)
+            return new Color(RadarConfig.client().projectileColor.get());
+        if (entity instanceof AbstractContraptionEntity)
+            return new Color(RadarConfig.client().contraptionColor.get());
+        return new Color(RadarConfig.client().neutralEntityColor.get());
     }
 
     private static boolean isContraption(Entity entity) {
@@ -106,6 +108,7 @@ public record RadarTrack(UUID entityId, Vec3 position, long scannedTime, Color c
         PLAYER,
         PROJECTILE,
         MOB,
+        ANIMAL,
         CONTRAPTION,
     }
 }

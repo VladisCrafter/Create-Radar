@@ -7,8 +7,7 @@
   ],
   "mixins": [
     "AbstractCannonAccessor",
-    "AutoCannonAccessor",
-    "DisplayLinkBlockItemMixin"
+    "AutoCannonAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -2,6 +2,7 @@ package com.happysg.radar.compat.cbc;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
+import com.happysg.radar.block.radar.link.screens.TargetingConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
@@ -44,7 +45,7 @@ public class GuidedFuzeItem extends FuzeItem {
             if (delta.y > 0)
                 return false;
             if (projectile.level().getBlockEntity(monitorPos) instanceof MonitorBlockEntity monitor) {
-                Vec3 target = monitor.getTargetPos();
+                Vec3 target = monitor.getTargetPos(TargetingConfig.DEFAULT);
                 if (target == null)
                     return false;
                 double horizontalDistance = Math.sqrt(Math.pow(projectile.position().x - target.x, 2) + Math.pow(projectile.position().z - target.z, 2));

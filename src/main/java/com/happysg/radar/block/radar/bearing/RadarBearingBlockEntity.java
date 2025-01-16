@@ -1,6 +1,8 @@
 package com.happysg.radar.block.radar.bearing;
 
+import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.vs2.VS2Utils;
+import com.happysg.radar.config.RadarConfig;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.contraptions.AssemblyException;
 import com.simibubi.create.content.contraptions.ControlledContraptionEntity;
@@ -17,15 +19,17 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import org.joml.Vector3d;
 
 import java.util.*;
 
 public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
     private static final int MAX_TRACK_TICKS = 100;
-
     private int dishCount;
     private Direction receiverFacing = Direction.NORTH;
-    Map<UUID, RadarTrack> entityPositions = new HashMap<>();
+    Map<String, RadarTrack> entityPositions = new HashMap<>();
+    Map<String, VSRadarTracks> VSPositions = new HashMap<>();
+
     public RadarBearingBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
     }
@@ -42,42 +46,66 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
         super.tick();
         if (isRunning()) {
             scanForEntityTracks();
+            scanForVSTracks();
         }
         clearOldTracks();
         notifyUpdate();
     }
 
+
     private void clearOldTracks() {
-        List<UUID> toRemove = new ArrayList<>();
+        List<String> toRemove = new ArrayList<>();
+        long currentTime = level.getGameTime();
         entityPositions.forEach((entity, track) -> {
-            if (level.getGameTime() - track.scannedTime() > MAX_TRACK_TICKS || (level.getEntity(track.id()) != null && (level.getEntity(track.id()).isRemoved() || !level.getEntity(track.id()).isAlive()))) {
+            if (currentTime - track.scannedTime() > MAX_TRACK_TICKS || (level.getEntity(track.id()) != null && (level.getEntity(track.id()).isRemoved() || !level.getEntity(track.id()).isAlive()))) {
                 toRemove.add(entity);
             }
         });
-        toRemove.forEach(uuid -> {
-            entityPositions.remove(uuid);
-        });
+        toRemove.forEach(uuid -> entityPositions.remove(uuid));
+        if (Mods.VALKYRIENSKIES.isLoaded()) {
+            List<String> toRemoveVS = new ArrayList<>();
+            VSPositions.forEach((entity, track) -> {
+                if (currentTime - track.scannedTime() > MAX_TRACK_TICKS) {
+                    toRemoveVS.add(entity);
+                }
+            });
+            toRemoveVS.forEach(uuid -> VSPositions.remove(uuid));
+        }
     }
 
     private void scanForEntityTracks() {
         AABB aabb = getRadarAABB();
         for (Entity entity : level.getEntities(null, aabb)) {
-            if (entity.isAlive() && isEntityInRadarFov(entity)) {
-                    entityPositions.put(entity.getUUID(), new RadarTrack(entity));
+            if (entity.isAlive() && isEntityInRadarFov(entity.blockPosition())) {
+                entityPositions.put(entity.getStringUUID(), new RadarTrack(entity));
             }
         }
     }
 
-
-    //todo improve performance and area scanning
-    private AABB getRadarAABB() {
-        return new AABB(VS2Utils.getWorldPos(this)).inflate(getRange(), 20, getRange());
+    private void scanForVSTracks() {
+        if (!Mods.VALKYRIENSKIES.isLoaded())
+            return;
+        if (level == null)
+            return;
+        VS2Utils.getLoadedShips(level, getRadarAABB()).forEach(serverShip -> {
+            Vector3d shipPos = serverShip.getWorldAABB().center(new Vector3d());
+            if (isEntityInRadarFov(new BlockPos((int) shipPos.x, (int) shipPos.y, (int) shipPos.z))) {
+                VSPositions.put(String.valueOf(serverShip.getId()), new VSRadarTracks(serverShip, level));
+            }
+        });
     }
 
-    private boolean isEntityInRadarFov(Entity entity) {
+    private AABB getRadarAABB() {
+        float range = getRange();
+        BlockPos radarPos = VS2Utils.getWorldPos(this);
+        double xOffset = range * Math.sin(Math.toRadians(getGlobalAngle()));
+        double zOffset = range * Math.cos(Math.toRadians(getGlobalAngle()));
+        return new AABB(radarPos.getX() - xOffset, radarPos.getY() - RadarConfig.server().radarYScanRange.get(), radarPos.getZ() - zOffset, radarPos.getX() + xOffset, radarPos.getY() + RadarConfig.server().radarYScanRange.get(), radarPos.getZ() + zOffset);
+    }
+
+    private boolean isEntityInRadarFov(BlockPos entityPos) {
         float radarAngle = getGlobalAngle();
-        BlockPos entityPos = entity.blockPosition();
-        double fovDegrees = 90;
+        int fovDegrees = RadarConfig.server().radarFOV.get();
         BlockPos radarPos = VS2Utils.getWorldPos(this);
 
         // Calculate the angle between the radar and the entity
@@ -96,6 +124,9 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
     }
 
     public float getAngularSpeed() {
+        if (!RadarConfig.server().gearRadarBearingSpeed.get())
+            return super.getAngularSpeed();
+
         float speed = convertToAngular(getSpeed());
         if (getSpeed() == 0)
             speed = 0;
@@ -104,9 +135,26 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
             speed += clientAngleDiff / 3f;
         }
 
-        //integer division used to step down the speed
-        //TODO rebalance speed
-        return speed / (4f + getDishCount() / 10);
+        return gearRadarBearingSpeed(speed);
+    }
+
+    public float gearRadarBearingSpeed(float speed) {
+        int dishCount = getDishCount();
+        float maxSpeed;
+
+        if (dishCount >= 100) {
+            maxSpeed = 64;
+        } else if (dishCount >= 75) {
+            maxSpeed = 96 + (64 - 96) * (dishCount - 75) / 25.0f;
+        } else if (dishCount >= 50) {
+            maxSpeed = 128 + (96 - 128) * (dishCount - 50) / 25.0f;
+        } else if (dishCount >= 25) {
+            maxSpeed = 196 + (128 - 196) * (dishCount - 25) / 25.0f;
+        } else {
+            maxSpeed = 256 + (196 - 256) * dishCount / 25.0f;
+        }
+
+        return Math.min(speed, maxSpeed);
     }
 
     //code copied in order to replace with radar contraption and radar advancements
@@ -181,9 +229,7 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
     @Override
     public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
         super.addToGoggleTooltip(tooltip, isPlayerSneaking);
-        if (dishCount > 0) {
-            tooltip.add(Component.literal("    Dish Count: " + dishCount));
-        }
+        tooltip.add(Component.literal("    Dish Count: " + dishCount));
         tooltip.add(Component.literal("    Range: " + getRange()));
         return true;
     }
@@ -196,6 +242,8 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
             receiverFacing = Direction.from3DDataValue(compound.getInt("receiverFacing"));
         if (clientPacket && compound.contains("entityPositions"))
             RadarTrack.deserializeListNBT(compound.getCompound("entityPositions")).forEach(track -> entityPositions.put(track.entityId(), track));
+        if (clientPacket && Mods.VALKYRIENSKIES.isLoaded())
+            VSRadarTracks.deserializeListNBT(compound.getCompound("VSPositions")).forEach(track -> VSPositions.put(track.id(), track));
     }
 
     @Override
@@ -206,6 +254,8 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
             compound.putInt("receiverFacing", receiverFacing.get3DDataValue());
         if (clientPacket)
             compound.put("entityPositions", RadarTrack.serializeNBTList(entityPositions.values()));
+        if (clientPacket && Mods.VALKYRIENSKIES.isLoaded())
+            compound.put("VSPositions", VSRadarTracks.serializeNBTList(VSPositions.values()));
 
     }
 
@@ -232,7 +282,11 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
         return new ArrayList<>(entityPositions.values());
     }
 
+    public List<VSRadarTracks> getVS2Positions() {
+        return new ArrayList<>(VSPositions.values());
+    }
+
     public float getRange() {
-        return 20 + dishCount * 5;
+        return Math.min(RadarConfig.server().radarBaseRange.get() + dishCount * RadarConfig.server().dishRangeIncrease.get(), RadarConfig.server().maxRadarRange.get());
     }
 }

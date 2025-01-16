@@ -1,6 +1,7 @@
 package com.happysg.radar.block.controller.pitch;
 
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
+import com.happysg.radar.block.radar.link.screens.TargetingConfig;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.CannonTargeting;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
@@ -10,6 +11,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
+import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
 
 public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
@@ -17,6 +19,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     private double targetAngle;
     private boolean isRunning;
     public int chargeCount;
+    TargetingConfig targetingConfig = TargetingConfig.DEFAULT;
 
     public AutoPitchControllerBlockEntity(BlockEntityType<?> typeIn, BlockPos pos, BlockState state) {
         super(typeIn, pos, state);
@@ -48,8 +51,13 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         if (contraption == null)
             return;
 
+        if (!(contraption.getContraption() instanceof AbstractMountedCannonContraption cannonContraption))
+            return;
+
         double currentPitch = contraption.pitch;
-        if (correctPitch(currentPitch) && correctYaw())
+        int invert = -cannonContraption.initialOrientation().getStepX() + cannonContraption.initialOrientation().getStepZ();
+        currentPitch = currentPitch * -invert;
+        if (correctPitch(currentPitch) && correctYaw() && targetingConfig.autoFire())
             tryFireCannon(mount);
         else
             stopFireCannon(mount);
@@ -67,6 +75,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         } else {
             currentPitch = targetAngle;
         }
+
 
         mount.setPitch((float) currentPitch);
         mount.notifyUpdate();
@@ -112,6 +121,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         super.read(compound, clientPacket);
         targetAngle = compound.getDouble("TargetAngle");
         isRunning = compound.getBoolean("IsRunning");
+        targetingConfig = TargetingConfig.fromTag(compound.getCompound("TargetingConfig"));
     }
 
     @Override
@@ -119,6 +129,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         super.write(compound, clientPacket);
         compound.putDouble("TargetAngle", targetAngle);
         compound.putBoolean("IsRunning", isRunning);
+        compound.put("TargetingConfig", targetingConfig.toTag());
     }
 
     public void setTarget(Vec3 targetPos) {
@@ -142,6 +153,11 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         } else if (targetAngle > 90) {
             targetAngle = 90;
         }
+        notifyUpdate();
+    }
+
+    public void setTargetingConfig(TargetingConfig targetingConfig) {
+        this.targetingConfig = targetingConfig;
         notifyUpdate();
     }
 

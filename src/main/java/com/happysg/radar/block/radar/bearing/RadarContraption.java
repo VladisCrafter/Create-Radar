@@ -1,6 +1,7 @@
 package com.happysg.radar.block.radar.bearing;
 
 import com.happysg.radar.CreateRadar;
+import com.happysg.radar.block.radar.link.RadarLinkBlock;
 import com.happysg.radar.block.radar.receiver.AbstractRadarFrame;
 import com.happysg.radar.block.radar.receiver.RadarReceiverBlock;
 import com.happysg.radar.registry.ModContraptionTypes;
@@ -38,13 +39,17 @@ public class RadarContraption extends BearingContraption {
 
     @Override
     public void addBlock(BlockPos pos, Pair<StructureTemplate.StructureBlockInfo, BlockEntity> capture) {
+        if (capture.getKey().state().getBlock() instanceof RadarLinkBlock)
+            return;
+
         if (capture.getKey().state().getBlock() instanceof DisplayLinkBlock)
             return;
+
         super.addBlock(pos, capture);
         //todo replace with tag instead of block instance check
         if (capture.getKey().state().getBlock() instanceof AbstractRadarFrame)
             dishCount++;
-        //todo replace with tag instead of block instance check
+
         if (capture.getKey().state().getBlock() instanceof RadarReceiverBlock) {
             hasReceiver = true;
             receiverFacing = capture.getKey().state().getValue(RadarReceiverBlock.FACING);

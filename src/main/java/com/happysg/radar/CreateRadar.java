@@ -1,16 +1,24 @@
 package com.happysg.radar;
 
 import com.happysg.radar.block.monitor.MonitorInputHandler;
+import com.happysg.radar.block.radar.link.RadarLinkBlockItem;
+import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.networking.ModMessages;
 import com.happysg.radar.registry.*;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.ModContainer;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -27,6 +35,7 @@ public class CreateRadar {
 
     public CreateRadar() {
         getLogger().info("Initializing Create Radar!");
+        ModLoadingContext context = ModLoadingContext.get();
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         MinecraftForge.EVENT_BUS.register(this);
         REGISTRATE.registerEventListeners(modEventBus);
@@ -35,10 +44,18 @@ public class CreateRadar {
         ModBlockEntityTypes.register();
         ModCreativeTabs.register(modEventBus);
         ModLang.register();
+        ModPartials.init();
+        RadarConfig.register(context);
         ModContraptionTypes.register();
         modEventBus.addListener(CreateRadar::init);
         modEventBus.addListener(CreateRadar::clientInit);
+        modEventBus.addListener(CreateRadar::onLoadComplete);
         MinecraftForge.EVENT_BUS.addListener(MonitorInputHandler::monitorPlayerHovering);
+        MinecraftForge.EVENT_BUS.addListener(CreateRadar::clientTick);
+    }
+
+    private static void clientTick(TickEvent.ClientTickEvent event) {
+        RadarLinkBlockItem.clientTick();
     }
 
     public static Logger getLogger() {
@@ -62,8 +79,19 @@ public class CreateRadar {
         ModPonderTags.register();
     }
 
+    public static void onLoadComplete(FMLLoadCompleteEvent event) {
+        ModContainer container = ModList.get()
+                .getModContainerById(CreateRadar.MODID)
+                .orElseThrow(() -> new IllegalStateException("Radar mod container missing on LoadComplete"));
+
+        container.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
+                () -> new ConfigScreenHandler.ConfigScreenFactory(RadarConfig::createConfigScreen));
+    }
+
+
     public static void init(final FMLCommonSetupEvent event) {
         event.enqueueWork(ModMessages::register);
         ModDisplayBehaviors.register();
+        AllRadarBehaviors.registerDefaults();
     }
 }

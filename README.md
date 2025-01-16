@@ -3,6 +3,10 @@
 Create Radars is a Minecraft mod that offers a variety of tools and blocks for surveillance, detection, and controlling
 weapons.
 
+Join our Development Discord server to get the latest updates and discuss the mod with the community:
+
+[![Discord Banner 1](https://discord.com/api/guilds/1044367456417882202/widget.png?style=banner1)](https://discord.gg/Cyp7GnSCZG)
+
 ## Features
 
 - **Radar Bearing Multiblock**: Shape your radar however you like, with each characteristic influencing its capability.

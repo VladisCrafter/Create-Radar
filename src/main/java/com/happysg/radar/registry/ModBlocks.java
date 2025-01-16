@@ -2,9 +2,12 @@ package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlock;
+import com.happysg.radar.block.controller.track.TrackControllerBlock;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlock;
 import com.happysg.radar.block.monitor.MonitorBlock;
 import com.happysg.radar.block.radar.bearing.RadarBearingBlock;
+import com.happysg.radar.block.radar.link.RadarLinkBlock;
+import com.happysg.radar.block.radar.link.RadarLinkBlockItem;
 import com.happysg.radar.block.radar.receiver.AbstractRadarFrame;
 import com.happysg.radar.block.radar.receiver.RadarReceiverBlock;
 import com.simibubi.create.content.kinetics.BlockStressDefaults;
@@ -13,9 +16,11 @@ import com.simibubi.create.foundation.data.SharedProperties;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.MapColor;
 import net.minecraftforge.client.model.generators.ConfiguredModel;
 
 import static com.happysg.radar.CreateRadar.REGISTRATE;
+import static com.simibubi.create.foundation.data.TagGen.axeOrPickaxe;
 
 public class ModBlocks {
 
@@ -37,6 +42,19 @@ public class ModBlocks {
                     .model((c, p) -> p.withExistingParent(c.getName(), CreateRadar.asResource("block/monitor/monitor_single")))
                     .build()
                     .register();
+
+    public static final BlockEntry<RadarLinkBlock> RADAR_LINK =
+            REGISTRATE.block("radar_link", RadarLinkBlock::new)
+                    .initialProperties(SharedProperties::softMetal)
+                    .properties(p -> p.mapColor(MapColor.TERRACOTTA_BROWN))
+                    .properties(BlockBehaviour.Properties::noOcclusion)
+                    .addLayer(() -> RenderType::translucent)
+                    .transform(axeOrPickaxe())
+                    .blockstate((c, p) -> p.directionalBlock(c.getEntry(), AssetLookup.partialBaseModel(c, p)))
+                    .item(RadarLinkBlockItem::new)
+                    .build()
+                    .register();
+
 
     public static final BlockEntry<RadarBearingBlock> RADAR_BEARING_BLOCK =
             REGISTRATE.block("radar_bearing", RadarBearingBlock::new)
@@ -91,6 +109,16 @@ public class ModBlocks {
                     .initialProperties(SharedProperties::softMetal)
                     .properties(properties -> properties.isRedstoneConductor((pState, pLevel, pPos) -> false))
                     .transform(BlockStressDefaults.setImpact(128))
+                    .properties(BlockBehaviour.Properties::noOcclusion)
+                    .blockstate((c, p) -> p.horizontalBlock(c.getEntry(), AssetLookup.standardModel(c, p)))
+                    .simpleItem()
+                    .register();
+
+    public static final BlockEntry<TrackControllerBlock> TRACK_CONTROLLER_BLOCK =
+            REGISTRATE.block("test_controller", TrackControllerBlock::new)
+                    .initialProperties(SharedProperties::softMetal)
+                    .properties(properties -> properties.isRedstoneConductor((pState, pLevel, pPos) -> false))
+                    .transform(BlockStressDefaults.setImpact(16))
                     .properties(BlockBehaviour.Properties::noOcclusion)
                     .blockstate((c, p) -> p.horizontalBlock(c.getEntry(), AssetLookup.standardModel(c, p)))
                     .simpleItem()
