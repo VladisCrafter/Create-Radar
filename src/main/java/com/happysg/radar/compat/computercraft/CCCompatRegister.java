@@ -8,5 +8,7 @@ public class CCCompatRegister {
         CreateRadar.getLogger().info("Registering Peripherals!");
         ComputerCraftAPI.registerGenericSource(new RadarBearingPeripheral());
         ComputerCraftAPI.registerGenericSource(new MonitorPeripheral());
+        ComputerCraftAPI.registerGenericSource(new YawControllerPeripheral());
+        ComputerCraftAPI.registerGenericSource(new PitchControllerPeripheral());
     }
 }

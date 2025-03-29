@@ -12,17 +12,17 @@ public class PitchControllerPeripheral implements GenericPeripheral {
         return CreateRadar.asResource("pitch_controller").toString();
     }
 
-    @LuaFunction
+    @LuaFunction(mainThread = true)
     public void setTargetPosition(AutoPitchControllerBlockEntity entity, double x, double y, double z) {
         entity.setTarget(new Vec3(x, y, z));
     }
 
-    @LuaFunction
+    @LuaFunction(mainThread = true)
     public void setTargetAngle(AutoPitchControllerBlockEntity entity, float angle) {
         entity.setTargetAngle(angle);
     }
 
-    @LuaFunction
+    @LuaFunction(mainThread = true)
     public double getTargetAngle(AutoPitchControllerBlockEntity entity){
         return entity.getTargetAngle();
     }

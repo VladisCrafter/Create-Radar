@@ -12,17 +12,17 @@ public class YawControllerPeripheral implements GenericPeripheral {
         return CreateRadar.asResource("yaw_controller").toString();
     }
 
-    @LuaFunction
+    @LuaFunction(mainThread = true)
     public void setTargetPosition(AutoYawControllerBlockEntity entity, double x, double y, double z) {
         entity.setTarget(new Vec3(x, y, z));
     }
 
-    @LuaFunction
+    @LuaFunction(mainThread = true)
     public void setTargetAngle(AutoYawControllerBlockEntity entity, float angle) {
         entity.setTargetAngle(angle);
     }
 
-    @LuaFunction
+    @LuaFunction(mainThread = true)
     public double getTargetAngle(AutoYawControllerBlockEntity entity){
         return entity.getTargetAngle();
     }
