@@ -2,7 +2,8 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [32, 32],
 	"textures": {
-		"2": "create_radar:block/radar_receiver"
+		"2": "create_radar:block/radar_receiver",
+		"particle": "create_radar:block/radar_receiver"
 	},
 	"elements": [
 		{

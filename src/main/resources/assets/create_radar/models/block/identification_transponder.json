@@ -2,8 +2,8 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [64, 64],
 	"textures": {
-		"0": "identification_transponder",
-		"particle": "identification_transponder"
+		"0": "create_radar:block/identification_transponder",
+		"particle": "create_radar:block/identification_transponder"
 	},
 	"elements": [
 		{

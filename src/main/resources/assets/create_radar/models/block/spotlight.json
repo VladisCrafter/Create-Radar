@@ -2,10 +2,10 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [32, 32],
 	"textures": {
-		"0": "spotlight",
-		"1": "spotlight_light",
-		"2": "handles",
-		"particle": "handles"
+		"0": "create_radar:block/spotlight",
+		"1": "create_radar:block/spotlight_light",
+		"2": "create_radar:block/handles",
+		"particle": "create_radar:block/spotlight"
 	},
 	"elements": [
 		{
