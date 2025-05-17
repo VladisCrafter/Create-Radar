@@ -3,6 +3,7 @@ package com.happysg.radar.block.monitor;
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
+import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.registry.ModRenderTypes;
 import com.jozufozu.flywheel.util.Color;
@@ -236,12 +237,11 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
 
         // Calculate track position relative to radar
         Vec3 radarPos = PhysicsHandler.getWorldPos(monitor.getLevel(), radar.getWorldPos()).getCenter();
-        Vec3 relativePos = track.position().subtract(radarPos);
+        Vec3 relativePos = VS2Utils.getShipVecDirectionTransform(track.position().subtract(radarPos), monitor);;
         if (radar.renderRelativeToMonitor()) {
             //todo change for plane radar
         }
         // Transform to display coordinates
-        //todo handle direction on vs2 ships
         float xOff = calculateTrackOffset(relativePos, monitorFacing, scale, true);
         float zOff = calculateTrackOffset(relativePos, monitorFacing, scale, false);
 
