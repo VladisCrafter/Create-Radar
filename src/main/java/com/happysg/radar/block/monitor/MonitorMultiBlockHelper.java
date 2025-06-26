@@ -19,19 +19,25 @@ import static net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING;
 //this is messy but couldn't figure out how to use Create MultiblockHelper
 //todo make better
 public class MonitorMultiBlockHelper {
-
-
     public static void onPlace(BlockState pState, Level pLevel, BlockPos pPos, BlockState pOldState, boolean pIsMoving) {
         if (pState.getValue(SHAPE) != MonitorBlock.Shape.SINGLE && !pIsMoving)
             return;
-        BlockPos.betweenClosedStream(new AABB(pPos).inflate(RadarConfig.server().monitorMaxSize.get())).forEach(p -> {
-                    if (pLevel.getBlockEntity(p) instanceof MonitorBlockEntity monitor) {
-                        int size = getSize(pLevel, p);
-                        if (size > 1)
+        
+        Direction originFacing = pState.getValue(FACING);
+        
+        BlockPos.betweenClosedStream(new AABB(pPos).inflate(RadarConfig.server().monitorMaxSize.get()))
+                .forEach(candidate -> {
+                    BlockState candState = pLevel.getBlockState(candidate);
+                    if (!candState.is(ModBlocks.MONITOR.get())) return;
+                    if (candState.getValue(FACING) != originFacing) return;
+
+                    // Now it’s safe to calculate size and form the multiblock
+                    if (pLevel.getBlockEntity(candidate) instanceof MonitorBlockEntity monitor) {
+                        int size = getSize(pLevel, candidate);
+                        if (size > 1) {
                             formMulti(pState, pLevel, monitor.getControllerPos(), size);
-                    }
-                }
-        );
+                        }
+                    }});
     }
 
     public static void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
@@ -127,7 +133,5 @@ public class MonitorMultiBlockHelper {
 
     //todo add a size verification and reupdate multiblock if necessary
     public static void onNeighborChange(BlockState state, LevelReader level, BlockPos pos, BlockPos neighbor) {
-
-
     }
 }
