@@ -76,14 +76,10 @@ repositories {
     }
     maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
 
-    maven {
-        url 'https://maven.tterrag.com/'
-        content {
-            includeGroup 'com.jozufozu.flywheel'
-            includeGroup 'com.tterrag.registrate'
-            includeGroup 'com.simibubi.create'
-        }
-    }
+    maven { url = "https://maven.createmod.net" } // Create, Ponder, Flywheel
+    maven { url = "https://maven.tterrag.com" } // Registrate
+    maven { url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/" } // ForgeConfigAPIPort
+
     maven {
         url 'https://api.modrinth.com/maven'
         content { includeGroup 'maven.modrinth' }
@@ -142,29 +138,33 @@ dependencies {
     implementation 'org.apache.commons:commons-math3:3.6.1'
 
     //Create
-    implementation fg.deobf("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
-    implementation fg.deobf("com.jozufozu.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}")
-    implementation fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}")
+    implementation(fg.deobf("com.simibubi.create:create-${minecraft_version}:${create_version}") { transitive = false })
+    implementation(fg.deobf("net.createmod.ponder:Ponder-Forge-${minecraft_version}:${ponder_version}"))
+    compileOnly(fg.deobf("dev.engine-room.flywheel:flywheel-forge-api-${minecraft_version}:${flywheel_version}"))
+    runtimeOnly(fg.deobf("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}"))
+    implementation(fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}"))
+    compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:0.4.1"))
+    implementation("io.github.llamalad7:mixinextras-forge:0.4.1")
 
     //CBC
-    implementation fg.deobf("com.rbasamoyai:createbigcannons:${cbc_version}") { transitive = false }
-    implementation fg.deobf("com.rbasamoyai:ritchiesprojectilelib:${rpl_version}") { transitive = false }
+    implementation fg.deobf("maven.modrinth:create-big-cannons:${cbc_version}") { transitive = false }
+    implementation fg.deobf("maven.modrinth:rpl:${rpl_version}") { transitive = false }
 
     //CBCMW
-    implementation fg.deobf("curse.maven:cbc-modern-warfare-1078220:6262257")
+    implementation fg.deobf("maven.modrinth:cbcmodernwarfare:${cbc_mw_version}+mc.${minecraft_version}-forge")
 
     //CBCAT
-    implementation fg.deobf("curse.maven:create-big-cannons-advanced-technologies-1180196:6136662")
+    implementation fg.deobf("maven.modrinth:create-big-cannons-advanced-technologies:${cbc_at_version}-${minecraft_version}")
 
 
     //JEI
-    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
-    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
+//    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
+//    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
     runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
 
     //Clockwork
     implementation fg.deobf("maven.modrinth:create-clockwork:${minecraft_version}-${clockwork_version}")
-    implementation fg.deobf("curse.maven:architectury-api-419699:5137938")
+    implementation fg.deobf("maven.modrinth:architectury-api:${architectury_api_version}+forge")
 
     //Valkyrien Skies
     implementation("org.valkyrienskies.core:api:${vs_core_version}")
@@ -177,7 +177,7 @@ dependencies {
     implementation "thedarkcolour:kotlinforforge:${forge_kotlin_version}"
 
     //trackworks
-    implementation fg.deobf("curse.maven:trackwork-1057662:5809071")
+    implementation fg.deobf("maven.modrinth:trackwork:${minecraft_version}-${trackwork_version}")
 
 
     //CC
