@@ -25,6 +25,8 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
     private CompoundTag sourceConfig;
     boolean ledState = false;
 
+    private BlockPos linkedMonitorPos;
+
     public DataLinkBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
     }

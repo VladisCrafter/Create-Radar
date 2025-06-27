@@ -1,6 +1,6 @@
 package com.happysg.radar.config.server;
 
-import com.simibubi.create.foundation.config.ConfigBase;
+import net.createmod.catnip.config.ConfigBase;
 
 public class RadarServerConfig extends ConfigBase {
     @Override

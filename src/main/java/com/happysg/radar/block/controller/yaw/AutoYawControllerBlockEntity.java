@@ -27,7 +27,6 @@ public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity {
         super.tick();
         if (Mods.CREATEBIGCANNONS.isLoaded())
             tryRotateCannon();
-
     }
 
     private void tryRotateCannon() {

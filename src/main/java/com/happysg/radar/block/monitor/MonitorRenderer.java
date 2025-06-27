@@ -5,7 +5,7 @@ import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.registry.ModRenderTypes;
-import com.jozufozu.flywheel.util.Color;
+import net.createmod.catnip.theme.Color;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;

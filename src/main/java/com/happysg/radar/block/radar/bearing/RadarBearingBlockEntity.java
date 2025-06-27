@@ -10,7 +10,7 @@ import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.contraptions.AssemblyException;
 import com.simibubi.create.content.contraptions.ControlledContraptionEntity;
 import com.simibubi.create.content.contraptions.bearing.MechanicalBearingBlockEntity;
-import com.simibubi.create.content.kinetics.BlockStressValues;
+import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.foundation.advancement.AllAdvancements;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.simibubi.create.foundation.utility.ServerSpeedProvider;
@@ -52,12 +52,13 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
     @Override
     public void tick() {
         super.tick();
-        if (running)
+        if (running) {
+            scanningBehavior.setRange(getRange());
             scanningBehavior.setAngle(getGlobalAngle());
+        }
     }
 
     public float getGlobalAngle() {
-        //for vs2 compat in future
         Vec3 receiverVector = new Vec3(receiverFacing.getStepX(), receiverFacing.getStepY(), receiverFacing.getStepZ());
         float receiverAngle = (float) Math.toDegrees(Math.atan2(receiverVector.x, receiverVector.z));
         return (receiverAngle + angle + 360) % 360;
@@ -78,19 +79,15 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
         return speed / (4f + getDishCount() / 10);
     }
 
-
-    //code copied in order to replace with radar contraption and radar advancements
     @Override
     public void assemble() {
-        if (!(level.getBlockState(getBlockPos())
-                .getBlock() instanceof RadarBearingBlock))
+        if (!(level.getBlockState(getBlockPos()).getBlock() instanceof RadarBearingBlock))
             return;
 
         RadarContraption contraption = createContraption();
         if (contraption == null)
             return;
 
-        //replace with radar advancements
         if (isWindmill())
             award(AllAdvancements.WINDMILL);
         if (contraption.getSailBlocks() >= 16 * 8)
@@ -100,7 +97,6 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
         updateContraptionData();
         notifyUpdate();
     }
-
 
     @Override
     public void disassemble() {
@@ -120,13 +116,13 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
         try {
             if (!contraption.assemble(level, getBlockPos()))
                 return null;
-
             lastException = null;
         } catch (AssemblyException e) {
             lastException = e;
             sendData();
             return null;
         }
+
         contraption.removeBlocksFromWorld(level, BlockPos.ZERO);
         movedContraption = ControlledContraptionEntity.create(level, this, contraption);
         BlockPos anchor = getBlockPosition().above();
@@ -141,7 +137,6 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
         return contraption;
     }
 
-    //capturing from radar contraption to save on client side BE, contraption data only server side
     private void updateContraptionData() {
         dishCount = getContraption().map(RadarContraption::getDishCount).orElse(0);
         receiverFacing = getContraption().map(RadarContraption::getReceiverFacing).orElse(Direction.NORTH);
@@ -177,7 +172,6 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
         compound.putBoolean("creative", creative);
         if (receiverFacing != null)
             compound.putInt("receiverFacing", receiverFacing.get3DDataValue());
-
     }
 
     public int getDishCount() {
@@ -202,7 +196,8 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
     public float getRange() {
         if (creative)
             return RadarConfig.server().maxRadarRange.get();
-        return Math.min(RadarConfig.server().radarBaseRange.get() + dishCount * RadarConfig.server().dishRangeIncrease.get(), RadarConfig.server().maxRadarRange.get());
+        return Math.min(RadarConfig.server().radarBaseRange.get() + dishCount * RadarConfig.server().dishRangeIncrease.get(),
+                RadarConfig.server().maxRadarRange.get());
     }
 
     public Collection<RadarTrack> getTracks() {

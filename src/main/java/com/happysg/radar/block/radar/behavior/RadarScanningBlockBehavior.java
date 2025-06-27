@@ -22,25 +22,18 @@ import org.valkyrienskies.core.api.ships.Ship;
 
 import java.util.*;
 
-
-/**
- * RadarScanningBlockBehavior is responsible for scanning entities and ships within a specified range and field of view.
- *
- * @see RadarBearingBlockEntity
- * @see PlaneRadarBlockEntity
- */
 public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
 
     public static final BehaviourType<RadarScanningBlockBehavior> TYPE = new BehaviourType<>();
+
     private int trackExpiration = 100;
     private int fov = RadarConfig.server().radarFOV.get();
     private int yRange = 20;
-    private double range;
+    private double range = RadarConfig.server().radarBaseRange.get();  // Default fallback range
     private double angle;
     private boolean running = false;
     private SmartBlockEntity bearingEntity;
     Vec3 scanPos = Vec3.ZERO;
-
 
     private final Set<Entity> scannedEntities = new HashSet<>();
     private final Set<Ship> scannedShips = new HashSet<>();
@@ -49,17 +42,16 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
 
     public RadarScanningBlockBehavior(SmartBlockEntity be) {
         super(be);
-        bearingEntity = be;
+        this.bearingEntity = be;
         setLazyTickRate(5);
     }
 
     @Override
     public void tick() {
         super.tick();
-        if (blockEntity.getLevel() == null)
+        if (blockEntity.getLevel() == null || blockEntity.getLevel().isClientSide)
             return;
-        if (blockEntity.getLevel().isClientSide)
-            return;
+
         removeDeadTracks();
         if (running)
             updateRadarTracks();
@@ -69,89 +61,74 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         scanPos = PhysicsHandler.getWorldPos(bearingEntity).getCenter();
         Level level = blockEntity.getLevel();
         if (level == null) return;
+
         for (Entity entity : scannedEntities) {
             if (entity.isAlive() && isInFovAndRange(entity.position())) {
-              if (radarTracks.containsKey(entity.getUUID().toString())) {
-                    RadarTrack track = radarTracks.get(entity.getUUID().toString());
+                radarTracks.compute(entity.getUUID().toString(), (id, track) -> {
+                    if (track == null) return new RadarTrack(entity);
                     track.updateRadarTrack(entity);
-                } else {
-                    RadarTrack track = new RadarTrack(entity);
-                    radarTracks.put(track.getId(), track);
-                }
+                    return track;
+                });
 
                 if (entity instanceof Projectile)
                     scannedProjectiles.add((Projectile) entity);
             }
         }
+
         for (Ship ship : scannedShips) {
-            if (isInFovAndRange(RadarTrackUtil.getPosition(ship))) {
-                if (radarTracks.containsKey(ship.getSlug())) {
-                    RadarTrack track = radarTracks.get(ship.getSlug());
+            Vec3 pos = RadarTrackUtil.getPosition(ship);
+            if (isInFovAndRange(pos)) {
+                radarTracks.compute(ship.getSlug(), (id, track) -> {
+                    if (track == null) return RadarTrackUtil.getRadarTrack(ship, level);
                     track.updateRadarTrack(ship, level);
-                } else {
-                    RadarTrack track = RadarTrackUtil.getRadarTrack(ship, level);
-                    radarTracks.put(track.getId(), track);
-                }
+                    return track;
+                });
             }
         }
     }
 
     private boolean isInFovAndRange(Vec3 target) {
         double distance = scanPos.distanceTo(target);
-        if (distance < 2) // update self position constantly
+        if (distance < 2)
             return true;
-        // Calculate angle to entity in degrees
-        // Note: atan2 should take (targetX - scanX, targetZ - scanZ) to get angle from scan to target
+
         double angleToEntity = Math.toDegrees(Math.atan2(target.x() - scanPos.x(), target.z() - scanPos.z()));
         angleToEntity = (angleToEntity + 360) % 360;
-
-        // Calculate the smallest angle between the two directions
         double angleDiff = Math.abs(angleToEntity - angle);
-
-        // Handle wraparound
-        if (angleDiff > 180) {
-            angleDiff = 360 - angleDiff;
-        }
-
+        if (angleDiff > 180) angleDiff = 360 - angleDiff;
 
         return angleDiff <= fov / 2.0 && distance <= range;
     }
 
     private void removeDeadTracks() {
-
         for (Entity entity : scannedEntities) {
-            if (!entity.isAlive()) {
+            if (!entity.isAlive())
                 radarTracks.remove(entity.getUUID().toString());
-            }
         }
 
         List<String> toRemove = new ArrayList<>();
         long currentTime = blockEntity.getLevel().getGameTime();
         for (RadarTrack track : radarTracks.values()) {
-            if (currentTime - track.scannedTime() > trackExpiration) {
+            if (currentTime - track.scannedTime() > trackExpiration)
                 toRemove.add(track.id());
-            }
-        }
-        for (String id : toRemove) {
-            radarTracks.remove(id);
         }
 
-        List<Projectile> toRemoveProjectiles = new ArrayList<>();
-        for (Projectile projectile : scannedProjectiles) {
-            if (!projectile.isAlive()) {
-                toRemoveProjectiles.add(projectile);
-            }
-        }
+        toRemove.forEach(radarTracks::remove);
 
-        for (Projectile projectile : toRemoveProjectiles) {
-            radarTracks.remove(projectile.getUUID().toString());
-            scannedProjectiles.remove(projectile);
-        }
+        scannedProjectiles.removeIf(p -> {
+            boolean dead = !p.isAlive();
+            if (dead) radarTracks.remove(p.getUUID().toString());
+            return dead;
+        });
     }
 
     @Override
     public void lazyTick() {
         if (running) {
+            scannedEntities.clear();
+            scannedShips.clear();
+            scannedProjectiles.clear();
+
             scanForEntityTracks();
             if (Mods.VALKYRIENSKIES.isLoaded())
                 scanForVSTracks();
@@ -159,25 +136,17 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         super.lazyTick();
     }
 
-
     private void scanForEntityTracks() {
         if (blockEntity.getLevel() == null) return;
-        List<AABB> AABBs = splitAABB(getRadarAABB(), 999);
-        AABBs.forEach((aabb -> {
-            scannedEntities.addAll(blockEntity.getLevel().getEntities(null, aabb));
-        }));
+        splitAABB(getRadarAABB(), 999).forEach(aabb ->
+                scannedEntities.addAll(blockEntity.getLevel().getEntities(null, aabb)));
     }
 
     private void scanForVSTracks() {
-        if (!Mods.VALKYRIENSKIES.isLoaded())
-            return;
-        if (blockEntity.getLevel() == null)
-            return;
-        List<AABB> AABBs = splitAABB(getRadarAABB(), 999);
-        AABBs.forEach((aabb -> {
-            VS2Utils.getLoadedShips(blockEntity.getLevel(), aabb).forEach(scannedShips::add);
-        }));
-        //remove self
+        if (blockEntity.getLevel() == null || !Mods.VALKYRIENSKIES.isLoaded()) return;
+        splitAABB(getRadarAABB(), 999).forEach(aabb ->
+                VS2Utils.getLoadedShips(blockEntity.getLevel(), aabb).forEach(scannedShips::add));
+
         scannedShips.remove(VS2Utils.getShipManagingPos(blockEntity));
     }
 
@@ -185,29 +154,27 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         BlockPos radarPos = PhysicsHandler.getWorldPos(blockEntity);
         double xOffset = range * Math.sin(Math.toRadians(angle));
         double zOffset = range * Math.cos(Math.toRadians(angle));
-        return new AABB(radarPos.getX() - xOffset, radarPos.getY() - RadarConfig.server().radarYScanRange.get(), radarPos.getZ() - zOffset, radarPos.getX() + xOffset, radarPos.getY() + RadarConfig.server().radarYScanRange.get(), radarPos.getZ() + zOffset);
+        return new AABB(
+                radarPos.getX() - xOffset,
+                radarPos.getY() - RadarConfig.server().radarYScanRange.get(),
+                radarPos.getZ() - zOffset,
+                radarPos.getX() + xOffset,
+                radarPos.getY() + RadarConfig.server().radarYScanRange.get(),
+                radarPos.getZ() + zOffset
+        );
     }
 
     public static List<AABB> splitAABB(AABB aabb, double maxSize) {
         List<AABB> result = new ArrayList<>();
-
-        double xMin = aabb.minX;
-        double xMax = aabb.maxX;
-        double yMin = aabb.minY;
-        double yMax = aabb.maxY;
-        double zMin = aabb.minZ;
-        double zMax = aabb.maxZ;
-
-        for (double xStart = xMin; xStart < xMax; xStart += maxSize) {
-            double xEnd = Math.min(xStart + maxSize, xMax);
-
-            for (double yStart = yMin; yStart < yMax; yStart += maxSize) {
-                double yEnd = Math.min(yStart + maxSize, yMax);
-
-                for (double zStart = zMin; zStart < zMax; zStart += maxSize) {
-                    double zEnd = Math.min(zStart + maxSize, zMax);
-
-                    result.add(new AABB(xStart, yStart, zStart, xEnd, yEnd, zEnd));
+        for (double x = aabb.minX; x < aabb.maxX; x += maxSize) {
+            for (double y = aabb.minY; y < aabb.maxY; y += maxSize) {
+                for (double z = aabb.minZ; z < aabb.maxZ; z += maxSize) {
+                    result.add(new AABB(
+                            x, y, z,
+                            Math.min(x + maxSize, aabb.maxX),
+                            Math.min(y + maxSize, aabb.maxY),
+                            Math.min(z + maxSize, aabb.maxZ)
+                    ));
                 }
             }
         }
@@ -217,20 +184,13 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     @Override
     public void read(CompoundTag nbt, boolean clientPacket) {
         super.read(nbt, clientPacket);
-        if (nbt.contains("fov"))
-            fov = nbt.getInt("fov");
-        if (nbt.contains("yRange"))
-            yRange = nbt.getInt("yRange");
-        if (nbt.contains("range"))
-            range = nbt.getDouble("range");
-        if (nbt.contains("angle"))
-            angle = nbt.getDouble("angle");
-        if (nbt.contains("scanPosX"))
-            scanPos = new Vec3(nbt.getDouble("scanPosX"), nbt.getDouble("scanPosY"), nbt.getDouble("scanPosZ"));
-        if (nbt.contains("running"))
-            running = nbt.getBoolean("running");
-        if (nbt.contains("trackExpiration"))
-            trackExpiration = nbt.getInt("trackExpiration");
+        if (nbt.contains("fov")) fov = nbt.getInt("fov");
+        if (nbt.contains("yRange")) yRange = nbt.getInt("yRange");
+        if (nbt.contains("range")) range = nbt.getDouble("range");
+        if (nbt.contains("angle")) angle = nbt.getDouble("angle");
+        if (nbt.contains("scanPosX")) scanPos = new Vec3(nbt.getDouble("scanPosX"), nbt.getDouble("scanPosY"), nbt.getDouble("scanPosZ"));
+        if (nbt.contains("running")) running = nbt.getBoolean("running");
+        if (nbt.contains("trackExpiration")) trackExpiration = nbt.getInt("trackExpiration");
     }
 
     @Override
@@ -247,36 +207,16 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         nbt.putInt("trackExpiration", trackExpiration);
     }
 
-    public void setFov(int fov) {
-        this.fov = fov;
-    }
-
-    public void setYRange(int yRange) {
-        this.yRange = yRange;
-    }
-
-    public void setRange(double range) {
-        this.range = range;
-    }
-
-    public void setAngle(double angle) {
-        this.angle = angle;
-    }
-
-    public void setScanPos(Vec3 scanPos) {
-        this.scanPos = scanPos;
-    }
+    public void setFov(int fov) { this.fov = fov; }
+    public void setYRange(int yRange) { this.yRange = yRange; }
+    public void setRange(double range) { this.range = range; }
+    public void setAngle(double angle) { this.angle = angle; }
+    public void setScanPos(Vec3 scanPos) { this.scanPos = scanPos; }
+    public void setRunning(boolean running) { this.running = running; }
+    public void setTrackExpiration(int trackExpiration) { this.trackExpiration = trackExpiration; }
 
     public Collection<RadarTrack> getRadarTracks() {
         return radarTracks.values();
-    }
-
-    public void setRunning(boolean running) {
-        this.running = running;
-    }
-
-    public void setTrackExpiration(int trackExpiration) {
-        this.trackExpiration = trackExpiration;
     }
 
     @Override

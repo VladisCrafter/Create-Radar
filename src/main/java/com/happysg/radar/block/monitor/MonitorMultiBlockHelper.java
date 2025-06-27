@@ -22,9 +22,9 @@ public class MonitorMultiBlockHelper {
     public static void onPlace(BlockState pState, Level pLevel, BlockPos pPos, BlockState pOldState, boolean pIsMoving) {
         if (pState.getValue(SHAPE) != MonitorBlock.Shape.SINGLE && !pIsMoving)
             return;
-        
+
         Direction originFacing = pState.getValue(FACING);
-        
+
         BlockPos.betweenClosedStream(new AABB(pPos).inflate(RadarConfig.server().monitorMaxSize.get()))
                 .forEach(candidate -> {
                     BlockState candState = pLevel.getBlockState(candidate);
@@ -133,5 +133,7 @@ public class MonitorMultiBlockHelper {
 
     //todo add a size verification and reupdate multiblock if necessary
     public static void onNeighborChange(BlockState state, LevelReader level, BlockPos pos, BlockPos neighbor) {
+
+
     }
 }
