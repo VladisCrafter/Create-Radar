@@ -186,7 +186,7 @@ public class CannonUtil {
             return getMediumCannonSpeed(cannon);
         } else if(isTwinAutocannon(cannon)){
             LOGGER.debug("   • TwinACannon speed = {}", getAutoCannonSpeed(cannon));
-            return getAutoCannonSpeed((MountedTwinAutocannonContraption)cannon);
+            return getAutoCannonSpeed(cannon);
         } else if(isHeavyAutocannon(cannon)){
             LOGGER.debug("   • HeavyACannon speed = {}", getAutoCannonSpeed(cannon));
             return getAutoCannonSpeed(cannon);
