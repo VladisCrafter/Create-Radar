@@ -5,13 +5,13 @@ import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
 import com.happysg.radar.block.controller.track.TrackControllerBlockEntity;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.datalink.DataLinkBlockEntity;
-//import com.happysg.radar.block.datalink.DataLinkRenderer;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import com.happysg.radar.block.monitor.MonitorRenderer;
 import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 import com.happysg.radar.block.radar.plane.PlaneRadarBlockEntity;
-//import com.simibubi.create.content.contraptions.bearing.BearingInstance; // Check Back on
+
 import com.simibubi.create.content.contraptions.bearing.BearingRenderer;
+import com.simibubi.create.content.contraptions.bearing.BearingVisual;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 
 import static com.happysg.radar.CreateRadar.REGISTRATE;
@@ -24,13 +24,12 @@ public class ModBlockEntityTypes {
             .renderer(() -> MonitorRenderer::new)
             .register();
 
-    public static final BlockEntityEntry<RadarBearingBlockEntity> RADAR_BEARING = REGISTRATE
+     public static final BlockEntityEntry<RadarBearingBlockEntity> RADAR_BEARING = REGISTRATE
             .blockEntity("radar_bearing", RadarBearingBlockEntity::new)
-//            .instance(() -> BearingInstance::new, true) // Check Back on
+            .visual(() -> BearingVisual::new, true)
             .validBlocks(ModBlocks.RADAR_BEARING_BLOCK)
             .renderer(() -> BearingRenderer::new)
             .register();
-
     public static final BlockEntityEntry<PlaneRadarBlockEntity> PLANE_RADAR = REGISTRATE
             .blockEntity("plane_radar", PlaneRadarBlockEntity::new)
             .validBlocks(ModBlocks.PLANE_RADAR)
