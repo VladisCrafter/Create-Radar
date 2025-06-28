@@ -151,10 +151,12 @@ dependencies {
     implementation fg.deobf("maven.modrinth:rpl:${rpl_version}") { transitive = false }
 
     //CBCMW
-    implementation fg.deobf("maven.modrinth:cbcmodernwarfare:${cbc_mw_version}+mc.${minecraft_version}-forge")
+    //replace implementation instead of compileOnly after CBCMW is compatible with 6.0
+    compileOnly fg.deobf("maven.modrinth:cbcmodernwarfare:${cbc_mw_version}+mc.${minecraft_version}-forge")
 
     //CBCAT
-    implementation fg.deobf("maven.modrinth:create-big-cannons-advanced-technologies:${cbc_at_version}-${minecraft_version}")
+    //replace implementation instead of compileOnly after CBCAT is compatible with 6.0
+    compileOnly fg.deobf("maven.modrinth:create-big-cannons-advanced-technologies:${cbc_at_version}-${minecraft_version}")
 
 
     //JEI
@@ -163,21 +165,24 @@ dependencies {
     runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
 
     //Clockwork
-    implementation fg.deobf("maven.modrinth:create-clockwork:${minecraft_version}-${clockwork_version}")
-    implementation fg.deobf("maven.modrinth:architectury-api:${architectury_api_version}+forge")
+    //replace implementation instead of compileOnly after clockwork is compatible with 6.0
+    compileOnly fg.deobf("maven.modrinth:create-clockwork:${minecraft_version}-${clockwork_version}")
+    compileOnly fg.deobf("maven.modrinth:architectury-api:${architectury_api_version}+forge")
 
     //Valkyrien Skies
-    implementation("org.valkyrienskies.core:api:${vs_core_version}")
-    implementation("org.valkyrienskies.core:impl:${vs_core_version}")
-    implementation("org.valkyrienskies.core:api-game:${vs_core_version}")
-    implementation("org.valkyrienskies.core:util:${vs_core_version}")
-    implementation fg.deobf("org.valkyrienskies:valkyrienskies-120-forge:${vs2_version}")
-    implementation "org.joml:joml:1.10.5"
-    implementation "com.fasterxml.jackson.core:jackson-annotations:2.13.3"
-    implementation "thedarkcolour:kotlinforforge:${forge_kotlin_version}"
+    //replace implementation instead of compileOnly after vs2 is compatible with 6.0
+    compileOnly("org.valkyrienskies.core:api:${vs_core_version}")
+    compileOnly("org.valkyrienskies.core:impl:${vs_core_version}")
+    compileOnly("org.valkyrienskies.core:api-game:${vs_core_version}")
+    compileOnly("org.valkyrienskies.core:util:${vs_core_version}")
+    compileOnly fg.deobf("org.valkyrienskies:valkyrienskies-120-forge:${vs2_version}")
+    compileOnly "org.joml:joml:1.10.5"
+    compileOnly "com.fasterxml.jackson.core:jackson-annotations:2.13.3"
+    compileOnly "thedarkcolour:kotlinforforge:${forge_kotlin_version}"
 
     //trackworks
-    implementation fg.deobf("maven.modrinth:trackwork:${minecraft_version}-${trackwork_version}")
+    //replace implementation instead of compileOnly after trackworks is compatible with 6.0
+    compileOnly fg.deobf("maven.modrinth:trackwork:${minecraft_version}-${trackwork_version}")
 
 
     //CC
