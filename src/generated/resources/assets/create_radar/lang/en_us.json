@@ -71,5 +71,9 @@
   "create_radar.radar_button.vs2": "VS2",
   "item.create_radar.guided_fuze": "Guided Fuze",
   "item.create_radar.radar_safe_zone_designator": "Radar Safe Zone Designator",
-  "itemGroup.create_radar.radar": "Create: Radars"
+  "itemGroup.create_radar.radar": "Create: Radars",
+  "display_link.success": "Link Success",
+  "display_link.too_far": "Link Too Far!",
+  "display_link.set": "Link Set!",
+  "display_link.clear": "Link Cleared!"
 }
