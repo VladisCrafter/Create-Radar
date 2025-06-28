@@ -30,7 +30,7 @@ public class CannonTargeting {
 
     public static List<Double> calculatePitch(CannonMountBlockEntity mount, Vec3 targetPos, ServerLevel level) {
         LOGGER.debug("calculatePitch start: mount={}, targetPos={}", mount.getBlockPos(), targetPos);
-        if (mount == null || targetPos == null) {
+        if (targetPos == null) {
             return null;
         }
 
