@@ -3,8 +3,6 @@ package com.happysg.radar.compat.cbc;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.mixin.AbstractCannonAccessor;
 import com.happysg.radar.mixin.AutoCannonAccessor;
-import com.happysg.radar.mixin.TwinAutoCannonAccessor;
-import com.happysg.radar.mixin.HeavyAutoCannonAccessor;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import java.util.function.Predicate;
@@ -281,36 +279,27 @@ public class CannonUtil {
     }
 
     private static float getAutoCannonSpeed(AbstractMountedCannonContraption cannon) {
-        AutocannonMaterial cann;
-        Predicate<BlockEntity> isBarrel;
-        if (cannon instanceof MountedAutocannonContraption auto) {
-            cann = ((AutoCannonAccessor) auto).getMaterial();
-            isBarrel = e -> e instanceof IAutocannonBlockEntity;
-        } else if (cannon instanceof MountedTwinAutocannonContraption twin) {
-            cann = ((TwinAutoCannonAccessor) twin).getMaterial();
-            isBarrel = e -> e instanceof ITwinAutocannonBlockEntity;
-        } else if (cannon instanceof MountedHeavyAutocannonContraption heavy) {
-            cann = ((HeavyAutoCannonAccessor) heavy).getMaterial();
-            isBarrel = e -> e instanceof IHeavyAutocannonBlockEntity;
-        } else {
-            return 0f;
-        }
-
+        AutocannonMaterial cann = ((AutoCannonAccessor) cannon).getMaterial();
         if (cann == null) return 0f;
-        var properties = cann.properties();
-        float speed = properties.baseSpeed();
+        var props = cann.properties();
 
+        Predicate<BlockEntity> isBarrel = null;
+        if (cannon instanceof MountedAutocannonContraption) isBarrel = e -> e instanceof IAutocannonBlockEntity;
+        else if (cannon instanceof MountedTwinAutocannonContraption) isBarrel = e -> e instanceof ITwinAutocannonBlockEntity;
+        else if (cannon instanceof MountedHeavyAutocannonContraption) isBarrel = e -> e instanceof IHeavyAutocannonBlockEntity;
+
+        float speed = props.baseSpeed();
         BlockPos pos = cannon.getStartPos().relative(cannon.initialOrientation());
-        int barrels = 0;
+        int count = 0;
+
         while (true) {
             BlockEntity be = cannon.presentBlockEntities.get(pos);
             if (!isBarrel.test(be)) break;
 
-            barrels++;
-            if (barrels <= properties.maxSpeedIncreases())
-                speed += properties.speedIncreasePerBarrel();
-            if (barrels > properties.maxBarrelLength())
-                break;
+            count++;
+            if (count <= props.maxSpeedIncreases())  speed += props.speedIncreasePerBarrel();
+            if (count >  props.maxBarrelLength())    break;
+
             pos = pos.relative(cannon.initialOrientation());
         }
 
