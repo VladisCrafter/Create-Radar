@@ -12,6 +12,12 @@ import com.happysg.radar.block.radar.plane.PlaneRadarBlockEntity;
 
 import com.simibubi.create.content.contraptions.bearing.BearingRenderer;
 import com.simibubi.create.content.contraptions.bearing.BearingVisual;
+import com.simibubi.create.content.kinetics.base.ShaftRenderer;
+import com.simibubi.create.content.kinetics.base.ShaftVisual;
+import com.simibubi.create.content.kinetics.gearbox.GearboxVisual;
+import com.simibubi.create.content.kinetics.simpleRelays.encased.EncasedCogRenderer;
+import com.simibubi.create.content.kinetics.simpleRelays.encased.EncasedShaftBlock;
+import com.simibubi.create.content.kinetics.transmission.SplitShaftRenderer;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 
 import static com.happysg.radar.CreateRadar.REGISTRATE;
@@ -44,11 +50,14 @@ public class ModBlockEntityTypes {
 
     public static final BlockEntityEntry<AutoYawControllerBlockEntity> AUTO_YAW_CONTROLLER = REGISTRATE
             .blockEntity("auto_yaw_controller", AutoYawControllerBlockEntity::new)
+            .visual(() -> ShaftVisual::new, true)
             .validBlocks(ModBlocks.AUTO_YAW_CONTROLLER_BLOCK)
+            .renderer(() -> ShaftRenderer::new)
             .register();
 
     public static final BlockEntityEntry<AutoPitchControllerBlockEntity> AUTO_PITCH_CONTROLLER = REGISTRATE
             .blockEntity("auto_pitch_controller", AutoPitchControllerBlockEntity::new)
+            .visual(() -> ShaftVisual::new, true)
             .validBlocks(ModBlocks.AUTO_PITCH_CONTROLLER_BLOCK)
             .register();
 

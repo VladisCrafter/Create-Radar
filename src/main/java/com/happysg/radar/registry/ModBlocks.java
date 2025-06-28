@@ -14,6 +14,7 @@ import com.happysg.radar.block.radar.receiver.AbstractRadarFrame;
 import com.happysg.radar.block.radar.receiver.RadarReceiverBlock;
 import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.foundation.data.AssetLookup;
+import com.simibubi.create.foundation.data.BuilderTransformers;
 import com.simibubi.create.foundation.data.SharedProperties;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import net.minecraft.client.renderer.RenderType;
@@ -63,6 +64,7 @@ public class ModBlocks {
             REGISTRATE.block("radar_bearing", RadarBearingBlock::new)
                     .initialProperties(SharedProperties::softMetal)
 //                    .transform(BlockStressDefaults.setImpact(4))
+                    .transform(BuilderTransformers.bearing("windmill", "gearbox"))
                     .properties(BlockBehaviour.Properties::noOcclusion)
                     .blockstate((c, p) -> p.simpleBlock(c.getEntry(), AssetLookup.partialBaseModel(c, p)))
                     .transform(axeOrPickaxe())
@@ -146,6 +148,7 @@ public class ModBlocks {
                     .initialProperties(SharedProperties::softMetal)
                     .properties(properties -> properties.isRedstoneConductor((pState, pLevel, pPos) -> false))
 //                    .transform(BlockStressDefaults.setImpact(128))
+                    .transform(BuilderTransformers.bearing("windmill", "gearbox"))
                     .properties(BlockBehaviour.Properties::noOcclusion)
                     .transform(axeOrPickaxe())
                     .blockstate((c, p) -> p.horizontalBlock(c.getEntry(), AssetLookup.standardModel(c, p)))
@@ -168,6 +171,7 @@ public class ModBlocks {
                     .initialProperties(SharedProperties::softMetal)
                     .properties(properties -> properties.isRedstoneConductor((pState, pLevel, pPos) -> false))
 //                    .transform(BlockStressDefaults.setImpact(128))
+                    .transform(BuilderTransformers.bearing("windmill", "gearbox"))
                     .properties(BlockBehaviour.Properties::noOcclusion)
                     .transform(axeOrPickaxe())
                     .blockstate((c, p) -> p.horizontalBlock(c.getEntry(), AssetLookup.standardModel(c, p)))
