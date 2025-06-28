@@ -1,9 +1,11 @@
 package com.happysg.radar.compat.cbc;
 
-import com.dsvv.cbcat.cannon.RifledBarrelBlockEntity;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.mixin.AbstractCannonAccessor;
 import com.happysg.radar.mixin.AutoCannonAccessor;
+import com.happysg.radar.mixin.TwinAutoCannonAccessor;
+import com.happysg.radar.mixin.HeavyAutoCannonAccessor;
+import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -12,6 +14,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.MountedAutocannonContraption;
@@ -36,6 +39,11 @@ import riftyboi.cbcmodernwarfare.cannons.rotarycannon.RotarycannonBlock;
 import riftyboi.cbcmodernwarfare.cannons.rotarycannon.RotarycannonBlockEntity;
 import riftyboi.cbcmodernwarfare.cannons.rotarycannon.material.RotarycannonMaterial;
 import riftyboi.cbcmodernwarfare.forge.cannons.RotarycannonBreechBlockEntity;
+import com.dsvv.cbcat.cannon.twin_autocannon.contraption.MountedTwinAutocannonContraption;
+import com.dsvv.cbcat.cannon.twin_autocannon.ITwinAutocannonBlockEntity;
+import com.dsvv.cbcat.cannon.RifledBarrelBlockEntity;
+import com.dsvv.cbcat.cannon.heavy_autocannon.IHeavyAutocannonBlockEntity;
+import com.dsvv.cbcat.cannon.heavy_autocannon.contraption.MountedHeavyAutocannonContraption;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -46,7 +54,7 @@ import java.util.Map;
 import static riftyboi.cbcmodernwarfare.cannon_control.compact_mount.CompactCannonMountBlock.HORIZONTAL_FACING;
 
 public class CannonUtil {
-
+    private static final Logger LOGGER = LogUtils.getLogger();
     public static int getBarrelLength(AbstractMountedCannonContraption cannon) {
         if (cannon == null)
             return 0;
@@ -90,11 +98,11 @@ public class CannonUtil {
         return offset;
     }
 
-
     public static float getRotarySpeed( AbstractMountedCannonContraption contraptionEntity) {
         if(!Mods.CBCMODERNWARFARE.isLoaded()) return 0f;
         if(contraptionEntity == null) return 0f;
         Map<BlockPos, BlockEntity> presentBlockEntities = contraptionEntity.entity.getContraption().presentBlockEntities;
+        LOGGER.debug(" → presentBlockEntities count = {}", presentBlockEntities.size());
         if(presentBlockEntities.isEmpty()) return 0f;
         int barrelCount = 0;
         RotarycannonMaterial material = null;
@@ -156,22 +164,39 @@ public class CannonUtil {
     }
 
     public static float getInitialVelocity(AbstractMountedCannonContraption cannon, ServerLevel level) {
+        LOGGER.debug("→ getInitialVelocity for contraption={} mods: BigCannon={}, AutoCannon={}, Rotary={}, Medium={}",
+                cannon.getClass().getSimpleName(),
+                isBigCannon(cannon), isAutoCannon(cannon),
+                isRotaryCannon(cannon), isMediumCannon(cannon)
+        );
+
         if (isBigCannon(cannon)) {
+            LOGGER.debug("   • BigCannon speed = {}", getBigCannonSpeed(level, (PitchOrientedContraptionEntity)cannon.entity));
             return getBigCannonSpeed(level, (PitchOrientedContraptionEntity)cannon.entity);
         } else if (isAutoCannon(cannon)) {
+            LOGGER.debug("   • AutoCannon speed = {}", getACSpeed((MountedAutocannonContraption)cannon));
             return getACSpeed((MountedAutocannonContraption) cannon);
         }
         else if(isRotaryCannon(cannon)){
+            LOGGER.debug("   • RotaryCannon speed = {}", getRotarySpeed(cannon));
             return getRotarySpeed(cannon);
         }
         else if(isMediumCannon(cannon)){
+            LOGGER.debug("   • MediumCannon speed = {}", getMediumCannonSpeed(cannon));
             return getMediumCannonSpeed(cannon);
+        } else if(isTwinAutocannon(cannon)){
+            LOGGER.debug("   • TwinACannon speed = {}", getTwinACSpeed((MountedTwinAutocannonContraption)cannon));
+            return getTwinACSpeed((MountedTwinAutocannonContraption)cannon);
+        } else if(isHeavyAutocannon(cannon)){
+            LOGGER.debug("   • HeavyACannon speed = {}", getHeavyACSpeed((MountedHeavyAutocannonContraption)cannon));
+            return getHeavyACSpeed((MountedHeavyAutocannonContraption)cannon);
         }
+        LOGGER.debug("   • No known cannon type → returning 0");
         return 0;
     }
 
     public static double getProjectileGravity(AbstractMountedCannonContraption cannon, ServerLevel level) {
-        if (isAutoCannon(cannon) || isRotaryCannon(cannon) || isMediumCannon(cannon)) return -0.025;
+        if (isAutoCannon(cannon) || isRotaryCannon(cannon) || isMediumCannon(cannon) || isTwinAutocannon(cannon) || isHeavyAutocannon(cannon)) return -0.025;
         Map<BlockPos, BlockEntity> presentBlockEntities = cannon.presentBlockEntities;
         for (BlockEntity blockEntity : presentBlockEntities.values()) {
             if (!(blockEntity instanceof IBigCannonBlockEntity cannonBlockEntity)) continue;
@@ -227,6 +252,16 @@ public class CannonUtil {
         return drag;
     }
 
+    public static boolean isHeavyAutocannon(AbstractMountedCannonContraption cannon) {
+        if(!Mods.CBC_AT.isLoaded()) return false;
+        return cannon instanceof MountedHeavyAutocannonContraption;
+    }
+
+    public static boolean isTwinAutocannon(AbstractMountedCannonContraption cannon) {
+        if(!Mods.CBC_AT.isLoaded()) return false;
+        return cannon instanceof MountedTwinAutocannonContraption;
+    }
+
     public static boolean isBigCannon(AbstractMountedCannonContraption cannon) {
         return cannon instanceof MountedBigCannonContraption;
     }
@@ -264,6 +299,40 @@ public class CannonUtil {
                 break;
             }
             currentPos = currentPos.relative(autocannon.initialOrientation());
+        }
+        return speed;
+    }
+
+    private static float getTwinACSpeed(MountedTwinAutocannonContraption cannon) {
+        if (cannon == null) return 0f;
+        if (((TwinAutoCannonAccessor) cannon).getMaterial() == null) return 0f;
+        var properties = ((TwinAutoCannonAccessor) cannon).getMaterial().properties();
+        float speed = properties.baseSpeed();
+        BlockPos pos = cannon.getStartPos().relative(cannon.initialOrientation());
+        int barrels = 0;
+        while (cannon.presentBlockEntities.get(pos) instanceof ITwinAutocannonBlockEntity) {
+            barrels++;
+            if (barrels <= properties.maxSpeedIncreases())
+                speed += properties.speedIncreasePerBarrel();
+            if (barrels > properties.maxBarrelLength()) break;
+            pos = pos.relative(cannon.initialOrientation());
+        }
+        return speed;
+    }
+
+    private static float getHeavyACSpeed(MountedHeavyAutocannonContraption cannon) {
+        if (cannon == null) return 0f;
+        if (((HeavyAutoCannonAccessor) cannon).getMaterial() == null) return 0f;
+        var properties = ((HeavyAutoCannonAccessor) cannon).getMaterial().properties();
+        float speed = properties.baseSpeed();
+        BlockPos pos = cannon.getStartPos().relative(cannon.initialOrientation());
+        int barrels = 0;
+        while (cannon.presentBlockEntities.get(pos) instanceof IHeavyAutocannonBlockEntity) {
+            barrels++;
+            if (barrels <= properties.maxSpeedIncreases())
+                speed += properties.speedIncreasePerBarrel();
+            if (barrels > properties.maxBarrelLength()) break;
+            pos = pos.relative(cannon.initialOrientation());
         }
         return speed;
     }

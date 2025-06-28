@@ -7,7 +7,8 @@ import com.happysg.radar.block.radar.track.RadarTrackUtil;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.simibubi.create.AllSpecialTextures;
 import com.simibubi.create.CreateClient;
-import com.simibubi.create.content.equipment.goggles.IHaveHoveringInformation;
+import net.createmod.catnip.outliner.Outliner;
+import com.simibubi.create.api.equipment.goggles.IHaveHoveringInformation;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import net.minecraft.core.BlockPos;
@@ -41,7 +42,6 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     protected String hoveredEntity;
     protected String selectedEntity;
 
-    //todo hashmap for multiple inputs
     Collection<RadarTrack> cachedTracks = List.of();
     MonitorFilter filter = MonitorFilter.DEFAULT;
     public List<AABB> safeZones = new ArrayList<>();
@@ -49,7 +49,6 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     public MonitorBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
     }
-
 
     @Override
     public void initialize() {
@@ -78,8 +77,17 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     @Override
     public void tick() {
         super.tick();
+
+        if (!level.isClientSide) {
+            if (level.getGameTime() % 20 == 0) {
+                updateCache();
+                sendData();
+            }
+        }
+
         if (ticksSinceLastUpdate > 20)
             setRadarPos(null);
+
         ticksSinceLastUpdate++;
     }
 
@@ -95,9 +103,9 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
 
         if (level.getBlockEntity(getControllerPos()) instanceof MonitorBlockEntity monitor) {
             if (pPos == null) {
-                radarPos = null;
-                radar = null;
-                notifyUpdate();
+                monitor.radarPos = null;
+                monitor.radar = null;
+                monitor.notifyUpdate();
                 return;
             }
             monitor.radarPos = pPos;
@@ -105,7 +113,6 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
             monitor.notifyUpdate();
         }
     }
-
 
     @Override
     protected void read(CompoundTag tag, boolean clientPacket) {
@@ -183,7 +190,6 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         return safeZonesTag;
     }
 
-
     public boolean isController() {
         return getBlockPos().equals(controller) || controller == null;
     }
@@ -193,8 +199,6 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         return super.createRenderBoundingBox().inflate(10);
     }
 
-
-    //messy caching radar reference
     public Optional<IRadar> getRadar() {
         if (radar != null)
             return Optional.of(radar);
@@ -205,7 +209,6 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         }
         return Optional.ofNullable(radar);
     }
-
 
     public MonitorBlockEntity getController() {
         if (isController())
@@ -232,7 +235,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         );
         if (targetPos.get() == null)
             selectedEntity = null;
-        else if (isInSafeZone(targetPos.get())) //keep selected but don't give position
+        else if (isInSafeZone(targetPos.get()))
             return null;
 
         return targetPos.get();
@@ -304,12 +307,11 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     @OnlyIn(Dist.CLIENT)
     public void showSafeZone() {
         for (AABB safeZone : safeZones) {
-            CreateClient.OUTLINER.showAABB(safeZone, safeZone)
+            Outliner.getInstance().showAABB(safeZone, safeZone)
                     .colored(0x383b42)
                     .withFaceTextures(AllSpecialTextures.CHECKERED, AllSpecialTextures.HIGHLIGHT_CHECKERED)
                     .lineWidth(1 / 16f);
         }
-
     }
 
     public boolean tryRemoveAABB(BlockPos pos) {

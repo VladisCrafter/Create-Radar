@@ -9,11 +9,11 @@ import com.happysg.radar.networking.ModMessages;
 import com.happysg.radar.networking.packets.RadarLinkConfigurationPacket;
 import com.happysg.radar.registry.AllDataBehaviors;
 import com.happysg.radar.registry.ModGuiTextures;
-import com.jozufozu.flywheel.util.transform.TransformStack;
+import dev.engine_room.flywheel.lib.transform.TransformStack;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.simibubi.create.foundation.gui.AbstractSimiScreen;
+import net.createmod.catnip.gui.AbstractSimiScreen;
 import com.simibubi.create.foundation.gui.AllIcons;
-import com.simibubi.create.foundation.gui.element.GuiGameElement;
+import net.createmod.catnip.gui.element.GuiGameElement;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -88,14 +88,14 @@ public class AbstractDataLinkScreen extends AbstractSimiScreen {
         ms.popPose();
 
         ms.pushPose();
-        TransformStack.cast(ms)
+        TransformStack.of(ms)
                 .pushPose()
                 .translate(x + background.width + 4, y + background.height + 4, 100)
                 .scale(40)
                 .rotateX(-22)
                 .rotateY(63);
         GuiGameElement.of(blockEntity.getBlockState()
-                        .setValue(DataLinkBlock.FACING, Direction.UP))
+                        .setValue(DataLinkBlock.FACING, Direction.DOWN)) //UP
                 .render(graphics);
         ms.popPose();
     }
