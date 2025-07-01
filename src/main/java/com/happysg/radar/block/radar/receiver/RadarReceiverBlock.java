@@ -18,7 +18,7 @@ public class RadarReceiverBlock extends WrenchableDirectionalBlock {
     @Override
     public @NotNull VoxelShape getShape(BlockState state, @NotNull BlockGetter p_220071_2_, @NotNull BlockPos p_220071_3_,
                                         @NotNull CollisionContext p_220071_4_) {
-        return AllShapes.CASING_12PX.get(state.getValue(FACING).getOpposite());
+        return AllShapes.CASING_13PX.get(state.getValue(FACING));
     }
 
     @Override

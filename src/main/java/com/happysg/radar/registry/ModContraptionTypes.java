@@ -2,13 +2,22 @@ package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.radar.bearing.RadarContraption;
-import com.simibubi.create.content.contraptions.ContraptionType;
+import com.simibubi.create.api.contraption.ContraptionType;
+import com.simibubi.create.api.registry.CreateBuiltInRegistries;
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceLocation;
 
+@SuppressWarnings({"rawtypes", "unchecked"}) // needed for raw ContraptionType
 public class ModContraptionTypes {
-    public static final ContraptionType RADAR_BEARING =
-            ContraptionType.register("radar_bearing", RadarContraption::new);
+
+    public static ContraptionType RADAR_BEARING;
 
     public static void register() {
-        CreateRadar.getLogger().info("Registering ContraptionType!");
+        RADAR_BEARING = new ContraptionType(RadarContraption::new);
+
+        ResourceLocation id = CreateRadar.asResource("radar_bearing");
+        Registry.register(CreateBuiltInRegistries.CONTRAPTION_TYPE, id, RADAR_BEARING);
+
+        CreateRadar.getLogger().info("Registered contraption type '{}'", id);
     }
 }

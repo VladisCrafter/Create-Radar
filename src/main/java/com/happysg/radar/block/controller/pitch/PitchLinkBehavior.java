@@ -1,41 +1,41 @@
 package com.happysg.radar.block.controller.pitch;
 
+import com.happysg.radar.block.datalink.DataController;
+import com.happysg.radar.block.datalink.DataLinkBlockEntity;
+import com.happysg.radar.block.datalink.DataLinkContext;
+import com.happysg.radar.block.datalink.DataPeripheral;
+import com.happysg.radar.block.datalink.screens.AbstractDataLinkScreen;
+import com.happysg.radar.block.datalink.screens.AutoTargetScreen;
+import com.happysg.radar.block.datalink.screens.TargetingConfig;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
-import com.happysg.radar.block.radar.link.RadarLinkBlockEntity;
-import com.happysg.radar.block.radar.link.RadarLinkContext;
-import com.happysg.radar.block.radar.link.RadarSource;
-import com.happysg.radar.block.radar.link.RadarTarget;
-import com.happysg.radar.block.radar.link.screens.AbstractRadarLinkScreen;
-import com.happysg.radar.block.radar.link.screens.RadarTargetScreen;
-import com.happysg.radar.block.radar.link.screens.TargetingConfig;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
-public class PitchLinkBehavior extends RadarSource {
+public class PitchLinkBehavior extends DataPeripheral {
 
+    @OnlyIn(value = Dist.CLIENT)
     @Override
-    protected AbstractRadarLinkScreen getScreen(RadarLinkBlockEntity be) {
-        return new RadarTargetScreen(be);
+    protected AbstractDataLinkScreen getScreen(DataLinkBlockEntity be) {
+        return new AutoTargetScreen(be);
     }
 
     @Override
-    protected void transferData(@NotNull RadarLinkContext context, @NotNull RadarTarget activeTarget) {
+    protected void transferData(@NotNull DataLinkContext context, @NotNull DataController activeTarget) {
         if (!(context.getSourceBlockEntity() instanceof AutoPitchControllerBlockEntity controller))
             return;
 
-        if (!(context.getTargetBlockEntity() instanceof MonitorBlockEntity))
+        if (context.getMonitorBlockEntity() == null || context.level().isClientSide())
             return;
 
-        MonitorBlockEntity monitor = ((MonitorBlockEntity) context.getTargetBlockEntity()).getController();
-
-        if (monitor == null)
-            return;
-
-        TargetingConfig targetingConfig = TargetingConfig.fromTag(context.sourceConfig().getCompound("targeting"));
+        MonitorBlockEntity monitor = context.getMonitorBlockEntity();
+        TargetingConfig targetingConfig = TargetingConfig.fromTag(context.sourceConfig());
 
         Vec3 targetPos = monitor.getTargetPos(targetingConfig);
+        //todo better way to handle instead of passing null to stop firing
+        controller.setSafeZones(monitor.safeZones);
         controller.setTarget(targetPos);
-        controller.setTargetingConfig(targetingConfig);
-
+        controller.setFiringTarget(targetPos, targetingConfig);
     }
 }

@@ -2,9 +2,10 @@ package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.cbc.CBCItemsCompat;
+import com.happysg.radar.compat.cbc.CBCCompatRegister;
+import com.happysg.radar.compat.cbcmw.CBCMWCompatRegister;
 import com.simibubi.create.AllCreativeModeTabs;
-import com.simibubi.create.foundation.utility.Components;
+import net.minecraft.network.chat.Component;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
@@ -29,24 +30,32 @@ public class ModCreativeTabs {
         CreativeModeTab.Builder tabBuilder = CreativeModeTab.builder()
                 .icon(icon)
                 .displayItems(ModCreativeTabs::displayItems)
-                .title(Components.translatable(itemGroupId))
+                .title(Component.translatable(itemGroupId))
                 .withTabsBefore(AllCreativeModeTabs.PALETTES_CREATIVE_TAB.getKey());
         return CREATIVE_TABS.register(id, tabBuilder::build);
     }
 
     private static void displayItems(CreativeModeTab.ItemDisplayParameters pParameters, CreativeModeTab.Output pOutput) {
         pOutput.accept(ModBlocks.MONITOR);
+        pOutput.accept(ModItems.SAFE_ZONE_DESIGNATOR);
         pOutput.accept(ModBlocks.RADAR_LINK);
         pOutput.accept(ModBlocks.RADAR_BEARING_BLOCK);
         pOutput.accept(ModBlocks.RADAR_RECEIVER_BLOCK);
         pOutput.accept(ModBlocks.RADAR_PLATE_BLOCK);
         pOutput.accept(ModBlocks.RADAR_DISH_BLOCK);
+        pOutput.accept(ModBlocks.CREATIVE_RADAR_PLATE_BLOCK);
         pOutput.accept(ModBlocks.AUTO_YAW_CONTROLLER_BLOCK);
         pOutput.accept(ModBlocks.AUTO_PITCH_CONTROLLER_BLOCK);
         if (Mods.CREATEBIGCANNONS.isLoaded()) {
-            pOutput.accept(CBCItemsCompat.GUIDED_FUZE);
+            pOutput.accept(CBCCompatRegister.GUIDED_FUZE);
+        }
+        if (Mods.CBCMODERNWARFARE.isLoaded()) {
+            pOutput.accept(CBCMWCompatRegister.RADAR_GUIDANCE_BLOCK);
         }
         if (Mods.TRACKWORK.isLoaded()) {
+        }
+        if (Mods.VALKYRIENSKIES.isLoaded()) {
+            pOutput.accept(ModBlocks.ID_BLOCK);
         }
     }
 

@@ -1,16 +1,14 @@
 {
-  "type": "create:mechanical_crafting",
-  "acceptMirrored": true,
-  "key": {
-    "Q": {
+  "type": "create:cutting",
+  "ingredients": [
+    {
       "item": "minecraft:quartz_slab"
     }
-  },
-  "pattern": [
-    "QQ"
   ],
-  "result": {
-    "count": 1,
-    "item": "create_radar:radar_plate_block"
-  }
+  "processingTime": 50,
+  "results": [
+    {
+      "item": "create_radar:radar_plate_block"
+    }
+  ]
 }

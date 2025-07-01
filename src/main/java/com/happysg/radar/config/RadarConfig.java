@@ -2,10 +2,9 @@ package com.happysg.radar.config;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.config.client.RadarClientConfig;
-import com.happysg.radar.config.common.RadarCommonConfig;
 import com.happysg.radar.config.server.RadarServerConfig;
-import com.simibubi.create.foundation.config.ConfigBase;
-import com.simibubi.create.foundation.config.ui.BaseConfigScreen;
+import net.createmod.catnip.config.ConfigBase;
+import net.createmod.catnip.config.ui.BaseConfigScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraftforge.common.ForgeConfigSpec;
@@ -23,16 +22,12 @@ public class RadarConfig {
     private static final Map<ModConfig.Type, ConfigBase> CONFIGS = new EnumMap<>(ModConfig.Type.class);
 
     private static RadarClientConfig client;
-    private static RadarCommonConfig common;
     private static RadarServerConfig server;
 
     public static RadarClientConfig client() {
         return client;
     }
 
-    public static RadarCommonConfig common() {
-        return common;
-    }
 
     public static RadarServerConfig server() {
         return server;
@@ -57,7 +52,6 @@ public class RadarConfig {
 
     public static void register(ModLoadingContext context) {
         client = register(RadarClientConfig::new, ModConfig.Type.CLIENT);
-        common = register(RadarCommonConfig::new, ModConfig.Type.COMMON);
         server = register(RadarServerConfig::new, ModConfig.Type.SERVER);
 
         for (Map.Entry<ModConfig.Type, ConfigBase> pair : CONFIGS.entrySet())
@@ -83,7 +77,7 @@ public class RadarConfig {
     public static BaseConfigScreen createConfigScreen(Minecraft mc, Screen parent) {
         BaseConfigScreen.setDefaultActionFor(CreateRadar.MODID, (base) -> base
                 .withSpecs(RadarConfig.client().specification,
-                        RadarConfig.common().specification,
+                        null,
                         RadarConfig.server().specification));
 
         return new BaseConfigScreen(parent, CreateRadar.MODID);

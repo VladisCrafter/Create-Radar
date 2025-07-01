@@ -1,6 +1,6 @@
 package com.happysg.radar.compat;
 
-import com.simibubi.create.foundation.utility.Lang;
+import net.createmod.catnip.lang.Lang;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraftforge.fml.ModList;
@@ -18,6 +18,8 @@ public enum Mods {
     VS_CLOCKWORK,
     COMPUTERCRAFT,
     TRACKWORK,
+    CBCMODERNWARFARE,
+    CBC_AT,
     CREATEBIGCANNONS;
 
     private final String id;

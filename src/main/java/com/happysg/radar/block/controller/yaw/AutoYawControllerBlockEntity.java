@@ -1,6 +1,7 @@
 package com.happysg.radar.block.controller.yaw;
 
 import com.happysg.radar.compat.Mods;
+import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.simibubi.create.content.kinetics.base.GeneratingKineticBlockEntity;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import net.minecraft.core.BlockPos;
@@ -26,11 +27,10 @@ public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity {
         super.tick();
         if (Mods.CREATEBIGCANNONS.isLoaded())
             tryRotateCannon();
-
     }
 
     private void tryRotateCannon() {
-        if (level.isClientSide())
+        if (level == null || level.isClientSide())
             return;
         if (!isRunning)
             return;
@@ -42,8 +42,10 @@ public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity {
             return;
 
         double currentYaw = contraption.yaw;
-        if (currentYaw == targetAngle)
+        if (currentYaw == targetAngle) {
+            isRunning = false;
             return;
+        }
 
         // Normalize both currentYaw and targetAngle to [0, 360)
         currentYaw = (currentYaw + 360) % 360;
@@ -107,12 +109,15 @@ public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity {
     }
 
     public void setTarget(Vec3 targetPos) {
-        if (level.isClientSide())
+        if (level == null || level.isClientSide())
+            return;
+        if (PhysicsHandler.isBlockInShipyard(level, this.getBlockPos()))
             return;
         if (targetPos == null) {
             isRunning = false;
             return;
         }
+
         isRunning = true;
         Vec3 cannonCenter = getBlockPos().above(3).getCenter();
         double dx = cannonCenter.x - targetPos.x;
@@ -128,7 +133,7 @@ public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity {
 
     public boolean atTargetYaw() {
         BlockPos turretPos = getBlockPos().above();
-        if (!(level.getBlockEntity(turretPos) instanceof CannonMountBlockEntity mount))
+        if (level == null || !(level.getBlockEntity(turretPos) instanceof CannonMountBlockEntity mount))
             return false;
         PitchOrientedContraptionEntity contraption = mount.getContraption();
         if (contraption == null)

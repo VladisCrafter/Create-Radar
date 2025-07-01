@@ -18,12 +18,13 @@ public class TrackControllerBlock extends HorizontalKineticBlock implements IBE<
 
     @Override
     public Direction.Axis getRotationAxis(BlockState state) {
-        return state.getValue(HORIZONTAL_FACING).getAxis();
+        return Direction.Axis.Y;
     }
 
     @Override
     public boolean hasShaftTowards(LevelReader world, BlockPos pos, BlockState state, Direction face) {
-        return face == state.getValue(HORIZONTAL_FACING).getOpposite();
+        return face == state.getValue(HORIZONTAL_FACING).getOpposite() ||
+                face.getAxis() == state.getValue(HORIZONTAL_FACING).getCounterClockWise().getAxis();
     }
 
     @Override

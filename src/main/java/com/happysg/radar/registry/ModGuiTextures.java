@@ -2,9 +2,9 @@ package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.simibubi.create.foundation.gui.UIRenderHelper;
-import com.simibubi.create.foundation.gui.element.ScreenElement;
-import com.simibubi.create.foundation.utility.Color;
+import net.createmod.catnip.gui.UIRenderHelper;
+import net.createmod.catnip.gui.element.ScreenElement;
+import net.createmod.catnip.theme.Color;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
@@ -24,8 +24,13 @@ public enum ModGuiTextures implements ScreenElement {
     CHECKMARK("targeting", 3, 123, 18, 18),
     AUTO_TARGET("targeting", 203, 48, 18, 18),
     AUTO_FIRE("targeting", 44, 124, 18, 18),
-    MANUAL_FIRE("targeting", 64, 124, 18, 18);
-
+    MANUAL_FIRE("targeting", 64, 124, 18, 18),
+    ID_SCREEN("id_block", 225, 95),
+    PLAYER_INPUT("radar_iff_list", 0, 136, 225, 120),
+    VS2_INPUT("radar_iff_list", 0, 0, 225, 120),
+    FRIENDLY("radar_iff_list", 238, 18, 18, 18),
+    HOSTILE("radar_iff_list", 238, 0, 18, 18),
+    ;
 
     public static final int FONT_COLOR = 0x575F7A;
 

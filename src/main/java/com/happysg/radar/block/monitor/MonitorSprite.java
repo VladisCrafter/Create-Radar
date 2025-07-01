@@ -8,6 +8,8 @@ import java.util.Locale;
 public enum MonitorSprite {
     CONTRAPTION_HITBOX,
     ENTITY_HITBOX,
+    PROJECTILE,
+    PLAYER,
     GRID_SQUARE,
     RADAR_BG_CIRCLE,
     RADAR_BG_FILLER,

@@ -2,7 +2,7 @@ package com.happysg.radar.block.monitor;
 
 import com.happysg.radar.registry.ModBlockEntityTypes;
 import com.simibubi.create.foundation.block.IBE;
-import com.simibubi.create.foundation.utility.Lang;
+import net.createmod.catnip.lang.Lang;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.StringRepresentable;
@@ -62,7 +62,7 @@ public class MonitorBlock extends HorizontalDirectionalBlock implements IBE<Moni
     public InteractionResult use(BlockState pState, Level pLevel, BlockPos pPos, Player pPlayer, InteractionHand pHand, BlockHitResult pHit) {
         if (!pPlayer.getMainHandItem().isEmpty() || pHand == InteractionHand.OFF_HAND)
             return InteractionResult.PASS;
-        return onBlockEntityUse(pLevel, pPos, monitorBlockEntity -> monitorBlockEntity.getController().onUse(pPlayer, pHand, pHit, pState.getValue(FACING)));
+        return onBlockEntityUse(pLevel, pPos, monitorBlockEntity -> MonitorInputHandler.onUse(monitorBlockEntity.getController(), pPlayer, pHand, pHit, pState.getValue(FACING)));
     }
 
     public enum Shape implements StringRepresentable {

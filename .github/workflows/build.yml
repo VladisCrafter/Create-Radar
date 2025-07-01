@@ -50,7 +50,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: radar-artifacts
-          path: build/libs/*.jar
+          path: build/libs/*all.jar
 
       - name: Send building message to discord
         uses: fateyan/action-discord-notifier@v1
@@ -63,4 +63,4 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         with:
-          args: ./build/libs/*.*
+          args: ./build/libs/*all.jar

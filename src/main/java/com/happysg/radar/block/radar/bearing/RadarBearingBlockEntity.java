@@ -1,13 +1,16 @@
 package com.happysg.radar.block.radar.bearing;
 
-import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.vs2.VS2Utils;
+import com.happysg.radar.CreateRadar;
+import com.happysg.radar.block.radar.behavior.IRadar;
+import com.happysg.radar.block.radar.behavior.RadarScanningBlockBehavior;
+import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.config.RadarConfig;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.contraptions.AssemblyException;
 import com.simibubi.create.content.contraptions.ControlledContraptionEntity;
 import com.simibubi.create.content.contraptions.bearing.MechanicalBearingBlockEntity;
-import com.simibubi.create.content.kinetics.BlockStressValues;
+import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.foundation.advancement.AllAdvancements;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.simibubi.create.foundation.utility.ServerSpeedProvider;
@@ -15,20 +18,19 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
-import org.joml.Vector3d;
+import net.minecraft.world.phys.Vec3;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
-public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
-    private static final int MAX_TRACK_TICKS = 100;
+public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implements IRadar {
     private int dishCount;
+    private boolean creative;
     private Direction receiverFacing = Direction.NORTH;
-    Map<String, RadarTrack> entityPositions = new HashMap<>();
-    Map<String, VSRadarTracks> VSPositions = new HashMap<>();
+    private RadarScanningBlockBehavior scanningBehavior;
 
     public RadarBearingBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -38,89 +40,28 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
         super.addBehaviours(behaviours);
         movementMode.setValue(MovementMode.MOVE_NEVER_PLACE.ordinal());
+        scanningBehavior = new RadarScanningBlockBehavior(this);
+        behaviours.add(scanningBehavior);
     }
 
+    @Override
+    public BlockPos getWorldPos() {
+        return getBlockPos();
+    }
 
     @Override
     public void tick() {
         super.tick();
-        if (isRunning()) {
-            scanForEntityTracks();
-            scanForVSTracks();
+        if (running) {
+            scanningBehavior.setRange(getRange());
+            scanningBehavior.setAngle(getGlobalAngle());
         }
-        clearOldTracks();
-        notifyUpdate();
-    }
-
-
-    private void clearOldTracks() {
-        List<String> toRemove = new ArrayList<>();
-        long currentTime = level.getGameTime();
-        entityPositions.forEach((entity, track) -> {
-            if (currentTime - track.scannedTime() > MAX_TRACK_TICKS || (level.getEntity(track.id()) != null && (level.getEntity(track.id()).isRemoved() || !level.getEntity(track.id()).isAlive()))) {
-                toRemove.add(entity);
-            }
-        });
-        toRemove.forEach(uuid -> entityPositions.remove(uuid));
-        if (Mods.VALKYRIENSKIES.isLoaded()) {
-            List<String> toRemoveVS = new ArrayList<>();
-            VSPositions.forEach((entity, track) -> {
-                if (currentTime - track.scannedTime() > MAX_TRACK_TICKS) {
-                    toRemoveVS.add(entity);
-                }
-            });
-            toRemoveVS.forEach(uuid -> VSPositions.remove(uuid));
-        }
-    }
-
-    private void scanForEntityTracks() {
-        AABB aabb = getRadarAABB();
-        for (Entity entity : level.getEntities(null, aabb)) {
-            if (entity.isAlive() && isEntityInRadarFov(entity.blockPosition())) {
-                entityPositions.put(entity.getStringUUID(), new RadarTrack(entity));
-            }
-        }
-    }
-
-    private void scanForVSTracks() {
-        if (!Mods.VALKYRIENSKIES.isLoaded())
-            return;
-        if (level == null)
-            return;
-        VS2Utils.getLoadedShips(level, getRadarAABB()).forEach(serverShip -> {
-            Vector3d shipPos = serverShip.getWorldAABB().center(new Vector3d());
-            if (isEntityInRadarFov(new BlockPos((int) shipPos.x, (int) shipPos.y, (int) shipPos.z))) {
-                VSPositions.put(String.valueOf(serverShip.getId()), new VSRadarTracks(serverShip, level));
-            }
-        });
-    }
-
-    private AABB getRadarAABB() {
-        float range = getRange();
-        BlockPos radarPos = VS2Utils.getWorldPos(this);
-        double xOffset = range * Math.sin(Math.toRadians(getGlobalAngle()));
-        double zOffset = range * Math.cos(Math.toRadians(getGlobalAngle()));
-        return new AABB(radarPos.getX() - xOffset, radarPos.getY() - RadarConfig.server().radarYScanRange.get(), radarPos.getZ() - zOffset, radarPos.getX() + xOffset, radarPos.getY() + RadarConfig.server().radarYScanRange.get(), radarPos.getZ() + zOffset);
-    }
-
-    private boolean isEntityInRadarFov(BlockPos entityPos) {
-        float radarAngle = getGlobalAngle();
-        int fovDegrees = RadarConfig.server().radarFOV.get();
-        BlockPos radarPos = VS2Utils.getWorldPos(this);
-
-        // Calculate the angle between the radar and the entity
-        double angleToEntity = Math.toDegrees(Math.atan2(entityPos.getX() - radarPos.getX(), radarPos.getZ() - entityPos.getZ()));
-        if (angleToEntity < 0) {
-            angleToEntity += 360;
-        }
-        double relativeAngle = Math.abs(angleToEntity - radarAngle);
-
-        // Check if the entity is within the field of view
-        return relativeAngle <= fovDegrees / 2;
     }
 
     public float getGlobalAngle() {
-        return (receiverFacing.toYRot() - angle + 360) % 360;
+        Vec3 receiverVector = new Vec3(receiverFacing.getStepX(), receiverFacing.getStepY(), receiverFacing.getStepZ());
+        float receiverAngle = (float) Math.toDegrees(Math.atan2(receiverVector.x, receiverVector.z));
+        return (receiverAngle + angle + 360) % 360;
     }
 
     public float getAngularSpeed() {
@@ -135,40 +76,18 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
             speed += clientAngleDiff / 3f;
         }
 
-        return gearRadarBearingSpeed(speed);
+        return speed / (4f + getDishCount() / 10);
     }
 
-    public float gearRadarBearingSpeed(float speed) {
-        int dishCount = getDishCount();
-        float maxSpeed;
-
-        if (dishCount >= 100) {
-            maxSpeed = 64;
-        } else if (dishCount >= 75) {
-            maxSpeed = 96 + (64 - 96) * (dishCount - 75) / 25.0f;
-        } else if (dishCount >= 50) {
-            maxSpeed = 128 + (96 - 128) * (dishCount - 50) / 25.0f;
-        } else if (dishCount >= 25) {
-            maxSpeed = 196 + (128 - 196) * (dishCount - 25) / 25.0f;
-        } else {
-            maxSpeed = 256 + (196 - 256) * dishCount / 25.0f;
-        }
-
-        return Math.min(speed, maxSpeed);
-    }
-
-    //code copied in order to replace with radar contraption and radar advancements
     @Override
     public void assemble() {
-        if (!(level.getBlockState(getBlockPos())
-                .getBlock() instanceof RadarBearingBlock))
+        if (!(level.getBlockState(getBlockPos()).getBlock() instanceof RadarBearingBlock))
             return;
 
         RadarContraption contraption = createContraption();
         if (contraption == null)
             return;
 
-        //replace with radar advancements
         if (isWindmill())
             award(AllAdvancements.WINDMILL);
         if (contraption.getSailBlocks() >= 16 * 8)
@@ -178,7 +97,6 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
         updateContraptionData();
         notifyUpdate();
     }
-
 
     @Override
     public void disassemble() {
@@ -198,13 +116,13 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
         try {
             if (!contraption.assemble(level, getBlockPos()))
                 return null;
-
             lastException = null;
         } catch (AssemblyException e) {
             lastException = e;
             sendData();
             return null;
         }
+
         contraption.removeBlocksFromWorld(level, BlockPos.ZERO);
         movedContraption = ControlledContraptionEntity.create(level, this, contraption);
         BlockPos anchor = getBlockPosition().above();
@@ -219,18 +137,22 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
         return contraption;
     }
 
-    //capturing from radar contraption to save on client side BE, contraption data only server side
     private void updateContraptionData() {
         dishCount = getContraption().map(RadarContraption::getDishCount).orElse(0);
         receiverFacing = getContraption().map(RadarContraption::getReceiverFacing).orElse(Direction.NORTH);
+        creative = getContraption().map(RadarContraption::isCreative).orElse(false);
+        scanningBehavior.setRange(getRange());
+        scanningBehavior.setScanPos(PhysicsHandler.getWorldVec(this));
+        scanningBehavior.setRunning(running);
+        scanningBehavior.setAngle(getGlobalAngle());
         notifyUpdate();
     }
 
     @Override
     public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
         super.addToGoggleTooltip(tooltip, isPlayerSneaking);
-        tooltip.add(Component.literal("    Dish Count: " + dishCount));
-        tooltip.add(Component.literal("    Range: " + getRange()));
+        tooltip.add(Component.translatable(CreateRadar.MODID + ".radar.dish_count", dishCount));
+        tooltip.add(Component.translatable(CreateRadar.MODID + ".radar.range", getRange()));
         return true;
     }
 
@@ -238,25 +160,18 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
     protected void read(CompoundTag compound, boolean clientPacket) {
         super.read(compound, clientPacket);
         dishCount = compound.getInt("dishCount");
+        creative = compound.getBoolean("creative");
         if (compound.contains("receiverFacing"))
             receiverFacing = Direction.from3DDataValue(compound.getInt("receiverFacing"));
-        if (clientPacket && compound.contains("entityPositions"))
-            RadarTrack.deserializeListNBT(compound.getCompound("entityPositions")).forEach(track -> entityPositions.put(track.entityId(), track));
-        if (clientPacket && Mods.VALKYRIENSKIES.isLoaded())
-            VSRadarTracks.deserializeListNBT(compound.getCompound("VSPositions")).forEach(track -> VSPositions.put(track.id(), track));
     }
 
     @Override
     public void write(CompoundTag compound, boolean clientPacket) {
         super.write(compound, clientPacket);
         compound.putInt("dishCount", dishCount);
+        compound.putBoolean("creative", creative);
         if (receiverFacing != null)
             compound.putInt("receiverFacing", receiverFacing.get3DDataValue());
-        if (clientPacket)
-            compound.put("entityPositions", RadarTrack.serializeNBTList(entityPositions.values()));
-        if (clientPacket && Mods.VALKYRIENSKIES.isLoaded())
-            compound.put("VSPositions", VSRadarTracks.serializeNBTList(VSPositions.values()));
-
     }
 
     public int getDishCount() {
@@ -278,15 +193,14 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity {
         return receiverFacing;
     }
 
-    public List<RadarTrack> getEntityPositions() {
-        return new ArrayList<>(entityPositions.values());
-    }
-
-    public List<VSRadarTracks> getVS2Positions() {
-        return new ArrayList<>(VSPositions.values());
-    }
-
     public float getRange() {
-        return Math.min(RadarConfig.server().radarBaseRange.get() + dishCount * RadarConfig.server().dishRangeIncrease.get(), RadarConfig.server().maxRadarRange.get());
+        if (creative)
+            return RadarConfig.server().maxRadarRange.get();
+        return Math.min(RadarConfig.server().radarBaseRange.get() + dishCount * RadarConfig.server().dishRangeIncrease.get(),
+                RadarConfig.server().maxRadarRange.get());
+    }
+
+    public Collection<RadarTrack> getTracks() {
+        return scanningBehavior.getRadarTracks();
     }
 }
