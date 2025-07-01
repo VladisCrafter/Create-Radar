@@ -71,5 +71,9 @@
   "create_radar.radar_button.vs2": "Конструкции VS2",
   "item.create_radar.guided_fuze": "Наводящий взрыватель",
   "item.create_radar.radar_safe_zone_designator": "Контроллер безопасных зон",
-  "itemGroup.create_radar.radar": "Create: Radars"
+  "itemGroup.create_radar.radar": "Create: Radars",
+  "display_link.success": "Успешно подключён к целевому монитору",
+  "display_link.too_far": "Целевой монитор слишком далеко...",
+  "display_link.set": "Выбран целевой монитор",
+  "display_link.clear": "Выбор целевого монитора отменён"
 }
