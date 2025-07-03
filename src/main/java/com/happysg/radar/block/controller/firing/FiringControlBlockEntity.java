@@ -143,23 +143,32 @@ public class FiringControlBlockEntity {
 
     private boolean passesSafeZone() {
         LOGGER.debug("passesSafeZone() → checking {} safe zones", safeZones.size());
-        if (!(level instanceof ServerLevel)) {
+
+        if (!(level instanceof ServerLevel serverLevel)) {
             LOGGER.debug("  → not server level, skip safe-zone check");
             return false;
         }
 
+        if (target == null) {
+            LOGGER.warn("  → target is null, skipping safe zone check");
+            return false;
+        }
+
         Vec3 cannonPos = cannonMount.getBlockPos().getCenter();
+
         for (AABB zone : safeZones) {
+            if (zone == null) continue;
+
             if (zone.contains(target)) {
                 LOGGER.debug("  → target {} inside zone {}", target, zone);
                 return true;
             }
 
-            // Clip path through zone base plane
             Vec3 baseCannon = new Vec3(cannonPos.x, zone.minY, cannonPos.z);
-            Vec3 baseTarget = new Vec3(target.x,   zone.minY, target.z);
+            Vec3 baseTarget = new Vec3(target.x, zone.minY, target.z);
             Optional<Vec3> oMin = zone.clip(baseCannon, baseTarget);
             Optional<Vec3> oMax = zone.clip(baseTarget, baseCannon);
+
             if (oMin.isEmpty() || oMax.isEmpty()) {
                 LOGGER.debug("  → no intersection segment for zone {}", zone);
                 continue;
@@ -167,28 +176,26 @@ public class FiringControlBlockEntity {
 
             Vec3 minX = oMin.get();
             Vec3 maxX = oMax.get();
+
             double yMin = zone.minY - cannonMount.getBlockPos().getY();
-            LOGGER.debug("  yMin: {}", yMin);
             double yMax = zone.maxY - cannonMount.getBlockPos().getY();
-            LOGGER.debug("  yMax: {}", yMin);
+
+            LOGGER.debug("  yMin: {}, yMax: {}", yMin, yMax);
 
             PitchOrientedContraptionEntity contraption = cannonMount.getContraption();
-            if (contraption == null ||
-                    !(contraption.getContraption() instanceof AbstractMountedCannonContraption cc)) {
-                LOGGER.debug("  → no valid cannon contraption");
+            if (contraption == null || !(contraption.getContraption() instanceof AbstractMountedCannonContraption cc)) {
+                LOGGER.warn("  → cannon contraption missing or invalid, skipping");
                 continue;
             }
 
-            float speed   = CannonUtil.getInitialVelocity(cc, (ServerLevel) level);
-            LOGGER.debug("  Speed: {}", speed);
-            double drag   = CannonUtil.getProjectileDrag(cc, (ServerLevel) level);
-            LOGGER.debug("  Drag: {}", drag);
-            double grav   = CannonUtil.getProjectileGravity(cc, (ServerLevel) level);
-            LOGGER.debug("  Grav: {}", grav);
-            int length = CannonUtil.getBarrelLength(cc);
-            LOGGER.debug("  Length: {}", length);
+            float speed = CannonUtil.getInitialVelocity(cc, serverLevel);
+            double drag = CannonUtil.getProjectileDrag(cc, serverLevel);
+            double grav = CannonUtil.getProjectileGravity(cc, serverLevel);
+            int length  = CannonUtil.getBarrelLength(cc);
 
-            double theta   = Math.toRadians(cannonMount.getDisplayPitch());
+            LOGGER.debug("  Speed: {}, Drag: {}, Grav: {}, Length: {}", speed, drag, grav, length);
+
+            double theta = Math.toRadians(cannonMount.getDisplayPitch());
             double distMin = cannonPos.distanceTo(minX) - length * Math.cos(theta);
             double distMax = cannonPos.distanceTo(maxX) - length * Math.cos(theta);
             double yAtMin  = calculateProjectileYatX(speed, distMin, theta, drag, grav);
@@ -197,8 +204,7 @@ public class FiringControlBlockEntity {
             LOGGER.debug("  → zone {}: yAtMin={}, yAtMax={} vs yMin={}, yMax={}",
                     zone, yAtMin, yAtMax, yMin, yMax);
 
-            if ((yAtMin >= yMin && yAtMax <= yMax) ||
-                    (yAtMin <= yMin && yAtMax >= yMin)) {
+            if ((yAtMin >= yMin && yAtMax <= yMax) || (yAtMin <= yMin && yAtMax >= yMin)) {
                 LOGGER.debug("  → trajectory passes through zone {}", zone);
                 return true;
             }
