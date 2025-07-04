@@ -3,12 +3,12 @@
   "block.create_radar.auto_yaw_controller": "Auto Yaw Controller",
   "block.create_radar.creative_radar_plate": "Creative Radar Plate",
   "block.create_radar.data_link": "Data Link",
+  "block.create_radar.fire_controller": "Fire Controller",
   "block.create_radar.id_block": "Id Block",
   "block.create_radar.monitor": "Monitor",
   "block.create_radar.plane_radar": "Plane Radar",
   "block.create_radar.radar_bearing": "Radar Bearing",
   "block.create_radar.radar_dish_block": "Radar Dish",
-  "block.create_radar.radar_guidance_block": "Radar Command Guidance",
   "block.create_radar.radar_plate_block": "Radar Plate",
   "block.create_radar.radar_receiver_block": "Radar Receiver Block",
   "block.create_radar.track_controller": "Track Controller",
@@ -61,6 +61,7 @@
   "create_radar.radar.no_receiver": "No Receiver Found",
   "create_radar.radar.range": "Range: %s",
   "create_radar.radar_button.animal": "Animal",
+  "create_radar.radar_button.artillery_mode": "Artillery Mode",
   "create_radar.radar_button.auto_fire": "Auto Fire",
   "create_radar.radar_button.auto_target": "Auto Target",
   "create_radar.radar_button.contraption": "Contraption",
@@ -73,9 +74,5 @@
   "create_radar.radar_button.vs2": "VS2",
   "item.create_radar.guided_fuze": "Guided Fuze",
   "item.create_radar.radar_safe_zone_designator": "Radar Safe Zone Designator",
-  "itemGroup.create_radar.radar": "Create: Radars",
-  "display_link.success": "Link Success",
-  "display_link.too_far": "Link Too Far!",
-  "display_link.set": "Link Set!",
-  "display_link.clear": "Link Cleared!"
+  "itemGroup.create_radar.radar": "Create: Radars"
 }

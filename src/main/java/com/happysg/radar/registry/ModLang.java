@@ -64,6 +64,7 @@ public class ModLang {
         REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.animal", "Animal");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.auto_target", "Auto Target");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.auto_fire", "Auto Fire");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.artillery_mode", "Artillery Mode");
 
         REGISTRATE.addRawLang(CreateRadar.MODID + ".radar.dish_count", "Dish Count: %s");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".radar.range", "Range: %s");

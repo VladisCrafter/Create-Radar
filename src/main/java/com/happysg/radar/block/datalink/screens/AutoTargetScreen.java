@@ -17,7 +17,9 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
     boolean projectile;
     boolean autoTarget;
     boolean autoFire;
+    boolean artilleryMode;
     boolean lineofSight;
+    ;
 
     protected IconButton playerButton;
     protected Indicator playerIndicator;
@@ -34,6 +36,7 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
     protected IconButton autoFireButton;
     protected IconButton lineofSightButton;
     protected Indicator lineofSightIndicator;
+    protected IconButton artilleryModeButton;
 
 
     public AutoTargetScreen(DataLinkBlockEntity be) {
@@ -50,6 +53,8 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
         projectile = targetingConfig.projectile();
         autoTarget = targetingConfig.autoTarget();
         lineofSight= targetingConfig.lineofSight();
+        autoFire = targetingConfig.autoFire();
+        artilleryMode = targetingConfig.artilleryMode();
     }
 
 
@@ -146,12 +151,20 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
 
  */
 
+        artilleryModeButton = new IconButton(guiLeft + 126, guiTop + 69, artilleryMode ? ModGuiTextures.ARTILLERY_MODE : ModGuiTextures.SHALLOW_MODE);
+        artilleryModeButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.artillery_mode"));
+        artilleryModeButton.withCallback((x, y) -> {
+            artilleryMode = !artilleryMode;
+            artilleryModeButton.setIcon(artilleryMode ? ModGuiTextures.ARTILLERY_MODE : ModGuiTextures.SHALLOW_MODE);
+        });
+        addRenderableWidget(artilleryModeButton);
+
     }
 
     @Override
     public void onClose(CompoundTag tag) {
         super.onClose(tag);
-        TargetingConfig targetingConfig = new TargetingConfig(player, contraption, mob, animal, projectile, autoTarget, autoFire, lineofSight);
+        TargetingConfig targetingConfig = new TargetingConfig(player, contraption, mob, animal, projectile, autoTarget, autoFire, lineofSight, artilleryMode);
         tag.put("targeting", targetingConfig.toTag());
     }
 }

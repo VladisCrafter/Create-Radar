@@ -12,7 +12,19 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 
 public enum ModGuiTextures implements ScreenElement {
 
-
+    RADAR_FILTER("filter", 219, 113),
+    CANNON_TARGETING("targeting", 256, 120),
+    X("targeting", 23, 123, 18, 18),
+    CHECKMARK("targeting", 3, 123, 18, 18),
+    AUTO_FIRE("targeting", 44, 124, 18, 18),
+    MANUAL_FIRE("targeting", 64, 124, 18, 18),
+    ID_SCREEN("id_block", 225, 95),
+    PLAYER_INPUT("radar_iff_list", 0, 136, 225, 120),
+    VS2_INPUT("radar_iff_list", 0, 0, 225, 120),
+    FRIENDLY("radar_iff_list", 238, 18, 18, 18),
+    HOSTILE("radar_iff_list", 238, 0, 18, 18),
+    SHALLOW_MODE("targeting", 104, 124, 18, 18),
+    ARTILLERY_MODE("targeting", 84, 124, 18, 18),
     TARGETING_FILTER("targeting_filter",224,107),
     PLAYER_BUTTON("targeting_filter",23,44,16,16),
     VS2_BUTTON("targeting_filter", 43,44,16,16),
@@ -25,7 +37,7 @@ public enum ModGuiTextures implements ScreenElement {
     DETECTION_FILTER("detection_filter",256,96),
     CONTRAPTION_BUTTON("detection_filter",89,39,16,16),
     MISSILE_BUTTON("detection_filter", 173,39,16,16),
-    ITEM_BUTTON("detection_filter",201,39,16,16)
+    ITEM_BUTTON("detection_filter",201,39,16,16),
     ;
 
     public static final int FONT_COLOR = 0x575F7A;

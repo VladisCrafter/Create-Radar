@@ -115,7 +115,7 @@ public class FiringControlBlockEntity {
         // — propagate to pitch controller so it can start adjusting elevation —
         if (this.pitchController != null) {
             LOGGER.debug("  → forwarding target to pitchController");
-            this.pitchController.setTarget(target);
+         //   this.pitchController.setTarget(target);
         }
 
         // — also propagate to the yaw controller so it can rotate horizontally —
@@ -128,7 +128,7 @@ public class FiringControlBlockEntity {
 
         if (level.getBlockEntity(yawPos) instanceof AutoYawControllerBlockEntity yawCtrl) {
             LOGGER.debug("  → forwarding target to yawController at {}", yawPos);
-            yawCtrl.setTarget(target);
+         //   yawCtrl.setTarget(target);
         }
     }
 

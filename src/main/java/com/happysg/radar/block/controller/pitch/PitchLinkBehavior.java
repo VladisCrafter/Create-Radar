@@ -34,8 +34,8 @@ public class PitchLinkBehavior extends DataPeripheral {
 
         Vec3 targetPos = monitor.getTargetPos(targetingConfig);
         //todo better way to handle instead of passing null to stop firing
-        controller.setSafeZones(monitor.safeZones);
-        controller.setTarget(targetPos);
-        controller.setFiringTarget(targetPos, targetingConfig);
+     //   controller.setSafeZones(monitor.safeZones);
+       // controller.setTarget(targetPos);
+       // controller.setFiringTarget(targetPos, targetingConfig);
     }
 }
