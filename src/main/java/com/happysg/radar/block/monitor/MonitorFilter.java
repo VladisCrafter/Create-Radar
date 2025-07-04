@@ -8,14 +8,14 @@ import net.minecraft.nbt.CompoundTag;
 
 import java.util.List;
 
-public record MonitorFilter(boolean player, boolean vs2, boolean contraption, boolean mob, boolean projectile,
+public record MonitorFilter(boolean player, boolean vs2, boolean contraption, boolean mob, boolean animal, boolean projectile,boolean item,
                             List<String> blacklistPlayers, List<String> whitelistPlayers, List<String> blacklistVS2,
                             List<String> whitelistVS) {
 
-    public static final MonitorFilter DEFAULT = new MonitorFilter(true, true, true, true, true);
+    public static final MonitorFilter DEFAULT = new MonitorFilter(true, true, true, true, true, true,true);
 
-    public MonitorFilter(boolean player, boolean vs2, boolean contraption, boolean mob, boolean projectile) {
-        this(player, vs2, contraption, mob, projectile, List.of(), List.of(), List.of(), List.of());
+    public MonitorFilter(boolean player, boolean vs2, boolean contraption, boolean mob, boolean animal, boolean projectile, boolean item) {
+        this(player, vs2, contraption, mob, animal, projectile, item, List.of(), List.of(), List.of(), List.of());
     }
 
     public CompoundTag toTag() {
@@ -41,12 +41,14 @@ public record MonitorFilter(boolean player, boolean vs2, boolean contraption, bo
         boolean vs2 = tag.getBoolean("vs2");
         boolean contraption = tag.getBoolean("contraption");
         boolean mob = tag.getBoolean("mob");
+        boolean animal =tag.getBoolean("animal");
         boolean projectile = tag.getBoolean("projectile");
+        boolean item =tag.getBoolean("item");
         List<String> blacklistPlayers = tag.getCompound("playerList").getAllKeys().stream().filter(key -> !tag.getCompound("playerList").getBoolean(key)).toList();
         List<String> whitelistPlayers = tag.getCompound("playerList").getAllKeys().stream().filter(key -> tag.getCompound("playerList").getBoolean(key)).toList();
         List<String> blacklistVS2 = tag.getCompound("vs2Ships").getAllKeys().stream().filter(key -> !tag.getCompound("vs2Ships").getBoolean(key)).toList();
         List<String> whitelistVS = tag.getCompound("vs2Ships").getAllKeys().stream().filter(key -> tag.getCompound("vs2Ships").getBoolean(key)).toList();
-        return new MonitorFilter(player, vs2, contraption, mob, projectile, blacklistPlayers, whitelistPlayers, blacklistVS2, whitelistVS);
+        return new MonitorFilter(player, vs2, contraption, mob, animal, projectile, item, blacklistPlayers, whitelistPlayers, blacklistVS2, whitelistVS);
     }
 
     public boolean test(RadarTrack track) {

@@ -12,24 +12,20 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 
 public enum ModGuiTextures implements ScreenElement {
 
-    RADAR_FILTER("filter", 219, 113),
-    CANNON_TARGETING("targeting", 256, 120),
-    PLAYER_BUTTON("filter", 43, 33, 18, 18),
-    VS2_BUTTON("filter", 71, 33, 18, 18),
-    CONTRAPTION_BUTTON("filter", 99, 33, 18, 18),
-    MOB_BUTTON("filter", 127, 33, 18, 18),
-    PROJECTILE_BUTTON("filter", 155, 33, 18, 18),
-    ANIMAL_BUTTON("targeting", 127, 27, 18, 18),
-    X("targeting", 23, 123, 18, 18),
-    CHECKMARK("targeting", 3, 123, 18, 18),
-    AUTO_TARGET("targeting", 203, 48, 18, 18),
-    AUTO_FIRE("targeting", 44, 124, 18, 18),
-    MANUAL_FIRE("targeting", 64, 124, 18, 18),
-    ID_SCREEN("id_block", 225, 95),
-    PLAYER_INPUT("radar_iff_list", 0, 136, 225, 120),
-    VS2_INPUT("radar_iff_list", 0, 0, 225, 120),
-    FRIENDLY("radar_iff_list", 238, 18, 18, 18),
-    HOSTILE("radar_iff_list", 238, 0, 18, 18),
+
+    TARGETING_FILTER("targeting_filter",224,107),
+    PLAYER_BUTTON("targeting_filter",23,44,16,16),
+    VS2_BUTTON("targeting_filter", 43,44,16,16),
+    MOB_BUTTON("targeting_filter",63,44,16,16),
+    ANIMAL_BUTTON("targeting_filter",83,44,16,16),
+    PROJECTILE_BUTTON("targeting_filter",103,44,16,16),
+    LOS_BUTTON("targeting_filter",123,44,16,16),
+    AUTO_TARGET("targeting_filter",171,43,16,16),
+    CHECK("targeting_filter",192,84,16,16),
+    DETECTION_FILTER("detection_filter",256,96),
+    CONTRAPTION_BUTTON("detection_filter",89,39,16,16),
+    MISSILE_BUTTON("detection_filter", 173,39,16,16),
+    ITEM_BUTTON("detection_filter",201,39,16,16)
     ;
 
     public static final int FONT_COLOR = 0x575F7A;
