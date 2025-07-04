@@ -120,6 +120,7 @@ public class FiringControlBlockEntity {
 
         // — also propagate to the yaw controller so it can rotate horizontally —
         BlockPos yawPos = cannonMount.getBlockPos().below();
+        assert level != null;
         if (!(level.getBlockEntity(yawPos) instanceof AutoYawControllerBlockEntity)) {
             yawPos = cannonMount.getBlockPos().above();
             LOGGER.debug("  → yawPos = {}", yawPos);
