@@ -1,6 +1,7 @@
 package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
+import com.happysg.radar.block.controller.firing.FireControllerBlock;
 import com.happysg.radar.block.controller.id.IDBlock;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlock;
 import com.happysg.radar.block.controller.track.TrackControllerBlock;
@@ -18,6 +19,7 @@ import com.simibubi.create.foundation.data.BuilderTransformers;
 import com.simibubi.create.foundation.data.SharedProperties;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraftforge.client.model.generators.ConfiguredModel;
@@ -175,6 +177,23 @@ public class ModBlocks {
                     .properties(BlockBehaviour.Properties::noOcclusion)
                     .transform(axeOrPickaxe())
                     .blockstate((c, p) -> p.horizontalBlock(c.getEntry(), AssetLookup.standardModel(c, p)))
+                    .simpleItem()
+                    .register();
+    public static final BlockEntry<FireControllerBlock> FIRE_CONTROLLER_BLOCK =
+            REGISTRATE.block("fire_controller", FireControllerBlock::new)
+                    .initialProperties(SharedProperties::softMetal)
+                    .blockstate((context, provider) -> {
+                        provider.getVariantBuilder(context.get())
+                                .partialState().with(FireControllerBlock.POWERED, false)
+                                .modelForState()
+                                .modelFile(provider.models().cubeAll("off",new ResourceLocation("create_radar","block/fire_controller")))
+                                .addModel()
+                                .partialState().with(FireControllerBlock.POWERED, true)
+                                .modelForState()
+                                .modelFile(provider.models().cubeAll("on",new ResourceLocation("create_radar","block/fire_controller_on")))
+                                .addModel();
+                    })                    .properties(BlockBehaviour.Properties::noOcclusion)
+                    .transform(axeOrPickaxe())
                     .simpleItem()
                     .register();
 

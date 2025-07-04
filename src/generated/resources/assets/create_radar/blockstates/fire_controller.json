@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "powered=false": {
+      "model": "create_radar:block/off"
+    },
+    "powered=true": {
+      "model": "create_radar:block/on"
+    }
+  }
+}

@@ -25,7 +25,7 @@ public class YawLinkBehavior extends DataPeripheral {
         Vec3 targetPos = monitor.getTargetPos(targetingConfig);
         if (targetPos == null)
             return;
-        controller.setTarget(targetPos);
+        controller.setTarget(targetPos); //TODO
     }
 
     @OnlyIn(value = Dist.CLIENT)

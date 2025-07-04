@@ -30,7 +30,8 @@ public enum ModGuiTextures implements ScreenElement {
     VS2_INPUT("radar_iff_list", 0, 0, 225, 120),
     FRIENDLY("radar_iff_list", 238, 18, 18, 18),
     HOSTILE("radar_iff_list", 238, 0, 18, 18),
-    ;
+    SHALLOW_MODE("targeting", 104, 124, 18, 18),
+    ARTILLERY_MODE("targeting", 84, 124, 18, 18);
 
     public static final int FONT_COLOR = 0x575F7A;
 

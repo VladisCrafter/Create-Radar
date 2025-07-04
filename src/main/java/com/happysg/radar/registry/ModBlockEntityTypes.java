@@ -65,6 +65,10 @@ public class ModBlockEntityTypes {
             .blockEntity("track_controller", TrackControllerBlockEntity::new)
             .validBlocks(ModBlocks.TRACK_CONTROLLER_BLOCK)
             .register();
+    public static final BlockEntityEntry<TrackControllerBlockEntity> FIRE_CONTROLLER = REGISTRATE
+            .blockEntity("fire_controller", TrackControllerBlockEntity::new)
+            .validBlocks(ModBlocks.FIRE_CONTROLLER_BLOCK)
+            .register();
 
     public static void register() {
         CreateRadar.getLogger().info("Registering block entity types!");
