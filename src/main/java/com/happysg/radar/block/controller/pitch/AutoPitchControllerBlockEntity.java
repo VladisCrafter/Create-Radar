@@ -3,6 +3,7 @@ package com.happysg.radar.block.controller.pitch;
 import com.happysg.radar.block.datalink.screens.TargetingConfig;
 import com.happysg.radar.block.network.WeaponNetwork;
 import com.happysg.radar.block.network.WeaponNetworkSavedData;
+import com.happysg.radar.block.network.WeaponNetworkUnit;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.CannonTargeting;
 import com.mojang.logging.LogUtils;
@@ -26,7 +27,7 @@ import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContr
 import java.util.ArrayList;
 import java.util.List;
 
-public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
+public class AutoPitchControllerBlockEntity extends KineticBlockEntity implements WeaponNetworkUnit {
     private static final Logger LOGGER = LogUtils.getLogger();
     private WeaponNetwork weaponNetwork;
 
@@ -51,12 +52,12 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
                 if (weaponNetwork != null) { // Shouldn't happen normally
                     setWeaponNetwork(weaponNetwork);
                 } else if (cannonWeaponNetwork != null && cannonWeaponNetwork.getAutoPitchController() == null) {
-                    cannonWeaponNetwork.setAutoPitchController(this);
+                    cannonWeaponNetwork.setController(this);
                     setWeaponNetwork(cannonWeaponNetwork);
                 } else if (weaponNetworkSavedData.networkContains(cannon.getBlockPos()) == null) {
                     WeaponNetwork newNetwork = new WeaponNetwork(level);
                     newNetwork.setCannonMount(cannon);
-                    newNetwork.setAutoPitchController(this);
+                    newNetwork.setController(this);
                     setWeaponNetwork(newNetwork);
                 }
             }

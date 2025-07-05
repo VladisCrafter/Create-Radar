@@ -48,7 +48,7 @@ public class DataLinkBlockItem extends BlockItem {
     }
 
     @Override
-    public InteractionResult useOn(UseOnContext pContext) {
+    public InteractionResult useOn(UseOnContext pContext) {  
         ItemStack stack = pContext.getItemInHand();
         BlockPos pos = pContext.getClickedPos();
         Level level = pContext.getLevel();

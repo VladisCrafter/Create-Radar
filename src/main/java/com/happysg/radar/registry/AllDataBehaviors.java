@@ -1,9 +1,8 @@
 package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
-import com.happysg.radar.block.controller.pitch.PitchLinkBehavior;
 import com.happysg.radar.block.controller.track.TrackLinkBehavior;
-import com.happysg.radar.block.controller.yaw.YawLinkBehavior;
+import com.happysg.radar.block.datalink.CannonMountLinkBehavior;
 import com.happysg.radar.block.datalink.DataController;
 import com.happysg.radar.block.datalink.DataLinkBehavior;
 import com.happysg.radar.block.datalink.DataPeripheral;
@@ -20,6 +19,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import rbasamoyai.createbigcannons.index.CBCBlockEntities;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
@@ -40,10 +40,10 @@ public class AllDataBehaviors {
     public static void registerDefaults() {
         assignBlockEntity(register(CreateRadar.asResource("monitor"), new MonitorRadarBehavior()), ModBlockEntityTypes.MONITOR.get());
         assignBlockEntity(register(CreateRadar.asResource("radar"), new RadarScannerLinkBehavior()), ModBlockEntityTypes.RADAR_BEARING.get());
-        assignBlockEntity(register(CreateRadar.asResource("pitch"), new PitchLinkBehavior()), ModBlockEntityTypes.AUTO_PITCH_CONTROLLER.get());
-        assignBlockEntity(register(CreateRadar.asResource("yaw"), new YawLinkBehavior()), ModBlockEntityTypes.AUTO_YAW_CONTROLLER.get());
         assignBlockEntity(register(CreateRadar.asResource("track"), new TrackLinkBehavior()), ModBlockEntityTypes.TRACK_CONTROLLER.get());
         assignBlockEntity(register(CreateRadar.asResource("plane_radar"), new RadarScannerLinkBehavior()), ModBlockEntityTypes.PLANE_RADAR.get());
+        assignBlockEntity(register(CreateRadar.asResource("cbc_cannon_mount_link"), new CannonMountLinkBehavior()), CBCBlockEntities.CANNON_MOUNT.get());
+
     }
 
     public static DataLinkBehavior register(ResourceLocation id, DataLinkBehavior behaviour) {

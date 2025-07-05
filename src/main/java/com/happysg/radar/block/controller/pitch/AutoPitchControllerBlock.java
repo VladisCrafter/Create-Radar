@@ -40,8 +40,6 @@ public class AutoPitchControllerBlock extends HorizontalKineticBlock implements 
         }
     }
 
-
-
     @Override
     public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
         if (!pIsMoving) {

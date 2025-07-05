@@ -4,6 +4,7 @@ import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.datalink.screens.TargetingConfig;
 import com.happysg.radar.block.network.WeaponNetwork;
 import com.happysg.radar.block.network.WeaponNetworkSavedData;
+import com.happysg.radar.block.network.WeaponNetworkUnit;
 import com.happysg.radar.compat.cbc.CannonUtil;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
@@ -28,7 +29,7 @@ import java.util.Optional;
 
 import static com.happysg.radar.compat.cbc.CannonTargeting.calculateProjectileYatX;
 
-public class FireControllerBlockEntity extends SmartBlockEntity {
+public class FireControllerBlockEntity extends SmartBlockEntity implements WeaponNetworkUnit {
     private static final Logger LOGGER = LogUtils.getLogger();
 
 

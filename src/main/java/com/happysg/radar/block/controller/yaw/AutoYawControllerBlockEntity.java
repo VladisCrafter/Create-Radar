@@ -2,6 +2,7 @@ package com.happysg.radar.block.controller.yaw;
 
 import com.happysg.radar.block.network.WeaponNetwork;
 import com.happysg.radar.block.network.WeaponNetworkSavedData;
+import com.happysg.radar.block.network.WeaponNetworkUnit;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.simibubi.create.content.kinetics.base.GeneratingKineticBlockEntity;
@@ -18,7 +19,7 @@ import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockE
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
 
 
-public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity {
+public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity implements WeaponNetworkUnit {
     private static final double TOLERANCE = 0.1;
     private double targetAngle;
     private boolean isRunning;

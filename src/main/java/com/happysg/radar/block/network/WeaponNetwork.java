@@ -13,6 +13,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
@@ -100,6 +101,20 @@ public class WeaponNetwork {
         this.fireController = fireController;
         markDirty();
     }
+
+    public void setController(BlockEntity controller) {
+        if (controller instanceof AutoPitchControllerBlockEntity pitchController && this.autoPitchController == null) {
+            setAutoPitchController(pitchController);
+        } else if (controller instanceof AutoYawControllerBlockEntity yawController && this.autoYawController == null) {
+            setAutoYawController(yawController);
+        } else if (controller instanceof FireControllerBlockEntity fireCtrl && this.fireController == null) {
+            setFireController(fireCtrl);
+        } else if (controller instanceof CannonMountBlockEntity cannon && this.cannonMount == null) {
+            setCannonMount(cannon);
+        }
+        LOGGER.warn("Attempted to set unknown controller type: {}", controller.getClass().getName());
+    }
+
 
     public boolean contains(BlockPos pos) {
         if(level == null || level.isClientSide()) return false;
