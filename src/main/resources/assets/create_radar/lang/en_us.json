@@ -66,6 +66,8 @@
   "create_radar.radar_button.auto_target": "Auto Target",
   "create_radar.radar_button.contraption": "Contraption",
   "create_radar.radar_button.hostile": "Hostile",
+  "create_radar.radar_button.lineofsight": "Line of Sight",
+  "create_radar.radar_button.item": "Item",
   "create_radar.radar_button.mob": "Mob",
   "create_radar.radar_button.player": "Player",
   "create_radar.radar_button.projectile": "Projectile",
