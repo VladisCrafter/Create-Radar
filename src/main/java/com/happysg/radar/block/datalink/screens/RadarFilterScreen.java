@@ -2,10 +2,12 @@ package com.happysg.radar.block.datalink.screens;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.datalink.DataLinkBlockEntity;
+import com.happysg.radar.block.datalink.screens.idfilterscreens.IdentificationFilterScreen;
 import com.happysg.radar.block.monitor.MonitorFilter;
 import com.happysg.radar.registry.ModGuiTextures;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.Indicator;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -40,9 +42,10 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
     List<String> playerBlacklist;
     List<String> playerWhitelist;
     List<String> vs2Whitelist;
-
+    private final DataLinkBlockEntity be;
     public RadarFilterScreen(DataLinkBlockEntity be) {
         super(be);
+        this.be = be;
         this.background = ModGuiTextures.DETECTION_FILTER;
         MonitorFilter monitorFilter = MonitorFilter.DEFAULT;
         if (be.getSourceConfig().contains("filter")) {
@@ -61,12 +64,14 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
 
     @Override
     protected void init() {
+
         super.init();
         playerButton = new IconButton(guiLeft + 32, guiTop + 38, ModGuiTextures.PLAYER_BUTTON);
         playerButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.player"));
         playerIndicator = new Indicator(guiLeft + 32, guiTop + 31, Component.empty());
         playerIndicator.state = player ? Indicator.State.GREEN : Indicator.State.RED;
         playerButton.withCallback((x, y) -> {
+            Minecraft.getInstance().setScreen(new IdentificationFilterScreen(be));
             player = !player;
             playerIndicator.state = player ? Indicator.State.GREEN : Indicator.State.RED;
         });
