@@ -54,7 +54,7 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
         autoTarget = targetingConfig.autoTarget();
         lineofSight= targetingConfig.lineofSight();
         autoFire = targetingConfig.autoFire();
-        artilleryMode = targetingConfig.artilleryMode();
+       //artilleryMode = targetingConfig.artilleryMode();
     }
 
 
@@ -149,7 +149,7 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
         addRenderableWidget(autoFireButton);
 
 
- */
+
 
         artilleryModeButton = new IconButton(guiLeft + 126, guiTop + 69, artilleryMode ? ModGuiTextures.ARTILLERY_MODE : ModGuiTextures.SHALLOW_MODE);
         artilleryModeButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.artillery_mode"));
@@ -159,12 +159,14 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
         });
         addRenderableWidget(artilleryModeButton);
 
+
+ */
     }
 
     @Override
     public void onClose(CompoundTag tag) {
         super.onClose(tag);
-        TargetingConfig targetingConfig = new TargetingConfig(player, contraption, mob, animal, projectile, autoTarget, autoFire, lineofSight, artilleryMode);
+        TargetingConfig targetingConfig = new TargetingConfig(player, contraption, mob, animal, projectile, autoTarget, autoFire, lineofSight);
         tag.put("targeting", targetingConfig.toTag());
     }
 }
