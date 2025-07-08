@@ -2,7 +2,7 @@ package com.happysg.radar.block.datalink.screens;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.datalink.DataLinkBlockEntity;
-import com.happysg.radar.block.datalink.screens.idfilterscreens.IdentificationFilterScreen;
+import com.happysg.radar.item.radarilteritem.idfilterscreens.IdentificationFilterScreen;
 import com.happysg.radar.block.monitor.MonitorFilter;
 import com.happysg.radar.registry.ModGuiTextures;
 import com.simibubi.create.foundation.gui.widget.IconButton;
@@ -71,7 +71,7 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
         playerIndicator = new Indicator(guiLeft + 32, guiTop + 31, Component.empty());
         playerIndicator.state = player ? Indicator.State.GREEN : Indicator.State.RED;
         playerButton.withCallback((x, y) -> {
-            Minecraft.getInstance().setScreen(new IdentificationFilterScreen(be));
+            Minecraft.getInstance().setScreen(new IdentificationFilterScreen());
             player = !player;
             playerIndicator.state = player ? Indicator.State.GREEN : Indicator.State.RED;
         });
