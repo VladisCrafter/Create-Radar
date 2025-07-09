@@ -1,20 +1,27 @@
-package com.happysg.radar.block.datalink.screens;
+package com.happysg.radar.item.detectionfilter.screens;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.datalink.DataLinkBlockEntity;
-import com.happysg.radar.item.radarilteritem.idfilterscreens.IdentificationFilterScreen;
+import com.happysg.radar.block.datalink.screens.AbstractDataLinkScreen;
+import com.happysg.radar.item.identfilter.screens.IdentificationFilterScreen;
 import com.happysg.radar.block.monitor.MonitorFilter;
 import com.happysg.radar.registry.ModGuiTextures;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.Indicator;
+import dev.engine_room.flywheel.lib.transform.TransformStack;
+import net.createmod.catnip.gui.AbstractSimiScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 
 import java.util.List;
 
-public class RadarFilterScreen extends AbstractDataLinkScreen {
+public class RadarFilterScreen extends AbstractSimiScreen {
 
     boolean player;
     boolean vs2;
@@ -38,19 +45,16 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
     protected Indicator animalIndicator;
     protected IconButton itemButton;
     protected Indicator itemIndicator;
-
+    protected ModGuiTextures background;
+    protected IconButton confirmButton;
     List<String> playerBlacklist;
     List<String> playerWhitelist;
     List<String> vs2Whitelist;
-    private final DataLinkBlockEntity be;
-    public RadarFilterScreen(DataLinkBlockEntity be) {
-        super(be);
-        this.be = be;
+;
+    public RadarFilterScreen() {
+
         this.background = ModGuiTextures.DETECTION_FILTER;
         MonitorFilter monitorFilter = MonitorFilter.DEFAULT;
-        if (be.getSourceConfig().contains("filter")) {
-            monitorFilter = MonitorFilter.fromTag(be.getSourceConfig().getCompound("filter"));
-        }
         player = monitorFilter.player();
         vs2 = monitorFilter.vs2();
         contraption = monitorFilter.contraption();
@@ -60,12 +64,38 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
         playerWhitelist = monitorFilter.whitelistPlayers();
         vs2Whitelist = monitorFilter.whitelistVS();
     }
+    protected void renderWindow(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        int x = guiLeft;
+        int y = guiTop;
 
+        background.render(graphics, x, y);
+        MutableComponent header = Component.translatable(CreateRadar.MODID + ".detection_filter.title");
+        graphics.drawString(font, header, x + background.width / 2 - font.width(header) / 2, y + 4, 0, false);
+
+        PoseStack ms = graphics.pose();
+        ms.pushPose();
+        ms.translate(0, guiTop + 46, 0);
+        ms.translate(0, 21, 0);
+        ms.popPose();
+
+        ms.pushPose();
+        TransformStack.of(ms)
+                .pushPose()
+                .translate(x + background.width + 4, y + background.height + 4, 100)
+                .scale(40)
+                .rotateX(-22)
+                .rotateY(63);
+        ms.popPose();
+
+    }
 
     @Override
     protected void init() {
-
+        setWindowSize(background.width, background.height);
         super.init();
+        clearWidgets();
+        int Y = guiLeft;
+        int X = guiTop;
         playerButton = new IconButton(guiLeft + 32, guiTop + 38, ModGuiTextures.PLAYER_BUTTON);
         playerButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.player"));
         playerIndicator = new Indicator(guiLeft + 32, guiTop + 31, Component.empty());
@@ -143,17 +173,20 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
         });
         addRenderableWidget(itemButton);
         addRenderableWidget(itemIndicator);
+
+        confirmButton = new IconButton(guiLeft+223,guiTop+72, AllIcons.I_CONFIRM);
+        confirmButton.withCallback(this::onClose);
+        addRenderableWidget(confirmButton);
     }
 
-    @Override
-    protected void renderWindow(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
-        super.renderWindow(graphics, mouseX, mouseY, partialTicks);
-    }
 
+/*
     @Override
     public void onClose(CompoundTag tag) {
         super.onClose(tag);
         MonitorFilter monitorFilter = new MonitorFilter(player, vs2, contraption, mob, animal, projectile, item, playerBlacklist, playerWhitelist, List.of(), vs2Whitelist);
         tag.put("filter", monitorFilter.toTag());
     }
+
+ */
 }

@@ -16,6 +16,12 @@
   "create_radar.data_link.no_source": "Not a Data Source",
   "create_radar.data_link.no_target": "Not a Monitor",
   "create_radar.data_link.title": "Data Link",
+  "create_radar.target_filter.title": "Targeting Filter",
+  "create_radar.detection_filter.title": "Detection Filter",
+  "create_radar.identification_filter.title": "Identification Filter",
+  "create_radar.ship_list.title": "Ship Filtering",
+  "create_radar.player_list.title": "Player Filtering",
+
   "create_radar.display_source.pitch_controller": "Auto Pitch Controller",
   "create_radar.display_source.radar": "Radar",
   "create_radar.display_source.yaw_controller": "Auto Yaw Controller",
@@ -27,6 +33,12 @@
   "create_radar.filter.projectiles_only": "Projectiles Only",
   "create_radar.filter.show": "Show",
   "create_radar.filter.vs2_only": "VS2 Only",
+  "create_radar.filter_isfriend": "Subject is: Friendly",
+  "create_radar.filter_isfoe": "Subject is: Enemy",
+  "create_radar.filter_add": "Add to Filter",
+  "create_radar.filter_remove": "Remove From Filter",
+
+
   "create_radar.guided_fuze.linked_monitor": "Linked Monitor: %s",
   "create_radar.guided_fuze.no_monitor": "No Monitor Linked",
   "create_radar.id_block.not_on_ship": "Not on a ship",
@@ -72,6 +84,10 @@
   "create_radar.radar_button.player": "Player",
   "create_radar.radar_button.projectile": "Projectile",
   "create_radar.radar_button.vs2": "VS2",
+  "create_radar.radar_button.ship": "VS2",
+  "item.create_radar.radar_filter_item": "Detection Filter",
+  "item.create_radar.target_filter_item": "Targeting Filter",
+  "item.create_radar.ident_filter_item": "Identification Filter",
   "item.create_radar.guided_fuze": "Guided Fuze",
   "item.create_radar.radar_safe_zone_designator": "Radar Safe Zone Designator",
   "itemGroup.create_radar.radar": "Create: Radars"

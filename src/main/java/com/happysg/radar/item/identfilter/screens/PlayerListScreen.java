@@ -1,4 +1,4 @@
-package com.happysg.radar.item.radarilteritem.idfilterscreens;
+package com.happysg.radar.item.identfilter.screens;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.registry.ModGuiTextures;
@@ -8,7 +8,6 @@ import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import dev.engine_room.flywheel.lib.transform.TransformStack;
 import net.createmod.catnip.gui.AbstractSimiScreen;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
@@ -79,12 +78,11 @@ public class PlayerListScreen extends AbstractSimiScreen {
         addRenderableWidget(playeradd);
 
 
-
     playerentry = new EditBox(font,guiLeft+22,guiTop+130,135,11,
                 Component.translatable(CreateRadar.MODID + ".filter_insert_player_user"));
     playerentry.setMaxLength(16);
-    playerentry.setFGColor(12895428);
-    playerentry.setTextColor(16777215);
+    playerentry.setFGColor(248248236);
+   // playerentry.setTextColor(16777215);
     playerentry.setAlpha(0xf0);
     playerentry.setBordered(false);
         addRenderableWidget(playerentry);

@@ -1,6 +1,7 @@
-package com.happysg.radar.item.radarilteritem;
+package com.happysg.radar.item.detectionfilter;
 
-import com.happysg.radar.item.radarilteritem.idfilterscreens.IdentificationFilterScreen;
+import com.happysg.radar.item.detectionfilter.screens.RadarFilterScreen;
+import com.happysg.radar.item.targetfilter.screens.AutoTargetScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -9,8 +10,9 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
-public class RadarFilterItem extends Item {
-    public RadarFilterItem (Properties properties) {
+public class DetectionFilterItem extends Item {
+
+    public DetectionFilterItem(Properties properties) {
         super(properties);
     }
 
@@ -19,10 +21,7 @@ public class RadarFilterItem extends Item {
         if (!level.isClientSide)
             return InteractionResultHolder.pass(player.getItemInHand(hand));
 
-        Minecraft.getInstance().setScreen(new IdentificationFilterScreen());
+        Minecraft.getInstance().setScreen(new RadarFilterScreen());
         return InteractionResultHolder.success(player.getItemInHand(hand));
     }
 }
-
-
-
