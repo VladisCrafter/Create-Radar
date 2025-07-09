@@ -1,8 +1,6 @@
-package com.happysg.radar.item.targetfilter.screens;
+package com.happysg.radar.item.targetfilter;
 
 import com.happysg.radar.CreateRadar;
-import com.happysg.radar.block.datalink.DataLinkBlockEntity;
-import com.happysg.radar.block.datalink.screens.AbstractDataLinkScreen;
 import com.happysg.radar.block.datalink.screens.TargetingConfig;
 import com.happysg.radar.registry.ModGuiTextures;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -12,7 +10,6 @@ import com.simibubi.create.foundation.gui.widget.Indicator;
 import dev.engine_room.flywheel.lib.transform.TransformStack;
 import net.createmod.catnip.gui.AbstractSimiScreen;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 

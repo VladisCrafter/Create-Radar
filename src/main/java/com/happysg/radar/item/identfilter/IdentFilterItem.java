@@ -1,6 +1,5 @@
 package com.happysg.radar.item.identfilter;
 
-import com.happysg.radar.item.identfilter.screens.IdentificationFilterScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;

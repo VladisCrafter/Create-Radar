@@ -1,7 +1,5 @@
 package com.happysg.radar.item.targetfilter;
 
-import com.happysg.radar.item.identfilter.screens.IdentificationFilterScreen;
-import com.happysg.radar.item.targetfilter.screens.AutoTargetScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;

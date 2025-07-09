@@ -5,7 +5,6 @@ import com.happysg.radar.block.datalink.DataLinkBlockEntity;
 import com.happysg.radar.block.datalink.DataLinkContext;
 import com.happysg.radar.block.datalink.DataPeripheral;
 import com.happysg.radar.block.datalink.screens.AbstractDataLinkScreen;
-import com.happysg.radar.item.detectionfilter.screens.RadarFilterScreen;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import com.happysg.radar.block.monitor.MonitorFilter;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;

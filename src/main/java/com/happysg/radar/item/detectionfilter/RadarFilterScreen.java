@@ -1,9 +1,7 @@
-package com.happysg.radar.item.detectionfilter.screens;
+package com.happysg.radar.item.detectionfilter;
 
 import com.happysg.radar.CreateRadar;
-import com.happysg.radar.block.datalink.DataLinkBlockEntity;
-import com.happysg.radar.block.datalink.screens.AbstractDataLinkScreen;
-import com.happysg.radar.item.identfilter.screens.IdentificationFilterScreen;
+import com.happysg.radar.item.identfilter.IdentificationFilterScreen;
 import com.happysg.radar.block.monitor.MonitorFilter;
 import com.happysg.radar.registry.ModGuiTextures;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -14,10 +12,8 @@ import dev.engine_room.flywheel.lib.transform.TransformStack;
 import net.createmod.catnip.gui.AbstractSimiScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 
 import java.util.List;
 

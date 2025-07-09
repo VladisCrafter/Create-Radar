@@ -1,41 +1,36 @@
-package com.happysg.radar.item.identfilter.screens;
-
+package com.happysg.radar.item.identfilter;
 import com.happysg.radar.CreateRadar;
-import com.happysg.radar.block.datalink.DataController;
-import com.happysg.radar.block.datalink.DataPeripheral;
+
 import com.happysg.radar.registry.ModGuiTextures;
+import com.happysg.radar.utils.screenelements.DynamicIconButton;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import dev.engine_room.flywheel.lib.transform.TransformStack;
 import net.createmod.catnip.gui.AbstractSimiScreen;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.state.BlockState;
 
-public class ShipListScreen extends AbstractSimiScreen {
-    public ShipListScreen() {
-        this.background = ModGuiTextures.PLAYER_LIST;
-    }
-    private static final ItemStack FALLBACK = new ItemStack(Items.BARRIER);
-
+public class IdentificationFilterScreen extends AbstractSimiScreen {
+    boolean whitelist_player;
+    boolean whitelist_ship;
+    protected DynamicIconButton playerlistbutton;
+    protected IconButton  playerFilter;
+    protected DynamicIconButton shipbutton;
+    protected IconButton shipFilter;
+    protected IconButton confirmButton;
     protected ModGuiTextures background;
-
-    private IconButton confirmButton;
-
-    BlockState sourceState;
-    BlockState targetState;
-    DataPeripheral source;
-    DataController target;
+    public IdentificationFilterScreen() {
+        this.background = ModGuiTextures.IDENT_FILTER;
+    }
     protected void renderWindow(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         int x = guiLeft;
         int y = guiTop;
 
         background.render(graphics, x, y);
-        MutableComponent header = Component.translatable(CreateRadar.MODID + ".ship_list.title");
+        MutableComponent header = Component.translatable(CreateRadar.MODID + ".identification_filter.title");
         graphics.drawString(font, header, x + background.width / 2 - font.width(header) / 2, y + 4, 0, false);
 
         PoseStack ms = graphics.pose();
@@ -54,6 +49,7 @@ public class ShipListScreen extends AbstractSimiScreen {
         ms.popPose();
 
     }
+    @Override
     protected void init() {
         setWindowSize(background.width, background.height);
         super.init();
@@ -61,13 +57,27 @@ public class ShipListScreen extends AbstractSimiScreen {
 
         int x = guiLeft;
         int y = guiTop;
+        playerFilter = new IconButton(guiLeft + 41, guiTop + 25, ModGuiTextures.FILTER_BUTTON);
+        playerFilter.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.player"));
+        playerFilter.withCallback(() -> {
+            Minecraft.getInstance().setScreen(new PlayerListScreen());
+        });
+        addRenderableWidget(playerFilter);
 
+
+        shipFilter = new IconButton(guiLeft + 108, guiTop + 25, ModGuiTextures.FILTER_BUTTON);
+        shipFilter.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.ship"));
+        shipFilter.withCallback(() -> {
+            Minecraft.getInstance().setScreen(new ShipListScreen());
+        });
+        addRenderableWidget(shipFilter);
         confirmButton = new IconButton(x + background.width - 33, y + background.height - 24, AllIcons.I_CONFIRM);
         confirmButton.withCallback(this::onClose);
         addRenderableWidget(confirmButton);
-
-
     }
 
-}
 
+        //TODO add state save
+
+
+}
