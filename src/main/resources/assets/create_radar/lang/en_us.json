@@ -85,6 +85,8 @@
   "create_radar.radar_button.projectile": "Projectile",
   "create_radar.radar_button.vs2": "VS2",
   "create_radar.radar_button.ship": "VS2",
+  "create_radar.faction.friendly": "Friendly",
+  "create_radar.faction.enemy": "Enemy",
   "item.create_radar.radar_filter_item": "Detection Filter",
   "item.create_radar.target_filter_item": "Targeting Filter",
   "item.create_radar.ident_filter_item": "Identification Filter",

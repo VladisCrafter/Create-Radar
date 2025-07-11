@@ -2,35 +2,38 @@ package com.happysg.radar.item.identfilter;
 import com.happysg.radar.CreateRadar;
 
 import com.happysg.radar.registry.ModGuiTextures;
-import com.happysg.radar.utils.screenelements.DynamicIconButton;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import dev.engine_room.flywheel.lib.transform.TransformStack;
+import io.netty.buffer.Unpooled;
 import net.createmod.catnip.gui.AbstractSimiScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import org.checkerframework.checker.signature.qual.Identifier;
+import org.jetbrains.annotations.NotNull;
+
+import static com.happysg.radar.CreateRadar.MODID;
 
 public class IdentificationFilterScreen extends AbstractSimiScreen {
-    boolean whitelist_player;
-    boolean whitelist_ship;
-    protected DynamicIconButton playerlistbutton;
+
     protected IconButton  playerFilter;
-    protected DynamicIconButton shipbutton;
+
     protected IconButton shipFilter;
     protected IconButton confirmButton;
     protected ModGuiTextures background;
     public IdentificationFilterScreen() {
         this.background = ModGuiTextures.IDENT_FILTER;
     }
-    protected void renderWindow(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+    protected void renderWindow(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         int x = guiLeft;
         int y = guiTop;
 
         background.render(graphics, x, y);
-        MutableComponent header = Component.translatable(CreateRadar.MODID + ".identification_filter.title");
+        MutableComponent header = Component.translatable(MODID + ".identification_filter.title");
         graphics.drawString(font, header, x + background.width / 2 - font.width(header) / 2, y + 4, 0, false);
 
         PoseStack ms = graphics.pose();
@@ -58,18 +61,14 @@ public class IdentificationFilterScreen extends AbstractSimiScreen {
         int x = guiLeft;
         int y = guiTop;
         playerFilter = new IconButton(guiLeft + 41, guiTop + 25, ModGuiTextures.FILTER_BUTTON);
-        playerFilter.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.player"));
-        playerFilter.withCallback(() -> {
-            Minecraft.getInstance().setScreen(new PlayerListScreen());
-        });
+        playerFilter.setToolTip(Component.translatable(MODID + ".radar_button.player"));
+        playerFilter.withCallback(() -> Minecraft.getInstance().setScreen(new PlayerListScreen()));
         addRenderableWidget(playerFilter);
 
 
         shipFilter = new IconButton(guiLeft + 108, guiTop + 25, ModGuiTextures.FILTER_BUTTON);
-        shipFilter.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.ship"));
-        shipFilter.withCallback(() -> {
-            Minecraft.getInstance().setScreen(new ShipListScreen());
-        });
+        shipFilter.setToolTip(Component.translatable(MODID + ".radar_button.ship"));
+        shipFilter.withCallback(() -> Minecraft.getInstance().setScreen(new ShipListScreen()));
         addRenderableWidget(shipFilter);
         confirmButton = new IconButton(x + background.width - 33, y + background.height - 24, AllIcons.I_CONFIRM);
         confirmButton.withCallback(this::onClose);

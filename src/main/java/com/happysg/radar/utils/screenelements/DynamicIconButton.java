@@ -30,6 +30,17 @@ public class DynamicIconButton extends IconButton {
 
         withCallback((mx, my) -> toggle());
     }
+    public DynamicIconButton(int x, int y,ModGuiTextures icon, Component tooltip, int width, int height){
+        super(x,y,icon);
+        this.tooltipOn = tooltip;
+        this.tooltipOff = tooltip;
+        this.iconOn =icon;
+        this.iconOff= icon;
+        this.setWidth(width);
+        this.setHeight(height);
+        setToolTip(tooltip);
+
+    }
 
     public void toggle() {
         isOn = !isOn;

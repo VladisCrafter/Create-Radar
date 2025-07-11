@@ -44,8 +44,9 @@ public enum ModGuiTextures implements ScreenElement {
     SCROLL("identification_filter_0",0,147,5,20),
     ID_SMILE("identification_filter_0",156,129,11,11),
     ID_FROWN("identification_filter_0",5,147,11,11),
-    ID_X("identification_filter_0",167,129,11,11),
-    ID_ADD("identification_filter_0",188,127,16,16)
+    ID_X("identification_filter_0",168,129,11,11),
+    ID_ADD("identification_filter_0",188,127,16,16),
+    ID_CARD("identification_filter_0", 0,125,183,22)
     ;
 
     public static final int FONT_COLOR = 0x575F7A;
