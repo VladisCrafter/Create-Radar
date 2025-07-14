@@ -1,6 +1,7 @@
 package com.happysg.radar.item.identfilter;
 
-import com.happysg.radar.CreateRadar;
+import com.happysg.radar.networking.packets.ListNBTHandler;
+
 import com.happysg.radar.registry.ModGuiTextures;
 import com.happysg.radar.utils.screenelements.DynamicIconButton;
 
@@ -11,21 +12,16 @@ import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import dev.engine_room.flywheel.lib.transform.TransformStack;
 
-import io.netty.buffer.Unpooled;
 import net.createmod.catnip.gui.AbstractSimiScreen;
 
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import org.checkerframework.checker.signature.qual.Identifier;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
 
@@ -86,7 +82,13 @@ public class PlayerListScreen extends AbstractSimiScreen {
     protected void init() {
         setWindowSize(background.width, background.height);
         super.init();
-        clearWidgets();
+        loadListsFromHeldItem();
+        assert minecraft != null;
+        assert minecraft.player != null;
+        ListNBTHandler.LoadedLists loaded = ListNBTHandler.loadFromHeldItem(minecraft.player);
+        this.entries = loaded.entries;
+        this.friendorfoe = loaded.friendOrFoe;
+
 
 
         friendfoe = new DynamicIconButton(guiLeft + 156, guiTop + 129, ModGuiTextures.ID_SMILE, ModGuiTextures.ID_FROWN,
@@ -115,7 +117,7 @@ public class PlayerListScreen extends AbstractSimiScreen {
         confirmButton = new IconButton(guiLeft + 192, guiTop + 101, AllIcons.I_CONFIRM);
         confirmButton.withCallback(this::onClose);
         addRenderableWidget(confirmButton);
-        loadEntriesFromNBT();
+
         rebuildList();
     }
 
@@ -183,70 +185,66 @@ public class PlayerListScreen extends AbstractSimiScreen {
         rebuildList();
 
     }
-    private static final String NBT_TAG = MODID;
-    private static final String NBT_LIST  = "playerList";
-
-    private void saveEntriesToNBT() {
-        // get the player’s persistent data
-        assert Minecraft.getInstance().player != null;
-        CompoundTag pData = Minecraft.getInstance().player.getPersistentData();
-        // get (or create) our mod’s sub‑tag
-        CompoundTag modData = pData.contains(NBT_TAG)
-                ? pData.getCompound(NBT_TAG)
-                : new CompoundTag();
-
-        // build a ListTag of compounds { name: String, friend: Boolean }
-        ListTag listTag = new ListTag();
-        for (int i = 0; i < entries.size(); i++) {
-            CompoundTag elem = new CompoundTag();
-            elem.putString("name", entries.get(i));
-            elem.putBoolean("friend", friendorfoe.get(i));
-            listTag.add(elem);
-        }
-
-        modData.put(NBT_LIST, listTag);
-        pData.put(NBT_TAG, modData);
-    }
-
-    private void loadEntriesFromNBT() {
-        assert Minecraft.getInstance().player != null;
-        CompoundTag pData = Minecraft.getInstance().player.getPersistentData();
-        if (!pData.contains(NBT_TAG)) return;
-        CompoundTag modData = pData.getCompound(NBT_TAG);
-        if (!modData.contains(NBT_LIST)) return;
-
-        ListTag listTag = modData.getList(NBT_LIST, Tag.TAG_COMPOUND);
-        entries.clear();
-        friendorfoe.clear();
-        for (Tag raw : listTag) {
-            CompoundTag elem = (CompoundTag) raw;
-            entries.add(elem.getString("name"));
-            friendorfoe.add(elem.getBoolean("friend"));
-        }
-    }
     @Override
     public void removed() {
         super.removed();
-        saveEntriesToNBT();
+        assert minecraft != null;
+        Player player = minecraft.player;
+        saveListsToHeldItem(entries,friendorfoe);
+        assert player != null;
+        ListNBTHandler.saveToHeldItem(player,entries,friendorfoe);
     }
-    /*
-    public static void saveToServerPlayer(ServerPlayerEntity player, List<String> entries, List<Boolean> friendOrFoe) {
-        CompoundTag root = player.getPersistentData();
-        CompoundTag modData = root.contains(MODID)
-                ? root.getCompound(MODID)
-                : new CompoundTag();
 
-        ListTag listTag = new ListTag();
-        for (int i = 0; i < entries.size(); i++) {
-            CompoundTag elem = new CompoundTag();
-            elem.putString("name", entries.get(i));
-            elem.putBoolean("friend", friendOrFoe.get(i));
-            listTag.add(elem);
+    public void saveListsToHeldItem( List<String> entries, List<Boolean> friendOrFoe) {
+        assert minecraft != null;
+        assert minecraft.player != null;
+        ItemStack stack = minecraft.player.getMainHandItem();
+        if (stack.isEmpty()) return;
+
+        CompoundTag tag = stack.getOrCreateTag();
+
+        // Serialize entries (strings)
+        ListTag entriesTag = new ListTag();
+        for (String s : entries) {
+            entriesTag.add(StringTag.valueOf(s));
         }
-        modData.put("playerList", listTag);
-        root.put(MODID, modData);
+        tag.put("EntriesList", entriesTag);
+
+        // Serialize friendOrFoe (booleans as bytes)
+        ListTag foeTag = new ListTag();
+        for (Boolean b : friendOrFoe) {
+            foeTag.add(ByteTag.valueOf(b ? (byte)1 : (byte)0));
+        }
+        tag.put("FriendOrFoeList", foeTag);
+
+        stack.setTag(tag);
     }
 
+    /**
+     * Read the two lists back from the ItemStack in the player's main hand into this instance's fields.
      */
+    public void loadListsFromHeldItem() {
+        assert minecraft != null;
+        assert minecraft.player != null;
+        ItemStack stack = minecraft.player.getMainHandItem();
+        if (stack.isEmpty() || !stack.hasTag()) return;
 
+        CompoundTag tag = stack.getTag();
+
+        // Deserialize entries
+        assert tag != null;
+        ListTag entriesTag = tag.getList("EntriesList", 8); // 8 = String NBT type
+        this.entries.clear();
+        for (int i = 0; i < entriesTag.size(); i++) {
+            this.entries.add(entriesTag.getString(i));
+        }
+
+        // Deserialize friendOrFoe
+        ListTag foeTag = tag.getList("FriendOrFoeList", 1); // 1 = Byte NBT type
+        this.friendorfoe.clear();
+        for (Tag value : foeTag) {
+            byte val = value.getId();
+            this.friendorfoe.add(val != 0);
+        }
+    }
 }
