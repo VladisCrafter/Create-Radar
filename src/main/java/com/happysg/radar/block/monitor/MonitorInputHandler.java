@@ -87,6 +87,7 @@ public class MonitorInputHandler {
             RadarTrack track = findTrack(be.getLevel(), pHit.getLocation(), be.getController());
             if (track != null) {
                 be.selectedEntity = track.id();
+                be.timeOfLastSelect = System.currentTimeMillis();
                 be.notifyUpdate();
             }
         }

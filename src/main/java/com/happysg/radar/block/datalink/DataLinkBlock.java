@@ -15,6 +15,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.PathComputationType;
@@ -41,6 +42,17 @@ public class DataLinkBlock extends WrenchableDirectionalBlock implements IBE<Dat
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
                 () -> () -> withBlockEntityDo(pLevel, pPos, be -> this.displayScreen(be, pPlayer)));
         return InteractionResult.SUCCESS;
+    }
+    @Override
+    public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+        if (!oldState.is(newState.getBlock())) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof DataLinkBlockEntity smartBE) {
+                smartBE.onDestroyed();
+            }
+        }
+
+        super.onRemove(oldState, level, pos, newState, isMoving);
     }
 
     @OnlyIn(value = Dist.CLIENT)

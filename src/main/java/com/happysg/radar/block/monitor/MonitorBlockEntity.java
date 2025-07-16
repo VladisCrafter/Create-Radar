@@ -41,6 +41,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     IRadar radar;
     protected String hoveredEntity;
     protected String selectedEntity;
+    public long timeOfLastSelect = 0;
 
     Collection<RadarTrack> cachedTracks = List.of();
     MonitorFilter filter = MonitorFilter.DEFAULT;
@@ -325,4 +326,8 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     public String getSelectedEntity() {
         return selectedEntity;
     }
+    public void setSelectedEntity(String selectedEntity) {
+        this.selectedEntity = selectedEntity;
+    }
+
 }

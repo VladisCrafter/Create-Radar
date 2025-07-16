@@ -10,7 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 
-public class CannonMountLinkBehavior extends DataPeripheral{
+public class ControllersDataLinkBehavior extends DataPeripheral{
 
 
     @Override
@@ -20,24 +20,28 @@ public class CannonMountLinkBehavior extends DataPeripheral{
 
     @Override
     protected void transferData(@NotNull DataLinkContext context, @NotNull DataController activeTarget) {
+        if(context.level().isClientSide) return;
         ServerLevel serverLevel = (ServerLevel) context.level();
-        BlockPos targetPos = context.getTargetPos();
-        BlockPos sourcePos = context.getSourcePos();
-        if(!(serverLevel.getBlockEntity(targetPos) instanceof WeaponNetworkUnit targetUnit)) return;//add to link
-        if(!(serverLevel.getBlockEntity(sourcePos) instanceof CannonMountBlockEntity cannonMount)) return;//add to link
+        BlockPos controllerPos = context.getSourcePos();
+        BlockPos cannonMountPos = context.getTargetPos();
+        if(!(serverLevel.getBlockEntity(controllerPos) instanceof WeaponNetworkUnit targetUnit) || !(serverLevel.getBlockEntity(cannonMountPos) instanceof CannonMountBlockEntity cannonMount)) return;//add to link
         WeaponNetworkSavedData weaponNetworkSavedData = WeaponNetworkSavedData.get(serverLevel);
-        WeaponNetwork weaponNetwork = weaponNetworkSavedData.networkContains(targetPos);
-        WeaponNetwork cannonWeaponNetwork = weaponNetworkSavedData.networkContains(sourcePos);
+        WeaponNetwork weaponNetwork = weaponNetworkSavedData.networkContains(controllerPos);
+        if(targetUnit.getWeaponNetwork() != null) return;
+        WeaponNetwork cannonWeaponNetwork = weaponNetworkSavedData.networkContains(cannonMountPos);
 
-        if (weaponNetwork != null) { // Shouldn't happen normally
+        if (weaponNetwork != null ) {
             targetUnit.setWeaponNetwork(weaponNetwork);
+            weaponNetwork.setController(serverLevel.getBlockEntity(controllerPos));
         } else if (cannonWeaponNetwork != null) {
-            cannonWeaponNetwork.setController(serverLevel.getBlockEntity(targetPos)); //Doesnt go through if its not overriding null
-            targetUnit.setWeaponNetwork(cannonWeaponNetwork);
+            if(cannonWeaponNetwork.setController(serverLevel.getBlockEntity(controllerPos))) {
+                targetUnit.setWeaponNetwork(cannonWeaponNetwork);
+            } //Doesnt go through if its not overriding null
+
         } else if (weaponNetworkSavedData.networkContains(cannonMount.getBlockPos()) == null) {
             WeaponNetwork newNetwork = new WeaponNetwork(serverLevel);
             newNetwork.setCannonMount(cannonMount);
-            newNetwork.setController(serverLevel.getBlockEntity(targetPos));
+            newNetwork.setController(serverLevel.getBlockEntity(controllerPos));
             targetUnit.setWeaponNetwork(newNetwork);
         }
     }

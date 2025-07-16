@@ -32,6 +32,7 @@ public class WeaponNetworkSavedData extends SavedData {
         );
     }
 
+
     public WeaponNetworkSavedData() {}
 
     public void register(WeaponNetwork network) {
@@ -50,7 +51,6 @@ public class WeaponNetworkSavedData extends SavedData {
 
     public WeaponNetwork networkContains(BlockPos pos){
         return  getAll().stream().filter(weaponNetwork -> weaponNetwork.contains(pos)).findFirst().orElse(null);
-
     }
 
     public Collection<WeaponNetwork> getAll() {

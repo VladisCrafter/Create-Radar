@@ -91,7 +91,7 @@ public class FireControllerBlockEntity extends SmartBlockEntity implements Weapo
         level.setBlockAndUpdate(this.getBlockPos(), state.setValue(BlockStateProperties.POWERED, false));
     }
 
-    public WeaponNetwork getWeaponNetwork() {
+    public WeaponNetwork  getWeaponNetwork() {
         return weaponNetwork;
     }
 

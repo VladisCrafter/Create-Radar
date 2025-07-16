@@ -2,6 +2,9 @@ package com.happysg.radar.block.datalink;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
+import com.happysg.radar.block.network.WeaponNetwork;
+import com.happysg.radar.block.network.WeaponNetworkSavedData;
+import com.happysg.radar.block.network.WeaponNetworkUnit;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.registry.AllDataBehaviors;
@@ -14,6 +17,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
@@ -21,6 +25,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -29,6 +34,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 
 public class DataLinkBlockItem extends BlockItem {
 
@@ -48,10 +54,10 @@ public class DataLinkBlockItem extends BlockItem {
     }
 
     @Override
-    public InteractionResult useOn(UseOnContext pContext) {  
+    public InteractionResult useOn(UseOnContext pContext) {
+        Level level = pContext.getLevel();
         ItemStack stack = pContext.getItemInHand();
         BlockPos pos = pContext.getClickedPos();
-        Level level = pContext.getLevel();
         BlockState state = level.getBlockState(pos);
         Player player = pContext.getPlayer();
 
@@ -65,13 +71,14 @@ public class DataLinkBlockItem extends BlockItem {
             stack.setTag(null);
             return InteractionResult.SUCCESS;
         }
-
+        BlockEntity blockEntity = (pContext.getLevel().getBlockEntity(pContext.getClickedPos()));
+        if(blockEntity == null) return InteractionResult.FAIL;
         if (!stack.hasTag()) {
             if (level.isClientSide)
                 return InteractionResult.SUCCESS;
             //todo monitor hardcoded for now
-            if (!(pContext.getLevel().getBlockEntity(pContext.getClickedPos()) instanceof MonitorBlockEntity)) {
-                player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".data_link.link_to_monitor"), true);
+            if (AllDataBehaviors.targetOf(blockEntity) == null) {
+                player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".data_link.link_to_monitor_or_mount"), true);
                 return InteractionResult.FAIL;
             }
             CompoundTag stackTag = stack.getOrCreateTag();
@@ -80,12 +87,24 @@ public class DataLinkBlockItem extends BlockItem {
             stack.setTag(stackTag);
             return InteractionResult.SUCCESS;
         }
+        if (blockEntity instanceof WeaponNetworkUnit weaponNetworkUnit && weaponNetworkUnit.getWeaponNetwork() != null) {
+            player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".data_link.block_in_network"), true);
+            return InteractionResult.FAIL;
+        }
 
         CompoundTag tag = stack.getTag();
-        CompoundTag teTag = new CompoundTag();
-
         BlockPos selectedPos = NbtUtils.readBlockPos(tag.getCompound("SelectedPos"));
         BlockPos placedPos = pos.relative(pContext.getClickedFace(), state.canBeReplaced() ? 0 : 1);
+        if (!level.isClientSide) {
+            WeaponNetwork network = WeaponNetworkSavedData.get((ServerLevel) level).networkContains(selectedPos);
+            if (network != null && network.isControllerFilled(blockEntity)) {
+                player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".data_link.controller_filled"), true);
+                return InteractionResult.FAIL;
+            }
+        }
+
+        CompoundTag teTag = new CompoundTag();
+
 
         if (!PhysicsHandler.getWorldPos(level, selectedPos).closerThan(PhysicsHandler.getWorldPos(level, placedPos), RadarConfig.server().radarLinkRange.get())) {
             player.displayClientMessage(Component.translatable("display_link.too_far")
@@ -101,8 +120,7 @@ public class DataLinkBlockItem extends BlockItem {
             return useOn;
 
         ItemStack itemInHand = player.getItemInHand(pContext.getHand());
-        if (!itemInHand.isEmpty())
-            itemInHand.setTag(null);
+        if (!itemInHand.isEmpty()) itemInHand.setTag(null);
         player.displayClientMessage(Component.translatable("display_link.success")
                 .withStyle(ChatFormatting.GREEN), true);
         return useOn;

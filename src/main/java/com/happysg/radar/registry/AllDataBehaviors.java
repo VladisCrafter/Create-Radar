@@ -2,11 +2,13 @@ package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.controller.track.TrackLinkBehavior;
-import com.happysg.radar.block.datalink.CannonMountLinkBehavior;
+import com.happysg.radar.block.datalink.ControllersDataLinkBehavior;
 import com.happysg.radar.block.datalink.DataController;
 import com.happysg.radar.block.datalink.DataLinkBehavior;
 import com.happysg.radar.block.datalink.DataPeripheral;
 import com.happysg.radar.block.monitor.MonitorRadarBehavior;
+import com.happysg.radar.block.network.RadarNetworkLinkBehaviour;
+import com.happysg.radar.block.network.WeaponNetworkLinkBehaviour;
 import com.happysg.radar.block.radar.behavior.RadarScannerLinkBehavior;
 //import com.simibubi.create.foundation.utility.RegisteredObjects; //Deprecated
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -20,6 +22,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import rbasamoyai.createbigcannons.index.CBCBlockEntities;
+import rbasamoyai.createbigcannons.index.CBCEntityTypes;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
@@ -39,10 +42,17 @@ public class AllDataBehaviors {
 
     public static void registerDefaults() {
         assignBlockEntity(register(CreateRadar.asResource("monitor"), new MonitorRadarBehavior()), ModBlockEntityTypes.MONITOR.get());
+        assignBlockEntity(register(CreateRadar.asResource("monitor"), new RadarNetworkLinkBehaviour()), ModBlockEntityTypes.MONITOR.get());
         assignBlockEntity(register(CreateRadar.asResource("radar"), new RadarScannerLinkBehavior()), ModBlockEntityTypes.RADAR_BEARING.get());
+        assignBlockEntity(register(CreateRadar.asResource("radar"), new DataController()), ModBlockEntityTypes.RADAR_BEARING.get());
         assignBlockEntity(register(CreateRadar.asResource("track"), new TrackLinkBehavior()), ModBlockEntityTypes.TRACK_CONTROLLER.get());
         assignBlockEntity(register(CreateRadar.asResource("plane_radar"), new RadarScannerLinkBehavior()), ModBlockEntityTypes.PLANE_RADAR.get());
-        assignBlockEntity(register(CreateRadar.asResource("cbc_cannon_mount_link"), new CannonMountLinkBehavior()), CBCBlockEntities.CANNON_MOUNT.get());
+        assignBlockEntity(register(CreateRadar.asResource("auto_pitch_controller_link"), new ControllersDataLinkBehavior()), ModBlockEntityTypes.AUTO_PITCH_CONTROLLER.get());
+        assignBlockEntity(register(CreateRadar.asResource("fire_controller_link"), new ControllersDataLinkBehavior()), ModBlockEntityTypes.FIRE_CONTROLLER.get());
+        assignBlockEntity(register(CreateRadar.asResource("auto_yaw_controller_link"), new ControllersDataLinkBehavior()), ModBlockEntityTypes.AUTO_YAW_CONTROLLER.get());
+        assignBlockEntity(register(CreateRadar.asResource("cannon_mount_link"), new DataController()), CBCBlockEntities.CANNON_MOUNT.get());
+        assignBlockEntity(register(CreateRadar.asResource("cannon_mount_link"), new WeaponNetworkLinkBehaviour()), CBCBlockEntities.CANNON_MOUNT.get());
+
 
     }
 

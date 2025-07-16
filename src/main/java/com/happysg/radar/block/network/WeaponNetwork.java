@@ -30,7 +30,6 @@ import static com.happysg.radar.compat.cbc.CannonTargeting.calculateProjectileYa
 
 public class WeaponNetwork {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private long lastTargetTick = -1;
 
     private CannonMountBlockEntity cannonMount;
     private AutoPitchControllerBlockEntity autoPitchController;
@@ -60,6 +59,18 @@ public class WeaponNetwork {
         this.level = (ServerLevel) level;
         this.uuid = UUID.randomUUID();
         WeaponNetworkSavedData.get((ServerLevel) level).register(this);
+    }
+    public void tick(){
+        if(cannonMount == null) return;
+        Double targetPitch = getTargetPitch();
+        if(autoPitchController != null && targetPitch != null){
+            autoPitchController.setTargetAngle(targetPitch.floatValue());
+        }
+        Double targetYaw = getTargetPitch();
+        if(autoYawController != null && targetYaw != null){
+            autoYawController.setTargetAngle(targetYaw.floatValue());
+        }
+
     }
 
     public UUID getUuid() {
@@ -102,7 +113,7 @@ public class WeaponNetwork {
         markDirty();
     }
 
-    public void setController(BlockEntity controller) {
+    public boolean setController(BlockEntity controller) {
         if (controller instanceof AutoPitchControllerBlockEntity pitchController && this.autoPitchController == null) {
             setAutoPitchController(pitchController);
         } else if (controller instanceof AutoYawControllerBlockEntity yawController && this.autoYawController == null) {
@@ -112,13 +123,49 @@ public class WeaponNetwork {
         } else if (controller instanceof CannonMountBlockEntity cannon && this.cannonMount == null) {
             setCannonMount(cannon);
         }
-        LOGGER.warn("Attempted to set unknown controller type: {}", controller.getClass().getName());
+        else {
+            return false;
+        }
+        return true;
+    }
+    public boolean isControllerFilled(BlockEntity controller) {
+        if (controller instanceof AutoPitchControllerBlockEntity && this.autoPitchController != null) {
+            return true;
+        } else if (controller instanceof AutoYawControllerBlockEntity && this.autoYawController != null) {
+            return true;
+        } else if (controller instanceof FireControllerBlockEntity && this.fireController != null) {
+            return true;
+        } else if (controller instanceof CannonMountBlockEntity && this.cannonMount != null) {
+            return true;
+        }
+        return false;
+
+    }
+    public boolean removeController(BlockEntity controller) {
+        if (controller instanceof AutoPitchControllerBlockEntity) {
+            setAutoPitchController(null);
+        } else if (controller instanceof AutoYawControllerBlockEntity) {
+            setAutoYawController(null);
+        } else if (controller instanceof FireControllerBlockEntity fireCtrl) {
+            setFireController(null);
+        } else if (controller instanceof CannonMountBlockEntity) {
+            setCannonMount(null);
+        }
+        else {
+            return false;
+        }
+        return true;
     }
 
-
     public boolean contains(BlockPos pos) {
-        if(level == null || level.isClientSide()) return false;
-        return cannonMount.getBlockPos() == pos || autoPitchController.getBlockPos() == pos || autoYawController.getBlockPos() == pos || fireController.getBlockPos() == pos;
+        if (level == null || level.isClientSide()) {
+            return false;
+        }
+
+        return (cannonMount != null && pos.equals(cannonMount.getBlockPos()))
+                || (autoPitchController != null && pos.equals(autoPitchController.getBlockPos()))
+                || (autoYawController != null && pos.equals(autoYawController.getBlockPos()))
+                || (fireController != null && pos.equals(fireController.getBlockPos()));
     }
 
     public Vec3 getTargetPos() {
@@ -145,70 +192,71 @@ public class WeaponNetwork {
     }
 
     public void setTarget(Vec3 targetPos) {
-        if (level == null || level.isClientSide()) {
-            LOGGER.debug(" • bailing: client side or null target → isRunning=false");
-            return;
-        }
-
-        if (targetPos == null) {
-            return;
-        }
-
-        LOGGER.debug("→ setTarget called with {}", targetPos);
-
-            if(PhysicsHandler.isBlockInShipyard(level, getCannonMount().getBlockPos())) {
-                List<List<Double>> anglePairs = VS2CannonTargeting.calculatePitchAndYawVS2(cannonMount, targetPos, level);
-                if(anglePairs == null) return;
-                if(anglePairs.isEmpty()) return;
-                if(anglePairs.get(0).isEmpty()) return;
-                List<List<Double>> usableAngles = new ArrayList<>();
-                for ( List<Double> angles : anglePairs) {
-                    if (cannonMount.getContraption() == null) break;
-                    if (angles.get(0) < cannonMount.getContraption().maximumElevation() && angles.get(0) > -cannonMount.getContraption().maximumDepression()) {
-                        usableAngles.add(angles);
-                    }
-                }
-                if (targetingConfig.artilleryMode() && usableAngles.size() == 2) {
-                    setTargetPitch(usableAngles.get(1).get(0));
-                    setTargetYaw(usableAngles.get(1).get(1));
-                } else if (!usableAngles.isEmpty()) {
-                    setTargetPitch(usableAngles.get(0).get(0));
-                    setTargetYaw(usableAngles.get(0).get(1));
-                }
-
-                LOGGER.debug("  Computed targetPitch (CBC) = {} rad {}}", this.getTargetPitch(), Math.toDegrees(this.getTargetPitch()));
-
-            } else{
-                List<Double> pitches = CannonTargeting.calculatePitch(cannonMount, targetPos, level);
-                Double targetYaw = CannonTargeting.calculateYaw(cannonMount, targetPos);
-                if (pitches == null) {
-                    LOGGER.debug("   • calculatePitch returned null → aborting");
-                    return;
-                }
-                if (pitches.isEmpty()) {
-                    LOGGER.debug("   • calculatePitch returned empty list → aborting");
-                    return;
-                }
-                LOGGER.debug("   • raw pitches = {}", pitches);
-                List<Double> usablePitches = new ArrayList<>();
-                for ( Double pitch : pitches) {
-                    if (cannonMount.getContraption() == null) break;
-                    if (pitches.get(0) < cannonMount.getContraption().maximumElevation() && pitches.get(0) > -cannonMount.getContraption().maximumDepression()) {
-                        usablePitches.add(pitch);
-                    }
-                }
-                LOGGER.debug("   • usable pitches = {}", usablePitches);
-                if (targetingConfig.artilleryMode() && usablePitches.size() == 2) {
-                    setTargetPitch(usablePitches.get(1));
-                } else if (!usablePitches.isEmpty()) {
-                    setTargetPitch(usablePitches.get(0));
-                }
-                setTargetYaw(targetYaw);
-
-                LOGGER.debug("   • computed targetPitch={}° ({} rad) → isRunning=true", this.targetPitch, Math.toDegrees(this.targetPitch));
-                LOGGER.debug("   • computed targetYaw={}° ({} rad) → isRunning=true", this.targetYaw, Math.toDegrees(this.targetYaw));
-                LOGGER.debug(">>> pitch.setTarget() on SERVER at {} → target={}", cannonMount.getBlockPos(), targetPos);
-            }
+        return;
+//        if (level == null || level.isClientSide()) {
+//            LOGGER.debug(" • bailing: client side or null target → isRunning=false");
+//            return;
+//        }
+//
+//        if (targetPos == null) {
+//            return;
+//        }
+//
+//        LOGGER.debug("→ setTarget called with {}", targetPos);
+//
+//            if(PhysicsHandler.isBlockInShipyard(level, getCannonMount().getBlockPos())) {
+//                List<List<Double>> anglePairs = VS2CannonTargeting.calculatePitchAndYawVS2(cannonMount, targetPos, level);
+//                if(anglePairs == null) return;
+//                if(anglePairs.isEmpty()) return;
+//                if(anglePairs.get(0).isEmpty()) return;
+//                List<List<Double>> usableAngles = new ArrayList<>();
+//                for ( List<Double> angles : anglePairs) {
+//                    if (cannonMount.getContraption() == null) break;
+//                    if (angles.get(0) < cannonMount.getContraption().maximumElevation() && angles.get(0) > -cannonMount.getContraption().maximumDepression()) {
+//                        usableAngles.add(angles);
+//                    }
+//                }
+//                if (targetingConfig.artilleryMode() && usableAngles.size() == 2) {
+//                    setTargetPitch(usableAngles.get(1).get(0));
+//                    setTargetYaw(usableAngles.get(1).get(1));
+//                } else if (!usableAngles.isEmpty()) {
+//                    setTargetPitch(usableAngles.get(0).get(0));
+//                    setTargetYaw(usableAngles.get(0).get(1));
+//                }
+//
+//                LOGGER.debug("  Computed targetPitch (CBC) = {} rad {}}", this.getTargetPitch(), Math.toDegrees(this.getTargetPitch()));
+//
+//            } else{
+//                List<Double> pitches = CannonTargeting.calculatePitch(cannonMount, targetPos, level);
+//                Double targetYaw = CannonTargeting.calculateYaw(cannonMount, targetPos);
+//                if (pitches == null) {
+//                    LOGGER.debug("   • calculatePitch returned null → aborting");
+//                    return;
+//                }
+//                if (pitches.isEmpty()) {
+//                    LOGGER.debug("   • calculatePitch returned empty list → aborting");
+//                    return;
+//                }
+//                LOGGER.debug("   • raw pitches = {}", pitches);
+//                List<Double> usablePitches = new ArrayList<>();
+//                for ( Double pitch : pitches) {
+//                    if (cannonMount.getContraption() == null) break;
+//                    if (pitches.get(0) < cannonMount.getContraption().maximumElevation() && pitches.get(0) > -cannonMount.getContraption().maximumDepression()) {
+//                        usablePitches.add(pitch);
+//                    }
+//                }
+//                LOGGER.debug("   • usable pitches = {}", usablePitches);
+//                if (targetingConfig.artilleryMode() && usablePitches.size() == 2) {
+//                    setTargetPitch(usablePitches.get(1));
+//                } else if (!usablePitches.isEmpty()) {
+//                    setTargetPitch(usablePitches.get(0));
+//                }
+//                setTargetYaw(targetYaw);
+//
+//                LOGGER.debug("   • computed targetPitch={}° ({} rad) → isRunning=true", this.targetPitch, Math.toDegrees(this.targetPitch));
+//                LOGGER.debug("   • computed targetYaw={}° ({} rad) → isRunning=true", this.targetYaw, Math.toDegrees(this.targetYaw));
+//                LOGGER.debug(">>> pitch.setTarget() on SERVER at {} → target={}", cannonMount.getBlockPos(), targetPos);
+//            }
         }
 
 

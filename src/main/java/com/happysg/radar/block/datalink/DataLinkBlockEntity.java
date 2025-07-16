@@ -1,6 +1,11 @@
 package com.happysg.radar.block.datalink;
 
 import com.happysg.radar.block.datalink.screens.AbstractDataLinkScreen;
+import com.happysg.radar.block.network.Network;
+import com.happysg.radar.block.network.NetworkSavedData;
+import com.happysg.radar.block.network.WeaponNetworkSavedData;
+import com.happysg.radar.block.network.WeaponNetworkUnit;
+import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 import com.happysg.radar.registry.AllDataBehaviors;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -9,8 +14,11 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +42,46 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
 
+    }
+    public void onDestroyed(){
+        if(level == null || level.isClientSide())return;
+        ServerLevel serverLevel = (ServerLevel) level;
+        BlockEntity targetBlockEntity = level.getBlockEntity(getTargetPosition());
+        BlockEntity sourceBlockEntity = level.getBlockEntity(getSourcePosition());
+        if(activeSource != null && activeTarget != null && targetBlockEntity instanceof CannonMountBlockEntity && sourceBlockEntity instanceof WeaponNetworkUnit weaponNetworkUnit){
+            weaponNetworkUnit.getWeaponNetwork().removeController(sourceBlockEntity);
+            weaponNetworkUnit.setWeaponNetwork(null);
+        }
+        if ((sourceBlockEntity instanceof RadarBearingBlockEntity && targetBlockEntity != null) ||
+                (targetBlockEntity instanceof RadarBearingBlockEntity && sourceBlockEntity != null)) {
+            BlockEntity networkBlockEntity = (sourceBlockEntity instanceof RadarBearingBlockEntity) ? targetBlockEntity: sourceBlockEntity;
+
+            Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(networkBlockEntity.getBlockPos(), level);
+            network.setRadarPos(null);
+        }
+        if(targetBlockEntity != null){
+            BlockPos targetPos = targetBlockEntity.getBlockPos();
+            Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(targetPos, level);
+            network.removeNetworkBlock(targetPos);
+            if(sourceBlockEntity != null){
+                network.removeNetworkBlock(sourceBlockEntity.getBlockPos());
+            }
+        }
+        if(sourceBlockEntity != null){ //should never do anything cuz they are in the same network but just in case
+            BlockPos sourcePos = sourceBlockEntity.getBlockPos();
+            Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(sourcePos, level);
+            network.removeNetworkBlock(sourcePos);
+            if(targetBlockEntity != null){
+                network.removeNetworkBlock(targetBlockEntity.getBlockPos());
+            }
+        }
+        if(sourceBlockEntity instanceof CannonMountBlockEntity && targetBlockEntity != null){
+            Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(targetBlockEntity.getBlockPos(), level);
+            if(network != null){
+                WeaponNetworkSavedData weaponNetworkSavedData = WeaponNetworkSavedData.get(serverLevel);
+                network.removeWeaponNetwork(weaponNetworkSavedData.networkContains(sourceBlockEntity.getBlockPos()));
+            }
+        }
     }
 
     @Override
