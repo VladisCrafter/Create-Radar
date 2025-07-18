@@ -1,7 +1,9 @@
 package com.happysg.radar.item.identfilter;
 
-import com.happysg.radar.networking.packets.ListNBTHandler;
+import com.happysg.radar.networking.NetworkHandler;
+import com.happysg.radar.networking.networkhandlers.ListNBTHandler;
 
+import com.happysg.radar.networking.packets.SaveListsPacket;
 import com.happysg.radar.registry.ModGuiTextures;
 import com.happysg.radar.utils.screenelements.DynamicIconButton;
 
@@ -18,11 +20,8 @@ import net.createmod.catnip.gui.AbstractSimiScreen;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.nbt.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
 
@@ -39,6 +38,7 @@ public class PlayerListScreen extends AbstractSimiScreen {
     protected DynamicIconButton friendfoe;
     protected DynamicIconButton remove;
     protected DynamicIconButton playeradd;
+    protected DynamicIconButton add;
     protected EditBox playerentry;
     protected IconButton confirmButton;
     protected List<String> entries = new ArrayList<>();
@@ -47,8 +47,8 @@ public class PlayerListScreen extends AbstractSimiScreen {
     private final List<TooltipIcon> factionIndicators = new ArrayList<>();
     private static final int MAX_VISIBLE = 3;
     private int startIndex = 0;
-    GuiGraphics heregraphics;
-
+    private boolean isAddingNewSlot = false;
+    private int currentAddSlotY = -1;
     public PlayerListScreen() {
         this.background = ModGuiTextures.PLAYER_LIST;
     }
@@ -57,8 +57,7 @@ public class PlayerListScreen extends AbstractSimiScreen {
     protected void renderWindow(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         int x = guiLeft;
         int y = guiTop;
-        heregraphics = graphics;
-        //ClientPlayNetworking.send(new Identifier(MODID, "request_player_list"), new PacketByteBuf(Unpooled.buffer()));
+
         background.render(graphics, x, y);
         MutableComponent header = Component.translatable(MODID + ".player_list.title");
         graphics.drawString(font, header, x + background.width / 2 - font.width(header) / 2, y + 4, 0, false);
@@ -79,16 +78,18 @@ public class PlayerListScreen extends AbstractSimiScreen {
         ms.popPose();
 
         drawList(graphics);
-        heregraphics = graphics;
+
     }
+
+
 
     protected void init() {
         setWindowSize(background.width, background.height);
         super.init();
-        loadListsFromHeldItem();
+
         ListNBTHandler.LoadedLists loaded = ListNBTHandler.loadFromHeldItem(minecraft.player);
-        this.entries = loaded.entries;
-        this.friendorfoe = loaded.friendOrFoe;
+        this.entries      = loaded.entries;
+        this.friendorfoe  = loaded.friendOrFoe;
 
         confirmButton = new IconButton(guiLeft + 192, guiTop + 101, AllIcons.I_CONFIRM);
         confirmButton.withCallback(this::onClose);
@@ -115,7 +116,7 @@ public class PlayerListScreen extends AbstractSimiScreen {
         playerentry = new EditBox(font, guiLeft + 22, guiTop + 130, 135, 11,
                 Component.translatable(MODID + ".filter_insert_player_user"));
         playerentry.setMaxLength(16);
-        playerentry.setTextColor(-1);
+        playerentry.setTextColor(-1w);
         playerentry.setBordered(false);
         addRenderableWidget(playerentry);
         confirmButton = new IconButton(guiLeft + 192, guiTop + 101, AllIcons.I_CONFIRM);
@@ -128,14 +129,8 @@ public class PlayerListScreen extends AbstractSimiScreen {
         rebuildList();
     }
 
-    private void addItem() {
-        String inbox = playerentry.getValue();
-        boolean faction = friendfoe.getState();
-        friendorfoe.add(faction);
-        entries.add(inbox);
-        playerentry.setValue("");
-        rebuildList();
-    }
+
+
     private void rebuildList() {
         deleteButtons.forEach(this::removeWidget);
         factionIndicators.forEach(this::removeWidget);
@@ -174,39 +169,91 @@ public class PlayerListScreen extends AbstractSimiScreen {
             deleteButtons.add(del);
         }
     }
-    /*private void handleEmptySlots() {
-        int visibleCount = Math.min(entries.size() - startIndex, MAX_VISIBLE);
-        for (int slot = visibleCount; slot < MAX_VISIBLE; slot++) {
-            addPlusButton(slot);
-        }
-    }
 
-     */
-    private void addPlusButton(int slotIndex, GuiGraphics graphics){
+    private void addPlusButton(int slotIndex) {
+        if (add != null) return;  // already exists
         int y = guiTop + 17 + slotIndex * 23;
-        ModGuiTextures.CARD_ADD.render(graphics,guiLeft+16,y);
+        add = new DynamicIconButton(guiLeft + 21, y + 2, ModGuiTextures.ID_ADD,
+                Component.translatable(MODID + ".filter_add_new"), 16, 16);
+        add.withCallback((mx, my) -> startNewSlot(y));
+        //add.withCallback((mx, my) ->removeWidget(add));
+
+        addRenderableWidget(add);
     }
 
-        protected void drawList (GuiGraphics graphics){
-            int available = Math.max(0, entries.size() - startIndex);
-            int drawCount = Math.min(available, MAX_VISIBLE);
 
-            // Draw visible entries
-            for (int i = 0; i < drawCount; i++) {
-                int idx = startIndex + i;
-                int y = guiTop + 17 + i * 23;
-
-                ModGuiTextures.ID_CARD.render(graphics, guiLeft + 16, y);
-                String label = (idx + 1) + ": " + entries.get(idx);
-                graphics.drawString(font, label, guiLeft + 42, y + 6, 0, false);
-            }
-
-            // Only draw ONE empty slot, in the first available spot (if any)
-            if (drawCount < MAX_VISIBLE) {
-                // 0, 1, or 2 depending on how full the list is
-                addPlusButton(drawCount, graphics);
-            }
+    private void startNewSlot(int y) {
+        removeWidget(add);
+        if (add != null) {
+            add = null;
         }
+
+        isAddingNewSlot = true;
+        currentAddSlotY = y;
+
+        playeradd = new DynamicIconButton(guiLeft + 185, y, ModGuiTextures.ID_ADD, ModGuiTextures.ID_ADD,
+                Component.translatable(MODID + ".filter_add"),
+                Component.translatable(MODID + ".filter_add"),
+                16, 16);
+        playeradd.withCallback((mx, my) -> addItem());
+        addRenderableWidget(playeradd);
+
+        playerentry = new EditBox(font, guiLeft + 26 , y + 4, 135, 11,
+                Component.translatable(MODID + ".filter_insert_player_user"));
+        playerentry.setMaxLength(16);
+        playerentry.setTextColor(-1);
+        playerentry.setBordered(false);
+        addRenderableWidget(playerentry);
+
+        friendfoe = new DynamicIconButton(guiLeft + 159, y + 4, ModGuiTextures.ID_SMILE, ModGuiTextures.ID_FROWN,
+                Component.translatable(MODID + ".filter_isfriend"),
+                Component.translatable(MODID + ".filter_isfoe"),
+                11, 11);
+        addRenderableWidget(friendfoe);
+    }
+
+
+    private void addItem() {
+        String input = playerentry.getValue();
+        boolean faction = friendfoe.getState();
+        removeWidget(playerentry);
+        removeWidget(playeradd);
+        removeWidget(friendfoe);
+        friendorfoe.add(faction);
+        entries.add(input);
+        isAddingNewSlot = false;
+        currentAddSlotY = -1;
+        rebuildList();
+    }
+
+
+    protected void drawList(GuiGraphics graphics) {
+        int available = Math.max(0, entries.size() - startIndex);
+        int drawCount = Math.min(available, MAX_VISIBLE);
+
+        // 1) Draw existing entries
+        for (int i = 0; i < drawCount; i++) {
+            int idx = startIndex + i;
+            int y   = guiTop + 17 + i * 23;
+
+            ModGuiTextures.ID_CARD.render(graphics, guiLeft + 16, y);
+            String label = (idx + 1) + ": " + entries.get(idx);
+            graphics.drawString(font, label, guiLeft + 42, y + 6, 0, false);
+        }
+
+        // 2) If there’s room for one more slot...
+        if (drawCount < MAX_VISIBLE && !isAddingNewSlot) {
+            addPlusButton(drawCount);
+        }
+
+        // 3) If we ARE adding, draw the add‑card at its chosen Y
+        if (isAddingNewSlot && currentAddSlotY >= 0) {
+            ModGuiTextures.ID_CARD.render(graphics, guiLeft + 4, currentAddSlotY);
+        }
+    }
+
+
+
     private void scrollUp() {
         startIndex = Math.max(0, startIndex - 1);
         rebuildList();
@@ -229,60 +276,12 @@ public class PlayerListScreen extends AbstractSimiScreen {
     @Override
     public void removed() {
         super.removed();
-        assert minecraft != null;
-        Player player = minecraft.player;
-        saveListsToHeldItem(entries,friendorfoe);
-        assert player != null;
-        ListNBTHandler.saveToHeldItem(player,entries,friendorfoe);
-    }
-
-    public void saveListsToHeldItem( List<String> entries, List<Boolean> friendOrFoe) {
-        assert minecraft != null;
-        assert minecraft.player != null;
-        ItemStack stack = minecraft.player.getMainHandItem();
-        if (stack.isEmpty()) return;
-
-        CompoundTag tag = stack.getOrCreateTag();
-
-        // Serialize entries (strings)
-        ListTag entriesTag = new ListTag();
-        for (String s : entries) {
-            entriesTag.add(StringTag.valueOf(s));
-        }
-        tag.put("EntriesList", entriesTag);
-
-        // Serialize friendOrFoe (booleans as bytes)
-        ListTag foeTag = new ListTag();
-        for (Boolean b : friendOrFoe) {
-            foeTag.add(ByteTag.valueOf(b ? (byte)1 : (byte)0));
-        }
-        tag.put("FriendOrFoeList", foeTag);
-
-        stack.setTag(tag);
-    }
-
-    public void loadListsFromHeldItem() {
-        assert minecraft != null;
-        assert minecraft.player != null;
-        ItemStack stack = minecraft.player.getMainHandItem();
-        if (stack.isEmpty() || !stack.hasTag()) return;
-
-        CompoundTag tag = stack.getTag();
-
-        // Deserialize entries
-        assert tag != null;
-        ListTag entriesTag = tag.getList("EntriesList", 8); // 8 = String NBT type
-        this.entries.clear();
-        for (int i = 0; i < entriesTag.size(); i++) {
-            this.entries.add(entriesTag.getString(i));
-        }
-
-        // Deserialize friendOrFoe
-        ListTag foeTag = tag.getList("FriendOrFoeList", 1); // 1 = Byte NBT type
-        this.friendorfoe.clear();
-        for (Tag value : foeTag) {
-            byte val = value.getId();
-            this.friendorfoe.add(val != 0);
+        if (minecraft.player != null && minecraft.level.isClientSide) {
+            NetworkHandler.CHANNEL.sendToServer(
+                    new SaveListsPacket(this.entries, this.friendorfoe)
+            );
         }
     }
+
+
 }

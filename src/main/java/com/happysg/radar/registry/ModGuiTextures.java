@@ -45,7 +45,7 @@ public enum ModGuiTextures implements ScreenElement {
     ID_SMILE("identification_filter_0",156,129,11,11),
     ID_FROWN("identification_filter_0",5,147,11,11),
     ID_X("identification_filter_0",168,129,11,11),
-    ID_ADD("identification_filter_0",188,127,16,16),
+    ID_ADD("identification_filter_0", 183, 125,25,20),
     ID_CARD("identification_filter_0", 0,125,183,22),
     CARD_ADD("identification_filter_0", 183, 125,25,20)
     ;

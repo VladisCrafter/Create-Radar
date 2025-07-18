@@ -9,6 +9,7 @@ import com.happysg.radar.compat.cbcmw.CBCMWCompatRegister;
 import com.happysg.radar.compat.computercraft.CCCompatRegister;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.networking.ModMessages;
+import com.happysg.radar.networking.NetworkHandler;
 import com.happysg.radar.registry.*;
 
 import com.mojang.logging.LogUtils;
@@ -62,7 +63,7 @@ public class CreateRadar {
         ModLang.register();
         ModPartials.init();
         RadarConfig.register(context);
-
+        NetworkHandler.register();
         modEventBus.addListener(CreateRadar::init);
         modEventBus.addListener(CreateRadar::clientInit);
         modEventBus.addListener(CreateRadar::onLoadComplete);
