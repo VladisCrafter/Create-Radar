@@ -40,13 +40,14 @@ public enum ModGuiTextures implements ScreenElement {
     ITEM_BUTTON("detection_filter",201,39,16,16),
     IDENT_FILTER( "identification_filter",159,83),
     FILTER_BUTTON("identification_filter",42 ,26,16,16),
-    PLAYER_LIST("identification_filter_0",225,147),
+    PLAYER_LIST("identification_filter_0",225,124),
     SCROLL("identification_filter_0",0,147,5,20),
     ID_SMILE("identification_filter_0",156,129,11,11),
     ID_FROWN("identification_filter_0",5,147,11,11),
     ID_X("identification_filter_0",168,129,11,11),
     ID_ADD("identification_filter_0",188,127,16,16),
-    ID_CARD("identification_filter_0", 0,125,183,22)
+    ID_CARD("identification_filter_0", 0,125,183,22),
+    CARD_ADD("identification_filter_0", 183, 125,25,20)
     ;
 
     public static final int FONT_COLOR = 0x575F7A;
