@@ -8,6 +8,8 @@ import com.happysg.radar.registry.ModGuiTextures;
 import com.happysg.radar.utils.screenelements.DynamicIconButton;
 
 
+import com.happysg.radar.utils.screenelements.ScrollInputPage;
+import com.happysg.radar.utils.screenelements.SimpleEditBox;
 import com.happysg.radar.utils.screenelements.TooltipIcon;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.gui.AllIcons;
@@ -23,6 +25,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import org.jetbrains.annotations.NotNull;
+import org.lwjgl.glfw.GLFW;
 
 
 import java.util.ArrayList;
@@ -39,8 +42,9 @@ public class PlayerListScreen extends AbstractSimiScreen {
     protected DynamicIconButton remove;
     protected DynamicIconButton playeradd;
     protected DynamicIconButton add;
-    protected EditBox playerentry;
+    protected SimpleEditBox playerentry;
     protected IconButton confirmButton;
+    protected ScrollInputPage scrollbar;
     protected List<String> entries = new ArrayList<>();
     protected List<Boolean> friendorfoe =new ArrayList<>();
     private final List<DynamicIconButton> deleteButtons = new ArrayList<>();
@@ -95,43 +99,40 @@ public class PlayerListScreen extends AbstractSimiScreen {
         confirmButton.withCallback(this::onClose);
         addRenderableWidget(confirmButton);
         minecraft.player.getMainHandItem().setTag(null);
-/*
-        friendfoe = new DynamicIconButton(guiLeft + 156, guiTop + 129, ModGuiTextures.ID_SMILE, ModGuiTextures.ID_FROWN,
-                Component.translatable(MODID + ".filter_isfriend"),
-                Component.translatable(MODID + ".filter_isfoe"),
-                11, 11);
-        addRenderableWidget(friendfoe);
-        remove = new DynamicIconButton(guiLeft + 168, guiTop + 129, ModGuiTextures.ID_X, ModGuiTextures.ID_X,
-                Component.translatable(MODID + ".filter_remove"),
-                Component.translatable(MODID + ".filter_remove"),
-                11, 11);
-        addRenderableWidget(remove);
-        playeradd = new DynamicIconButton(guiLeft + 188, guiTop + 127, ModGuiTextures.ID_ADD, ModGuiTextures.ID_ADD,
-                Component.translatable(MODID + ".filter_add"),
-                Component.translatable(MODID + ".filter_add"),
-                16, 16);
-        playeradd.withCallback((mx, my) -> addItem());
-        addRenderableWidget(playeradd);
 
-        playerentry = new EditBox(font, guiLeft + 22, guiTop + 130, 135, 11,
-                Component.translatable(MODID + ".filter_insert_player_user"));
-        playerentry.setMaxLength(16);
-        playerentry.setTextColor(-1w);
-        playerentry.setBordered(false);
-        addRenderableWidget(playerentry);
-        confirmButton = new IconButton(guiLeft + 192, guiTop + 101, AllIcons.I_CONFIRM);
-        confirmButton.withCallback(this::onClose);
-        addRenderableWidget(confirmButton);
-
-        rebuildList();
-
- */
+        scrollbar = new ScrollInputPage(guiLeft+209,guiTop+16,guiTop+16,guiTop+93-20,ModGuiTextures.SCROLL);
+        scrollbar.withCallback(this::handleScroll);
+        addRenderableWidget(scrollbar);
         rebuildList();
     }
 
+    private void handleScroll(float percent) {
+        // System.out.println("Scroll changed: " + percent);
+        //System.out.println("New startIndex: " + startIndex);
+        //System.out.println("Visible entries: " + entries.subList(startIndex, Math.min(entries.size(), startIndex + MAX_VISIBLE)));
+
+
+            int scrollThreshold = MAX_VISIBLE - 1; // Scroll when more than 2
+            int entryCount = entries.size();
+
+            if (entryCount <= scrollThreshold) {
+                startIndex = 0;
+            } else {
+                int maxStartIndex = entryCount - scrollThreshold;
+                startIndex = Math.round(percent * maxStartIndex);
+            }
+
+            rebuildList();
+
+    }
 
 
     private void rebuildList() {
+        if (add != null) {
+            removeWidget(add);
+            add = null;
+        }
+
         deleteButtons.forEach(this::removeWidget);
         factionIndicators.forEach(this::removeWidget);
         deleteButtons.clear();
@@ -198,10 +199,10 @@ public class PlayerListScreen extends AbstractSimiScreen {
         playeradd.withCallback((mx, my) -> addItem());
         addRenderableWidget(playeradd);
 
-        playerentry = new EditBox(font, guiLeft + 26 , y + 4, 135, 11,
+        playerentry = new SimpleEditBox(font, guiLeft + 26 , y + 4, 135, 11,
                 Component.translatable(MODID + ".filter_insert_player_user"));
         playerentry.setMaxLength(16);
-        playerentry.setTextColor(-1);
+        playerentry.setTextColor(0);
         playerentry.setBordered(false);
         addRenderableWidget(playerentry);
 
@@ -251,6 +252,15 @@ public class PlayerListScreen extends AbstractSimiScreen {
             ModGuiTextures.ID_CARD.render(graphics, guiLeft + 4, currentAddSlotY);
         }
     }
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_LEFT) {
+            scrollUp(); // Call your method when LEFT arrow is pressed
+            return true;
+        }
+
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
 
 
 
@@ -258,10 +268,13 @@ public class PlayerListScreen extends AbstractSimiScreen {
         startIndex = Math.max(0, startIndex - 1);
         rebuildList();
     }
+
     private void scrollDown() {
-        startIndex = Math.min(entries.size() - MAX_VISIBLE, startIndex + 1);
+        // clamp so we never scroll past the last entry
+        startIndex = Math.min(Math.max(0, entries.size() - MAX_VISIBLE), startIndex + 1);
         rebuildList();
     }
+
 
     protected void removeEntry(int entry){
         DynamicIconButton removeMe =  deleteButtons.remove(entry);
