@@ -32,9 +32,6 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 public class SimpleEditBox extends AbstractWidget implements Renderable {
     public static final int BACKWARDS = -1;
     public static final int FORWARDS = 1;
-    private static final int CURSOR_INSERT_WIDTH = 1;
-    private static final int CURSOR_INSERT_COLOR = -3092272;
-    private static final String CURSOR_APPEND_CHARACTER = "_";
     public static final int DEFAULT_TEXT_COLOR = 14737632;
     private static final int BORDER_COLOR_FOCUSED = -1;
     private static final int BORDER_COLOR = -6250336;
@@ -53,6 +50,7 @@ public class SimpleEditBox extends AbstractWidget implements Renderable {
     /** The current character index that should be used as start of the rendered text. */
     private int displayPos;
     private int cursorPos;
+    private Predicate<Character> charFilter;
     /** other selection position, maybe the same as the cursor */
     private int highlightPos;
     private int textColor = 14737632;
@@ -71,6 +69,9 @@ public class SimpleEditBox extends AbstractWidget implements Renderable {
 
     public SimpleEditBox(Font pFont, int pX, int pY, int pWidth, int pHeight, Component pMessage) {
         this(pFont, pX, pY, pWidth, pHeight, (EditBox)null, pMessage);
+        this.setFilter(this::filterInput);
+        this.charFilter = c -> Character.isLetterOrDigit(c) || c == '_';
+
     }
 
     public SimpleEditBox(Font pFont, int pX, int pY, int pWidth, int pHeight, @Nullable EditBox pEditBox, Component pMessage) {
@@ -81,7 +82,14 @@ public class SimpleEditBox extends AbstractWidget implements Renderable {
         }
 
     }
-
+    private boolean filterInput(String input) {
+        for (char c : input.toCharArray()) {
+            if (!charFilter.test(c)) {
+                return false;
+            }
+        }
+        return true;
+    }
     public void setResponder(Consumer<String> pResponder) {
         this.responder = pResponder;
     }
@@ -411,6 +419,9 @@ public class SimpleEditBox extends AbstractWidget implements Renderable {
         } else {
             return false;
         }
+    }
+    public void setAllowedCharacters(Predicate<Character> predicate) {
+        this.charFilter = predicate;
     }
 
     public void onClick(double pMouseX, double pMouseY) {

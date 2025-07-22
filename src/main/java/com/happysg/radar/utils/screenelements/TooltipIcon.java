@@ -31,7 +31,6 @@ public class TooltipIcon extends AbstractWidget {
 
     @Override
     public void onClick(double mouseX, double mouseY) {
-        // No action on click
     }
 
     @Override

@@ -22,6 +22,8 @@ import net.createmod.catnip.gui.AbstractSimiScreen;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import org.jetbrains.annotations.NotNull;
@@ -143,13 +145,18 @@ public class PlayerListScreen extends AbstractSimiScreen {
             int displayPos = idx - startIndex;            // 0,1,2
             int y = guiTop + 17 + displayPos * 23;
 
-            // faction icon
             TooltipIcon factionIndicator = new TooltipIcon(
                     guiLeft + 172, y + 4,
                     friendorfoe.get(idx) ? ModGuiTextures.ID_SMILE : ModGuiTextures.ID_FROWN,
                     Component.translatable(MODID +
                             (friendorfoe.get(idx) ? ".faction.friendly" : ".faction.enemy"))
             );
+            if(friendorfoe.get(idx) == true){
+                factionIndicator.setTooltip(Tooltip.create(Component.translatable(MODID + ".faction.friendly")));
+            }else{
+                factionIndicator.setTooltip(Tooltip.create(Component.translatable(MODID + ".faction.friendly")));
+
+            }
             addRenderableWidget(factionIndicator);
             factionIndicators.add(factionIndicator);
 
@@ -204,6 +211,9 @@ public class PlayerListScreen extends AbstractSimiScreen {
         playerentry.setMaxLength(16);
         playerentry.setTextColor(0);
         playerentry.setBordered(false);
+        playerentry.setTooltip(Tooltip.create(Component.translatable(MODID + ".enter_username")));
+        playerentry.setAllowedCharacters(c->"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_".indexOf(c) != -1 );
+
         addRenderableWidget(playerentry);
 
         friendfoe = new DynamicIconButton(guiLeft + 159, y + 4, ModGuiTextures.ID_SMILE, ModGuiTextures.ID_FROWN,
