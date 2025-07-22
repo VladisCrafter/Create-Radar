@@ -22,7 +22,7 @@ import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContr
 public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity implements WeaponNetworkUnit {
     private static final double TOLERANCE = 0.1;
     private double targetAngle;
-    private boolean isRunning;
+    public boolean isRunning;
     private WeaponNetwork weaponNetwork;
 
 

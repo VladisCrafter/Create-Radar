@@ -61,14 +61,17 @@ public class WeaponNetwork {
         WeaponNetworkSavedData.get((ServerLevel) level).register(this);
     }
     public void tick(){
+
         if(cannonMount == null) return;
         Double targetPitch = getTargetPitch();
-        if(autoPitchController != null && targetPitch != null){
-            autoPitchController.setTargetAngle(targetPitch.floatValue());
+        if(autoPitchController != null){
+            if(targetPitch != null) autoPitchController.setTargetAngle(targetPitch.floatValue());
+            autoPitchController.isRunning = targetPitch != null;
         }
-        Double targetYaw = getTargetPitch();
-        if(autoYawController != null && targetYaw != null){
-            autoYawController.setTargetAngle(targetYaw.floatValue());
+        Double targetYaw = getTargetYaw();
+        if(autoYawController != null){
+            if(targetYaw != null) autoYawController.setTargetAngle(targetYaw.floatValue());
+            autoYawController.isRunning = targetYaw != null;
         }
 
     }
@@ -245,7 +248,7 @@ public class WeaponNetwork {
                     }
                 }
                 LOGGER.debug("   • usable pitches = {}", usablePitches);
-                if (targetingConfig.artilleryMode() && usablePitches.size() == 2) {
+                if (targetingConfig != null && targetingConfig.artilleryMode() && usablePitches.size() == 2) {
                     setTargetPitch(usablePitches.get(1));
                 } else if (!usablePitches.isEmpty()) {
                     setTargetPitch(usablePitches.get(0));

@@ -51,7 +51,6 @@ public class DataLinkBlock extends WrenchableDirectionalBlock implements IBE<Dat
                 smartBE.onDestroyed();
             }
         }
-
         super.onRemove(oldState, level, pos, newState, isMoving);
     }
 

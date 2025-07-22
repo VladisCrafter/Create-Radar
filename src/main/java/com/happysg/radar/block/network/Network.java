@@ -41,6 +41,7 @@ public class Network {
     }
 
     public void tick(){
+        if(weaponNetworks.isEmpty() && networkBlocks.isEmpty()) NetworkSavedData.get(this.level).destroyNetwork(uuid);
         Collection<RadarTrack> cachedTracks = null;
         for (BlockPos blockPos : networkBlocks) {
             BlockEntity blockEntity = level.getBlockEntity(blockPos);
