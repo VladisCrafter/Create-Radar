@@ -49,6 +49,10 @@ public class ModCreativeTabs {
         pOutput.accept(ModItems.RADAR_FILTER_ITEM);
         pOutput.accept(ModItems.IDENT_FILTER_ITEM);
         pOutput.accept(ModItems.TARGET_FILTER_ITEM);
+        pOutput.accept(ModBlocks.ID_BLOCK);
+        pOutput.accept(ModBlocks.FIRE_CONTROLLER_BLOCK);
+        pOutput.accept(ModBlocks.NETWORK_FILTERER_BLOCK);
+        //pOutput.accept(ModBlocks.);
         if (Mods.CREATEBIGCANNONS.isLoaded()) {
             pOutput.accept(CBCCompatRegister.GUIDED_FUZE);
         }

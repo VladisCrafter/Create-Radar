@@ -3,6 +3,7 @@ package com.happysg.radar.registry;
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.controller.firing.FireControllerBlock;
 import com.happysg.radar.block.controller.id.IDBlock;
+import com.happysg.radar.block.controller.networkfilter.NetworkFilterer;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlock;
 import com.happysg.radar.block.controller.track.TrackControllerBlock;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlock;
@@ -196,6 +197,17 @@ public class ModBlocks {
                     .transform(axeOrPickaxe())
                     .simpleItem()
                     .register();
+    public static final BlockEntry<NetworkFilterer> NETWORK_FILTERER_BLOCK =
+            REGISTRATE.block("network_filterer", NetworkFilterer::new)
+                    .initialProperties(SharedProperties::softMetal)
+                    .properties(BlockBehaviour.Properties::noOcclusion)
+                    .transform(axeOrPickaxe())
+                    .blockstate((ctx, prov) -> prov.directionalBlock(ctx.getEntry(),
+                            prov.models().getExistingFile(ctx.getId()), 0))
+                    .simpleItem()
+                    .register();
+
+
 
 
 
