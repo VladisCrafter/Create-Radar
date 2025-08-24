@@ -2,6 +2,7 @@ package com.happysg.radar.block.monitor;
 
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
@@ -237,7 +238,10 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
 
         // Calculate track position relative to radar
         Vec3 radarPos = PhysicsHandler.getWorldPos(monitor.getLevel(), radar.getWorldPos()).getCenter();
-        Vec3 relativePos = VS2Utils.getShipVecDirectionTransform(track.position().subtract(radarPos), monitor);;
+        Vec3 relativePos = track.position().subtract(radarPos);
+        if (Mods.VALKYRIENSKIES.isLoaded()) {
+            relativePos = VS2Utils.getShipVecDirectionTransform(relativePos, monitor);
+        }
         if (radar.renderRelativeToMonitor()) {
             //todo change for plane radar
         }
