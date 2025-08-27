@@ -8,18 +8,25 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
-public class TargetFilterItem extends Item{
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
-        public TargetFilterItem(Properties properties) {
-            super(properties);
-        }
+public class TargetFilterItem extends Item {
 
-        @Override
-        public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
-            if (!level.isClientSide)
-                return InteractionResultHolder.pass(player.getItemInHand(hand));
-
-            Minecraft.getInstance().setScreen(new AutoTargetScreen());
-            return InteractionResultHolder.success(player.getItemInHand(hand));
-        }
+    public TargetFilterItem(Properties properties) {
+        super(properties);
     }
+
+    @OnlyIn(Dist.CLIENT)
+    private InteractionResultHolder<ItemStack> clientFunc(Level level, Player player, InteractionHand hand) {
+        Minecraft.getInstance().setScreen(new AutoTargetScreen());
+        return InteractionResultHolder.success(player.getItemInHand(hand));
+    }
+
+    @Override
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        if (!level.isClientSide)
+            return InteractionResultHolder.pass(player.getItemInHand(hand));
+        return clientFunc(level, player, hand);
+    }
+}
