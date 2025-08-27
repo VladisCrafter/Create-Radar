@@ -1,6 +1,8 @@
 package com.happysg.radar;
 
 import com.happysg.radar.block.controller.id.IDManager;
+import com.happysg.radar.block.controller.networkfilter.NetworkFiltererBlockEntity;
+import com.happysg.radar.block.controller.networkfilter.NetworkFiltererRenderer;
 import com.happysg.radar.block.datalink.DataLinkBlockItem;
 import com.happysg.radar.block.monitor.MonitorInputHandler;
 import com.happysg.radar.compat.Mods;
@@ -16,6 +18,8 @@ import com.mojang.logging.LogUtils;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.simibubi.create.api.stress.BlockStressValues;
 
+import net.createmod.ponder.api.registration.PonderTagRegistrationHelper;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.LevelAccessor;
 
@@ -72,6 +76,7 @@ public class CreateRadar {
         MinecraftForge.EVENT_BUS.addListener(CreateRadar::clientTick);
         MinecraftForge.EVENT_BUS.addListener(CreateRadar::onLoadWorld);
 
+
         // Compat modules
         if (Mods.CREATEBIGCANNONS.isLoaded())
             CBCCompatRegister.registerCBC();
@@ -104,10 +109,11 @@ public class CreateRadar {
     public static void clientInit(final FMLClientSetupEvent event) {
         // Ponder registration (optional, currently commented out)
         // PonderSceneRegistrationHelper<ResourceLocation> sceneHelper = PonderSceneRegistrationHelper.forMod(CreateRadar.MODID);
-        // ModPonderIndex.register(sceneHelper);
-        //
-        // PonderTagRegistrationHelper<ResourceLocation> tagHelper = PonderTagRegistrationHelper.forMod(CreateRadar.MODID);
-        // ModPonderTags.register(tagHelper);
+     //   ModPonderIndex.register(sceneHelper);
+
+       //  PonderTagRegistrationHelper<ResourceLocation> tagHelper = PonderTagRegistrationHelper.forMod(CreateRadar.MODID);
+     //   ModPonderTags.register(tagHelper);
+        BlockEntityRenderers.register(ModBlockEntityTypes.NETWORK_FILTER_BLOCK_ENTITY.get(), NetworkFiltererRenderer::new);
     }
 
     public static void onLoadComplete(FMLLoadCompleteEvent event) {

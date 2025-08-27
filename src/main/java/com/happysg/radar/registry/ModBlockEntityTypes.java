@@ -1,6 +1,9 @@
 package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
+import com.happysg.radar.block.controller.networkfilter.NetworkFilterer;
+import com.happysg.radar.block.controller.networkfilter.NetworkFiltererBlockEntity;
+import com.happysg.radar.block.controller.networkfilter.NetworkFiltererRenderer;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
 import com.happysg.radar.block.controller.track.TrackControllerBlockEntity;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
@@ -69,7 +72,10 @@ public class ModBlockEntityTypes {
             .blockEntity("fire_controller", TrackControllerBlockEntity::new)
             .validBlocks(ModBlocks.FIRE_CONTROLLER_BLOCK)
             .register();
-
+    public static final BlockEntityEntry<NetworkFiltererBlockEntity> NETWORK_FILTER_BLOCK_ENTITY = REGISTRATE.blockEntity("network_filterer_block_entity", NetworkFiltererBlockEntity::new)
+            .validBlocks(ModBlocks.NETWORK_FILTERER_BLOCK)
+            .renderer(()-> NetworkFiltererRenderer::new)
+            .register();
     public static void register() {
         CreateRadar.getLogger().info("Registering block entity types!");
     }
