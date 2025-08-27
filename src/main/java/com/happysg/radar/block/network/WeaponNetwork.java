@@ -281,7 +281,7 @@ public class WeaponNetwork {
         Vec3 target = this.getTargetPos();
 
         if (target == null) {
-            LOGGER.warn("  → target is null, skipping safe zone check");
+            LOGGER.debug("  → target is null, skipping safe zone check");
             return false;
         }
 
