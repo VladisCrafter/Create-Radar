@@ -25,7 +25,6 @@ import java.util.Optional;
 @OnlyIn(Dist.CLIENT)
 public class NetworkFiltererRenderer implements BlockEntityRenderer<NetworkFiltererBlockEntity> {
     private ItemRenderer itemRenderer;
-//** THIS DOESNT WORK**
 
     public NetworkFiltererRenderer(BlockEntityRendererProvider.Context context) {
         itemRenderer = context.getItemRenderer();
@@ -110,8 +109,6 @@ public class NetworkFiltererRenderer implements BlockEntityRenderer<NetworkFilte
             double localX = (u / 16.0d) - 0.5d;       // u: left->right maps to X+
             double localY = 0.5d - (v / 16.0d);       // v: top->bottom maps to Y-
 
-            // compute a translation & rotation that places the item flush to the `face`
-            // we translate relative to center, then rotate so the item faces outward.
             switch (face) {
                 case NORTH -> {
                     // outward = -Z
@@ -154,10 +151,6 @@ public class NetworkFiltererRenderer implements BlockEntityRenderer<NetworkFilte
             // scale down so it looks like an item in a frame (tweak as desired)
             final float scale = 0.3f; // smaller = tighter to face
             ms.scale(scale, scale, scale);
-
-            // render the item. The exact renderStatic signature can vary between mappings;
-            // this is the commonly-used form. If your compile complains, check ItemRenderer javadocs.
-            // preferred signature used previously in this conversation
             itemRenderer.renderStatic(stack, ItemDisplayContext.FIXED, packedLight, packedOverlay, ms, buffers,null, 0);
 
 
@@ -165,13 +158,6 @@ public class NetworkFiltererRenderer implements BlockEntityRenderer<NetworkFilte
         }
     }
 
-/*
-    // registration helper (call this in your client setup)
-    public static <T extends BlockEntity> void register(BlockEntityType<T> type) {
-        BlockEntityRenderers.register((BlockEntityType<NetworkFiltererBlockEntity>) (Object) type, NetworkFiltererRenderer::new);
-    }
-
- */
 
 }
 

@@ -72,6 +72,7 @@ public class CreateRadar {
         modEventBus.addListener(CreateRadar::clientInit);
         modEventBus.addListener(CreateRadar::onLoadComplete);
 
+
         MinecraftForge.EVENT_BUS.addListener(MonitorInputHandler::monitorPlayerHovering);
         MinecraftForge.EVENT_BUS.addListener(CreateRadar::clientTick);
         MinecraftForge.EVENT_BUS.addListener(CreateRadar::onLoadWorld);

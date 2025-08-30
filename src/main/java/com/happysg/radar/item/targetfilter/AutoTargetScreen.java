@@ -2,6 +2,9 @@ package com.happysg.radar.item.targetfilter;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.datalink.screens.TargetingConfig;
+import com.happysg.radar.networking.NetworkHandler;
+import com.happysg.radar.networking.networkhandlers.BoolNBThelper;
+import com.happysg.radar.networking.packets.BoolListPacket;
 import com.happysg.radar.registry.ModGuiTextures;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.gui.AllIcons;
@@ -12,19 +15,21 @@ import net.createmod.catnip.gui.AbstractSimiScreen;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
 
 public class AutoTargetScreen extends AbstractSimiScreen  {
+    private static final String KEY = "TargetBools";
+    private static final int COUNT = 6; // set to number of booleans you use
+    boolean player =true;
+    boolean contraption=true;
+    boolean mob=true;
+    boolean animal=true;
+    boolean projectile=true;
+    boolean autoTarget= true;
+    boolean artilleryMode = true;
+    boolean lineofSight = true;
 
-    boolean player;
-    boolean contraption;
-    boolean mob;
-    boolean animal;
-    boolean projectile;
-    boolean autoTarget;
-    boolean autoFire;
-    boolean artilleryMode;
-    boolean lineofSight;
-    ;
 
     protected IconButton playerButton;
     protected Indicator playerIndicator;
@@ -46,17 +51,8 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
     protected ModGuiTextures background;
     public AutoTargetScreen() {
         this.background = ModGuiTextures.TARGETING_FILTER;
-        TargetingConfig targetingConfig = TargetingConfig.DEFAULT;
 
-        player = targetingConfig.player();
-        contraption = targetingConfig.contraption();
-        mob = targetingConfig.mob();
-        animal = targetingConfig.animal();
-        projectile = targetingConfig.projectile();
-        autoTarget = targetingConfig.autoTarget();
-        lineofSight= targetingConfig.lineofSight();
-        autoFire = targetingConfig.autoFire();
-       //artilleryMode = targetingConfig.artilleryMode();
+
     }
     protected void renderWindow(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         int x = guiLeft;
@@ -91,6 +87,7 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         clearWidgets();
         int X = guiLeft;
         int Y = guiTop;
+        loadFlagsFromHeldItem();
         playerButton = new IconButton(guiLeft + 22, guiTop + 43, ModGuiTextures.PLAYER_BUTTON);
         playerButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.player"));
         playerIndicator = new Indicator(guiLeft + 22, guiTop + 36, Component.empty());
@@ -171,6 +168,44 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         confirmButton.withCallback(this::onClose);
         addRenderableWidget(confirmButton);
     }
+    // call this when constructing the screen or in init()
+    private void loadFlagsFromHeldItem() {
+        // client-side: read the item the player currently holds (main hand assumed here)
+        ItemStack stack = net.minecraft.client.Minecraft.getInstance().player.getItemInHand(InteractionHand.MAIN_HAND);
+        if (stack != null && !stack.isEmpty()) {
+            boolean[] arr = BoolNBThelper.loadBooleansFromBytes(stack, KEY, COUNT);
+            // assign into your fields in the same order you save them
+            if (arr.length >= COUNT) {
+                player = arr[0];
+                contraption = arr[1];
+                mob = arr[2];
+                animal = arr[3];
+                projectile = arr[4];
+                lineofSight = arr[5];
+            }
+        }
+    }
 
+    // Call this when screen is removed (you already had removed -> saveNBT())
+    @Override
+    public void removed() {
+        super.removed();
+        sendFlagsToServerAndSave();
+    }
+
+    // Package current flags into boolean[] and send packet
+    private void sendFlagsToServerAndSave() {
+        boolean[] flags = new boolean[COUNT];
+        flags[0] = player;
+        flags[1] = contraption;
+        flags[2] = mob;
+        flags[3] = animal;
+        flags[4] = projectile;
+        flags[5] = lineofSight;
+
+        // send to server
+        NetworkHandler.CHANNEL.sendToServer(new BoolListPacket(true, flags));
+
+    }
 
 }

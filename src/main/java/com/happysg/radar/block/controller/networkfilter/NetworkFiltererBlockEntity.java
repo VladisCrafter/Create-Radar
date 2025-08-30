@@ -1,11 +1,16 @@
 package com.happysg.radar.block.controller.networkfilter;
 
+import com.happysg.radar.registry.ModBlockEntityTypes;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -16,6 +21,7 @@ import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.apache.commons.compress.archivers.dump.DumpArchiveEntry;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -24,123 +30,123 @@ import java.util.Iterator;
 import java.util.Map;
 
 public class NetworkFiltererBlockEntity extends BlockEntity {
-    // example storage fields (replace with your real fields)
-    public final NonNullList<ItemStack> stacks = NonNullList.withSize(3, ItemStack.EMPTY);
-    private CompoundTag storedConfig; // store raw NBT, or parse into typed fields
-    public String face;
-    public ResourceLocation texture;
+    // inventory
     private final ItemStackHandler inventory = new ItemStackHandler(3) {
         @Override
         protected void onContentsChanged(int slot) {
             super.onContentsChanged(slot);
-            // mark dirty and notify block update so clients re-render/get the updated data
+            // update our saved slot NBT when the inventory changes
+            updateSlotNbtFromInventory(slot);
+            sendFullNbtToPlayer(Minecraft.getInstance().player);
+            // mark dirty and notify clients
             setChanged();
             if (level != null) {
                 level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
             }
         }
-        };
+    };
 
-        // capability wrappe
-        private LazyOptional<IItemHandler> handler = LazyOptional.of(() -> inventory);
-    private int selectedSlot = 0;
-    public NetworkFiltererBlockEntity(BlockEntityType<?> pType, BlockPos pPos, BlockState pBlockState) {
-        super(pType, pPos, pBlockState);
-    }
-    private final Map<ResourceLocation, Integer> mappings = new HashMap<>();
+    // capability wrapper
+    private LazyOptional<IItemHandler> handler = LazyOptional.of(() -> inventory);
 
+    // Array storing a *copy* of each slot's item NBT (or null if slot has no tag / is empty)
+    // Index 0..2
+    private CompoundTag[] slotNbt = new CompoundTag[3];
 
-    public ItemStack insertWithMapping(ItemStack stack) {
-        if (stack.isEmpty()) return ItemStack.EMPTY;
-
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(stack.getItem());
-        Integer mapped = mappings.get(key);
-
-        ItemStack toInsert = stack.copy();
-
-        if (mapped != null && mapped >= 0 && mapped < inventory.getSlots()) {
-            // Try mapped slot first
-            toInsert = inventory.insertItem(mapped, toInsert, false);
-            if (toInsert.isEmpty()) return ItemStack.EMPTY;
-            // if remainder exists, try to place into other slots
-        }
-
-        // fallback: insert into first available / merge as normal
-        for (int i = 0; i < inventory.getSlots(); i++) {
-            toInsert = inventory.insertItem(i, toInsert, false);
-            if (toInsert.isEmpty()) break;
-        }
-
-        return toInsert;
+    public NetworkFiltererBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+        super(type, pos, state); // adjust to your BE registration
+        // initialize array (nulls by default)
+        for (int i = 0; i < slotNbt.length; i++) slotNbt[i] = null;
     }
 
-    // Bind an item type to selectedSlot
-    public void bindItemToSelectedSlot(ResourceLocation itemKey) {
-        // remove any previous mapping that points to selectedSlot (ensure uniqueness)
-        Iterator<Map.Entry<ResourceLocation, Integer>> it = mappings.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<ResourceLocation, Integer> e = it.next();
-            if (e.getValue() == selectedSlot) it.remove();
+    // Try to insert into a mapped/forced slot (example helper).
+    public ItemStack insertIntoSlot(int slot, ItemStack toInsert) {
+        if (toInsert.isEmpty() || slot < 0 || slot >= inventory.getSlots()) return toInsert;
+        ItemStack remainder = inventory.insertItem(slot, toInsert, false);
+        // onContentsChanged will update the slotNbt for us
+        return remainder;
+    }
+
+    // Called after inventory changes: copy the item's tag into slotNbt[slot]
+    private void updateSlotNbtFromInventory(int slot) {
+        if (slot < 0 || slot >= inventory.getSlots()) return;
+        ItemStack s = inventory.getStackInSlot(slot);
+        if (s == null || s.isEmpty() || !s.hasTag()) {
+            slotNbt[slot] = null;
+        } else {
+            CompoundTag tag = s.getTag();
+            slotNbt[slot] = tag == null ? null : tag.copy(); // store copy to be safe
         }
-        mappings.put(itemKey, selectedSlot);
+    }
+
+    // Public getter to access stored tag (may be null)
+    @Nullable
+    public CompoundTag getSlotNbt(int slot) {
+        if (slot < 0 || slot >= slotNbt.length) return null;
+        return slotNbt[slot];
+    }
+
+
+    public void setSlotNbt(int slot, @Nullable CompoundTag tag) { // DO NOT DELETE I BEG YOU
+        if (slot < 0 || slot >= slotNbt.length) return;
+        slotNbt[slot] = (tag == null) ? null : tag.copy();
         setChanged();
         if (level != null) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
     }
 
-    // Unbind selectedSlot (remove mapping that had this slot)
-    public void unbindSelectedSlot() {
-        Iterator<Map.Entry<ResourceLocation, Integer>> it = mappings.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<ResourceLocation, Integer> e = it.next();
-            if (e.getValue() == selectedSlot) it.remove();
-        }
-        setChanged();
-        if (level != null) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
-    }
-
-    // Cycle selected slot: 0 -> 1 -> 2 -> 0
-    public void cycleSelectedSlot() {
-        selectedSlot = (selectedSlot + 1) % inventory.getSlots();
-        setChanged();
-    }
-
-    public int getSelectedSlot() {
-        return selectedSlot;
-    }
-
-    // Serialization (save mappings + selected slot + inventory)
+    // Serialization: save inventory (as before) AND save our slotNbt array
     @Override
     public void load(CompoundTag nbt) {
         super.load(nbt);
+
+        // load inventory
         if (nbt.contains("inv")) {
             inventory.deserializeNBT(nbt.getCompound("inv"));
+        } else {
+            // fallback: try older format if needed
         }
-        mappings.clear();
-        if (nbt.contains("mappings")) {
-            CompoundTag mapTag = nbt.getCompound("mappings");
-            for (String key : mapTag.getAllKeys()) {
-                int slot = mapTag.getInt(key);
-                mappings.put(new ResourceLocation(key), slot);
+
+        // after inventory deserialized, ensure our slotNbt matches the inventory
+        for (int i = 0; i < inventory.getSlots(); i++) {
+            updateSlotNbtFromInventory(i);
+        }
+
+        // load stored per-slot tags if present (prefer this so explicit stored tags survive even if item removed)
+        if (nbt.contains("slotTags")) {
+            CompoundTag tagsTag = nbt.getCompound("slotTags");
+            for (int i = 0; i < slotNbt.length; i++) {
+                if (tagsTag.contains("slot" + i)) {
+                    CompoundTag t = tagsTag.getCompound("slot" + i);
+                    if (t.isEmpty()) slotNbt[i] = null;
+                    else slotNbt[i] = t.copy();
+                } else {
+                    slotNbt[i] = null;
+                }
             }
-        }
-        if (nbt.contains("selectedSlot")) {
-            selectedSlot = nbt.getInt("selectedSlot");
         }
     }
 
     @Override
     protected void saveAdditional(CompoundTag nbt) {
         super.saveAdditional(nbt);
+
+        // save inventory
         nbt.put("inv", inventory.serializeNBT());
-        CompoundTag mapTag = new CompoundTag();
-        for (Map.Entry<ResourceLocation, Integer> e : mappings.entrySet()) {
-            mapTag.putInt(e.getKey().toString(), e.getValue());
+
+        // save the per-slot tags as a compound under "slotTags"
+        CompoundTag tagsTag = new CompoundTag();
+        for (int i = 0; i < slotNbt.length; i++) {
+            if (slotNbt[i] != null) {
+                tagsTag.put("slot" + i, slotNbt[i].copy());
+            } else {
+                // keep an empty compound so keys are stable (optional)
+                tagsTag.put("slot" + i, new CompoundTag());
+            }
         }
-        nbt.put("mappings", mapTag);
-        nbt.putInt("selectedSlot", selectedSlot);
+        nbt.put("slotTags", tagsTag);
     }
 
-    // Networking helpers
+    // Networking helpers: ensure clients get the slotNbt when block entity updates
     @Override
     public CompoundTag getUpdateTag() {
         return saveWithoutMetadata();
@@ -166,6 +172,8 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     public void onLoad() {
         super.onLoad();
         handler = LazyOptional.of(() -> inventory);
+        // make sure slotNbt synced with inventory on load
+        for (int i = 0; i < inventory.getSlots(); i++) updateSlotNbtFromInventory(i);
     }
 
     @Override
@@ -174,11 +182,33 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         handler.invalidate();
     }
 
-    // Utility: expose a copy of mapping for client render/UI if you want:
-    public Map<ResourceLocation, Integer> getMappings() {
-        return new HashMap<>(mappings);
+    // Convenience: expose the raw item handler if needed
+    public IItemHandler getItemHandler() {
+        return inventory;
+    }
+    public void sendFullNbtToPlayer(Player player) {
+        if (player == null || this.level == null) return;
+
+        // Get the block entity's full save NBT (same data that is written to disk)
+        CompoundTag tag = this.saveWithoutMetadata(); // includes inventory, our slotTags, mappings, etc.
+
+        String full = tag == null ? "{}" : tag.toString();
+
+        // Protect chat from exploding: split into chunks if too long
+        final int MAX_CHARS = 1000; // tweak: how many chars per chat message
+        if (full.length() <= MAX_CHARS) {
+            player.sendSystemMessage(Component.literal(full).withStyle(ChatFormatting.GREEN));
+            return;
+        }
+
+        // Split into multiple messages
+        for (int i = 0; i < full.length(); i += MAX_CHARS) {
+            String part = full.substring(i, Math.min(full.length(), i + MAX_CHARS));
+            player.sendSystemMessage(Component.literal(part).withStyle(ChatFormatting.GREEN));
+        }
     }
 }
+
 
 
 

@@ -1,5 +1,6 @@
 package com.happysg.radar.networking;
 
+import com.happysg.radar.networking.packets.BoolListPacket;
 import com.happysg.radar.networking.packets.SaveListsPacket;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
@@ -26,5 +27,14 @@ public class NetworkHandler {
                 SaveListsPacket::decode,
                 SaveListsPacket::handle
         );
+        // register a second packet (ToggleFlagsPacket). Replace with your packet class name.
+        CHANNEL.registerMessage(
+                packetId++,
+                BoolListPacket.class,
+                BoolListPacket::encode,
+                BoolListPacket::decode,
+                BoolListPacket::handle
+        );
     }
+
 }
