@@ -44,22 +44,18 @@ public class WeaponNetwork {
     private Vec3 targetPos;
     private Double targetPitch;
     private Double targetYaw;
-
-    public WeaponNetwork(UUID id, Level level) {
+    public WeaponNetwork(Level level){
+        this(UUID.randomUUID(), level, true);
+    }
+    public WeaponNetwork(UUID id, Level level, boolean register) {
         if(level == null || level.isClientSide()) return;
         this.dimension = level.dimension();
         this.level = (ServerLevel) level;
         this.uuid = id;
-        WeaponNetworkSavedData.get(this.level).register(this);
+        if(register) WeaponNetworkSavedData.get(this.level).register(this);
     }
 
-    public WeaponNetwork(Level level){
-        if(level == null || level.isClientSide()) return;
-        this.dimension = level.dimension();
-        this.level = (ServerLevel) level;
-        this.uuid = UUID.randomUUID();
-        WeaponNetworkSavedData.get((ServerLevel) level).register(this);
-    }
+
     public void tick(){
 
         if(cannonMount == null) return;
@@ -84,7 +80,10 @@ public class WeaponNetwork {
         return cannonMount;
     }
 
-    public void setCannonMount(CannonMountBlockEntity cannonMount) {
+    public void setCannonMount(CannonMountBlockEntity cannonMount){
+        setCannonMount(cannonMount, true);
+    }
+    public void setCannonMount(CannonMountBlockEntity cannonMount, boolean makeDirty) {
         this.cannonMount = cannonMount;
         markDirty();
     }
@@ -94,6 +93,9 @@ public class WeaponNetwork {
     }
 
     public void setAutoPitchController(AutoPitchControllerBlockEntity autoPitchController) {
+        setAutoPitchController(autoPitchController, true);
+    }
+    public void setAutoPitchController(AutoPitchControllerBlockEntity autoPitchController, boolean makeDirty) {
         this.autoPitchController = autoPitchController;
         markDirty();
     }
@@ -102,18 +104,23 @@ public class WeaponNetwork {
         return autoYawController;
     }
 
-    public void setAutoYawController(AutoYawControllerBlockEntity autoYawController) {
+    public void setAutoYawController(AutoYawControllerBlockEntity autoYawController, boolean makeDirty) {
         this.autoYawController = autoYawController;
         markDirty();
     }
-
+    public void setAutoYawController(AutoYawControllerBlockEntity autoYawController) {
+        setAutoYawController(autoYawController, true);
+    }
     public FireControllerBlockEntity getFireController() {
         return fireController;
     }
 
-    public void setFireController(FireControllerBlockEntity fireController) {
+    public void setFireController(FireControllerBlockEntity fireController, boolean makeDirty) {
         this.fireController = fireController;
         markDirty();
+    }
+    public void setFireController(FireControllerBlockEntity fireController) {
+        setFireController(fireController, true);
     }
 
     public boolean setController(BlockEntity controller) {

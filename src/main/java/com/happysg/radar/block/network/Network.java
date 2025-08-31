@@ -4,6 +4,7 @@ import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import net.minecraft.client.model.AnimationUtils;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -18,21 +19,21 @@ public class Network {
     private final Set<UUID> weaponNetworks = new HashSet<>();
     private final HashSet<BlockPos> networkBlocks = new HashSet<>();
     private long timeOfLastSelect = 0;
+    private ResourceKey<Level> dimension;
     private String selectedEntity = null;
     private ServerLevel level;
 
     public Network(Level level) {
-        if (level.isClientSide() || level.getServer() == null) return;
-        this.level = level.getServer().getLevel(Level.OVERWORLD);
-        this.uuid = UUID.randomUUID();
-        NetworkSavedData.get(this.level).registerNetwork(this);
+        this(UUID.randomUUID(), level, true);
     }
 
     public Network(UUID uuid, Level level, boolean register) {
-        if (level.isClientSide() || level.getServer() == null) return;
-        this.level = level.getServer().getLevel(Level.OVERWORLD);
+        if (level == null || level.isClientSide()){
+            return;
+        }
+        this.dimension = level.dimension();
+        this.level = (ServerLevel) level;
         this.uuid = uuid;
-        if(this.level == null) return;
         if(register) NetworkSavedData.get(this.level).registerNetwork(this);
     }
 
@@ -41,6 +42,7 @@ public class Network {
     }
 
     public void tick(){
+        if(!weaponNetworks.isEmpty() && networkBlocks.isEmpty()){weaponNetworks.clear();}
         if(weaponNetworks.isEmpty() && networkBlocks.isEmpty()) NetworkSavedData.get(this.level).destroyNetwork(uuid);
         Collection<RadarTrack> cachedTracks = null;
         for (BlockPos blockPos : networkBlocks) {
@@ -168,5 +170,8 @@ public class Network {
     }
     public BlockPos getRadarPos() {
         return radarPos;
+    }
+    public ResourceKey<Level> getDimension() {
+        return dimension;
     }
 }

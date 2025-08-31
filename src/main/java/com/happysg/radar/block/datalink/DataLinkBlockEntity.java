@@ -59,27 +59,32 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
             Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(networkBlockEntity.getBlockPos(), level);
             network.setRadarPos(null);
         }
-        if(targetBlockEntity != null){
-            BlockPos targetPos = targetBlockEntity.getBlockPos();
-            Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(targetPos, level);
-            network.removeNetworkBlock(targetPos);
-            if(sourceBlockEntity != null){
-                network.removeNetworkBlock(sourceBlockEntity.getBlockPos());
-            }
-        }
-        if(sourceBlockEntity != null){ //should never do anything cuz they are in the same network but just in case
-            BlockPos sourcePos = sourceBlockEntity.getBlockPos();
-            Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(sourcePos, level);
-            network.removeNetworkBlock(sourcePos);
-            if(targetBlockEntity != null){
-                network.removeNetworkBlock(targetBlockEntity.getBlockPos());
-            }
-        }
-        if(sourceBlockEntity instanceof CannonMountBlockEntity && targetBlockEntity != null){
-            Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(targetBlockEntity.getBlockPos(), level);
+        removeWeaponNetwork(serverLevel, sourceBlockEntity, targetBlockEntity);
+        removeWeaponNetwork(serverLevel, targetBlockEntity, sourceBlockEntity);
+        removeFromNetwork(serverLevel, sourceBlockEntity, targetBlockEntity);
+        removeFromNetwork(serverLevel, targetBlockEntity, sourceBlockEntity);
+
+    }
+
+    private void removeWeaponNetwork(ServerLevel serverLevel, BlockEntity targetBlockEntity, BlockEntity sourceBlockEntity) {
+        if(targetBlockEntity instanceof CannonMountBlockEntity && sourceBlockEntity != null){
+            Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(sourceBlockEntity.getBlockPos(), level);
             if(network != null){
                 WeaponNetworkSavedData weaponNetworkSavedData = WeaponNetworkSavedData.get(serverLevel);
-                network.removeWeaponNetwork(weaponNetworkSavedData.networkContains(sourceBlockEntity.getBlockPos()));
+                network.removeWeaponNetwork(weaponNetworkSavedData.networkContains(targetBlockEntity.getBlockPos()));
+            }
+        }
+    }
+
+    private void removeFromNetwork(ServerLevel serverLevel, BlockEntity targetBlockEntity, BlockEntity sourceBlockEntity) {
+        if(sourceBlockEntity != null){
+            BlockPos sourcePos = sourceBlockEntity.getBlockPos();
+            Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(sourcePos, serverLevel);
+            if(network != null) {
+            network.removeNetworkBlock(sourcePos);
+                if (targetBlockEntity != null) {
+                    network.removeNetworkBlock(targetBlockEntity.getBlockPos());
+                }
             }
         }
     }

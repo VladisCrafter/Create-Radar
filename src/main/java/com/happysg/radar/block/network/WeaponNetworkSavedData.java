@@ -63,7 +63,7 @@ public class WeaponNetworkSavedData extends SavedData {
         for (WeaponNetwork network : networks.values()) {
             CompoundTag nbt = new CompoundTag();
             nbt.putUUID("id", network.getUuid());
-            nbt.putString("dimension", network.getDimension().toString());
+            nbt.putString("dimension", network.getDimension().location().toString());
             if (network.getCannonMount() != null)
                 nbt.put("cannon_mount", NbtUtils.writeBlockPos(network.getCannonMount().getBlockPos()));
 
@@ -88,14 +88,14 @@ public class WeaponNetworkSavedData extends SavedData {
     public static WeaponNetworkSavedData load(CompoundTag tag, ServerLevel serverLevel) {
         WeaponNetworkSavedData data = new WeaponNetworkSavedData();
         ListTag list = tag.getList("networks", CompoundTag.TAG_COMPOUND);
-        ResourceKey<Level> dimensionKey = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("dimension")));
-        ServerLevel level = serverLevel.getServer().getLevel(dimensionKey);
-        if(level == null) return null;
-
+        if(serverLevel == null)return null;
         for (int i = 0; i < list.size(); i++) {
             CompoundTag nbt = list.getCompound(i);
+            ResourceKey<Level> dimensionKey = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(nbt.getString("dimension")));
+            ServerLevel level = serverLevel.getServer().getLevel(dimensionKey);
+            if(level == null) continue;
             UUID id = nbt.getUUID("id");
-            WeaponNetwork network = new WeaponNetwork(id, level);
+            WeaponNetwork network = new WeaponNetwork(id, level, false);
 
             network.setCannonMount(level.getBlockEntity(NbtUtils.readBlockPos(nbt.getCompound("cannon_mount"))) instanceof CannonMountBlockEntity mount ? mount : null);
             network.setAutoPitchController(level.getBlockEntity(NbtUtils.readBlockPos(nbt.getCompound("pitch_controller"))) instanceof AutoPitchControllerBlockEntity pitch ? pitch : null);

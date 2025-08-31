@@ -2,10 +2,13 @@ package com.happysg.radar.block.network;
 
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.LongTag;
 import net.minecraft.nbt.StringTag;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -75,7 +78,7 @@ public class NetworkSavedData extends SavedData {
             }
             CompoundTag netTag = new CompoundTag();
             netTag.putUUID("id", network.getUuid());
-
+            netTag.putString("dimension", network.getDimension().location().toString());
 //            ListTag subNetworks = new ListTag();
 //            for (UUID subNetwork : network.getNetworks()) {
 //                subNetworks.add(StringTag.valueOf(subNetwork.toString()));
@@ -105,13 +108,15 @@ public class NetworkSavedData extends SavedData {
         return tag;
     }
 
-    public static NetworkSavedData load(CompoundTag tag, ServerLevel level) {
+    public static NetworkSavedData load(CompoundTag tag, ServerLevel serverLevel) {
         NetworkSavedData data = new NetworkSavedData();
         ListTag list = tag.getList("networks", CompoundTag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             CompoundTag netTag = list.getCompound(i);
             UUID id = netTag.getUUID("id");
-
+            ResourceKey<Level> dimensionKey = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(netTag.getString("dimension")));
+            ServerLevel level = serverLevel.getServer().getLevel(dimensionKey);
+            if(level == null) continue;
             Network network = new Network(id, level, false);
 
 //            // Load sub-network UUIDs
@@ -131,7 +136,6 @@ public class NetworkSavedData extends SavedData {
                 BlockPos radarPos = BlockPos.of(netTag.getLong("radarPos"));
                 network.setRadarPos(radarPos, false);
             }
-
             data.registerNetwork(network);
         }
         return data;
