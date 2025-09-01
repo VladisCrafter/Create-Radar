@@ -5,7 +5,6 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.network.chat.Component;
 import net.minecraftforge.network.NetworkEvent;
 import java.util.function.Supplier;
 
@@ -14,16 +13,16 @@ import java.util.function.Supplier;
  * Usage: register with your channel, then send from client using NetworkHandler.CHANNEL.sendToServer(new SaveFlagsPacket(...));
  */
 public class BoolListPacket {
-    private static final String NBT_KEY = "autotarget_flags";
-    // Keep this in sync with your GUI flag count
+    public static String NBT_KEY = "";
     private static final int EXPECTED_FLAG_COUNT = 6;
 
     public final boolean mainHand;
     public final boolean[] flags;
 
-    public BoolListPacket(boolean mainHand, boolean[] flags) {
+    public BoolListPacket(boolean mainHand, boolean[] flags, String key) {
         this.mainHand = mainHand;
         this.flags = flags;
+        NBT_KEY = key;
     }
 
     // encoder
@@ -43,7 +42,7 @@ public class BoolListPacket {
         int len = buf.readInt();
         boolean[] f = new boolean[len];
         for (int i = 0; i < len; i++) f[i] = buf.readBoolean();
-        return new BoolListPacket(main, f);
+        return new BoolListPacket(main, f, NBT_KEY);
     }
 
     // handler (executed on server thread)
@@ -57,19 +56,17 @@ public class BoolListPacket {
             }
 
             // Basic validation
-            if (pkt.flags == null) {
-                player.sendSystemMessage(Component.literal("[SaveFlags] Rejected: null flags"));
+            if (pkt.flags == null) {;
                 return;
             }
             if (pkt.flags.length != EXPECTED_FLAG_COUNT) {
-                player.sendSystemMessage(Component.literal("[SaveFlags] Rejected: wrong flag length " + pkt.flags.length + ", expected " + EXPECTED_FLAG_COUNT));
                 return;
             }
 
             InteractionHand hand = pkt.mainHand ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
             ItemStack stack = player.getItemInHand(hand);
             if (stack == null || stack.isEmpty()) {
-                player.sendSystemMessage(Component.literal("[SaveFlags] Rejected: no item in " + hand));
+
                 return;
             }
 
@@ -88,15 +85,10 @@ public class BoolListPacket {
                 // IMPORTANT: put the (possibly mutated) stack back into the player's hand to avoid copy issues.
                 player.setItemInHand(hand, stack);
 
-                // Sync player's inventory/container to the client
-                // broadcastChanges is usually enough:
                 player.inventoryMenu.broadcastChanges();
 
-                // Debug: send chat confirming success (remove in production)
-                player.sendSystemMessage(Component.literal("[SaveFlags] Saved flags to item. NBT: " + tag.toString()));
 
             } catch (Exception ex) {
-                player.sendSystemMessage(Component.literal("[SaveFlags] Exception saving flags: " + ex.getMessage()));
                 ex.printStackTrace();
             }
         });

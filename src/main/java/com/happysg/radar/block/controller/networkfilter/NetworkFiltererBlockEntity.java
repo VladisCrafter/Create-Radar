@@ -37,7 +37,7 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
             super.onContentsChanged(slot);
             // update our saved slot NBT when the inventory changes
             updateSlotNbtFromInventory(slot);
-            sendFullNbtToPlayer(Minecraft.getInstance().player);
+            //sendFullNbtToPlayer(Minecraft.getInstance().player); (Debug
             // mark dirty and notify clients
             setChanged();
             if (level != null) {
@@ -183,10 +183,12 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     }
 
     // Convenience: expose the raw item handler if needed
+
     public IItemHandler getItemHandler() {
         return inventory;
     }
-    public void sendFullNbtToPlayer(Player player) {
+       /*
+    public void sendFullNbtToPlayer(Player player) { (debug method for seeing item NBT)
         if (player == null || this.level == null) return;
 
         // Get the block entity's full save NBT (same data that is written to disk)
@@ -207,6 +209,8 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
             player.sendSystemMessage(Component.literal(part).withStyle(ChatFormatting.GREEN));
         }
     }
+
+     */
 }
 
 

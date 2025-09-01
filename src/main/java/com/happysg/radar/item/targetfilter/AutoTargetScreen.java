@@ -21,6 +21,7 @@ import net.minecraft.world.item.ItemStack;
 public class AutoTargetScreen extends AbstractSimiScreen  {
     private static final String KEY = "TargetBools";
     private static final int COUNT = 6; // set to number of booleans you use
+
     boolean player =true;
     boolean contraption=true;
     boolean mob=true;
@@ -29,7 +30,7 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
     boolean autoTarget= true;
     boolean artilleryMode = true;
     boolean lineofSight = true;
-
+  //  boolean[] bools = new boolean[]{player,contraption,mob,animal,projectile,autoTarget,lineofSight};
 
     protected IconButton playerButton;
     protected Indicator playerIndicator;
@@ -51,7 +52,6 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
     protected ModGuiTextures background;
     public AutoTargetScreen() {
         this.background = ModGuiTextures.TARGETING_FILTER;
-
 
     }
     protected void renderWindow(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
@@ -83,6 +83,7 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
     @Override
     protected void init() {
         setWindowSize(background.width, background.height);
+
         super.init();
         clearWidgets();
         int X = guiLeft;
@@ -167,12 +168,14 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         confirmButton = new IconButton(guiLeft+191,guiTop+83, AllIcons.I_CONFIRM);
         confirmButton.withCallback(this::onClose);
         addRenderableWidget(confirmButton);
+
+
     }
     // call this when constructing the screen or in init()
     private void loadFlagsFromHeldItem() {
         // client-side: read the item the player currently holds (main hand assumed here)
         ItemStack stack = net.minecraft.client.Minecraft.getInstance().player.getItemInHand(InteractionHand.MAIN_HAND);
-        if (stack != null && !stack.isEmpty()) {
+        if (!stack.isEmpty()) {
             boolean[] arr = BoolNBThelper.loadBooleansFromBytes(stack, KEY, COUNT);
             // assign into your fields in the same order you save them
             if (arr.length >= COUNT) {
@@ -183,10 +186,10 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
                 projectile = arr[4];
                 lineofSight = arr[5];
             }
+
         }
     }
 
-    // Call this when screen is removed (you already had removed -> saveNBT())
     @Override
     public void removed() {
         super.removed();
@@ -196,15 +199,16 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
     // Package current flags into boolean[] and send packet
     private void sendFlagsToServerAndSave() {
         boolean[] flags = new boolean[COUNT];
+        ItemStack stack = net.minecraft.client.Minecraft.getInstance().player.getItemInHand(InteractionHand.MAIN_HAND);
         flags[0] = player;
         flags[1] = contraption;
         flags[2] = mob;
         flags[3] = animal;
         flags[4] = projectile;
         flags[5] = lineofSight;
-
+        BoolNBThelper.saveBooleansAsBytes(stack,flags, KEY);
         // send to server
-        NetworkHandler.CHANNEL.sendToServer(new BoolListPacket(true, flags));
+        NetworkHandler.CHANNEL.sendToServer(new BoolListPacket(true, flags, KEY));
 
     }
 

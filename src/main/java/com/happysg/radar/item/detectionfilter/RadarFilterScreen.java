@@ -3,6 +3,9 @@ package com.happysg.radar.item.detectionfilter;
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.item.identfilter.IdentificationFilterScreen;
 import com.happysg.radar.block.monitor.MonitorFilter;
+import com.happysg.radar.networking.NetworkHandler;
+import com.happysg.radar.networking.networkhandlers.BoolNBThelper;
+import com.happysg.radar.networking.packets.BoolListPacket;
 import com.happysg.radar.registry.ModGuiTextures;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.gui.AllIcons;
@@ -14,10 +17,15 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
 public class RadarFilterScreen extends AbstractSimiScreen {
+
+    private static final String KEY = "detectBools";
+    private static final int COUNT = 7; // set to number of booleans you use
 
     boolean player;
     boolean vs2;
@@ -43,22 +51,9 @@ public class RadarFilterScreen extends AbstractSimiScreen {
     protected Indicator itemIndicator;
     protected ModGuiTextures background;
     protected IconButton confirmButton;
-    List<String> playerBlacklist;
-    List<String> playerWhitelist;
-    List<String> vs2Whitelist;
-;
     public RadarFilterScreen() {
-
         this.background = ModGuiTextures.DETECTION_FILTER;
-        MonitorFilter monitorFilter = MonitorFilter.DEFAULT;
-        player = monitorFilter.player();
-        vs2 = monitorFilter.vs2();
-        contraption = monitorFilter.contraption();
-        mob = monitorFilter.mob();
-        projectile = monitorFilter.projectile();
-        playerBlacklist = monitorFilter.blacklistPlayers();
-        playerWhitelist = monitorFilter.whitelistPlayers();
-        vs2Whitelist = monitorFilter.whitelistVS();
+
     }
     protected void renderWindow(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         int x = guiLeft;
@@ -88,6 +83,7 @@ public class RadarFilterScreen extends AbstractSimiScreen {
     @Override
     protected void init() {
         setWindowSize(background.width, background.height);
+        loadFlagsFromHeldItem();
         super.init();
         clearWidgets();
         int Y = guiLeft;
@@ -97,7 +93,6 @@ public class RadarFilterScreen extends AbstractSimiScreen {
         playerIndicator = new Indicator(guiLeft + 32, guiTop + 31, Component.empty());
         playerIndicator.state = player ? Indicator.State.GREEN : Indicator.State.RED;
         playerButton.withCallback((x, y) -> {
-            Minecraft.getInstance().setScreen(new IdentificationFilterScreen());
             player = !player;
             playerIndicator.state = player ? Indicator.State.GREEN : Indicator.State.RED;
         });
@@ -174,15 +169,47 @@ public class RadarFilterScreen extends AbstractSimiScreen {
         confirmButton.withCallback(this::onClose);
         addRenderableWidget(confirmButton);
     }
+    // call this when constructing the screen or in init()
+    private void loadFlagsFromHeldItem() {
+        // client-side: read the item the player currently holds (main hand assumed here)
+        ItemStack stack = net.minecraft.client.Minecraft.getInstance().player.getItemInHand(InteractionHand.MAIN_HAND);
+        if (!stack.isEmpty()) {
+            boolean[] arr = BoolNBThelper.loadBooleansFromBytes(stack, KEY, COUNT);
+            // assign into your fields in the same order you save them
+            if (arr.length >= COUNT) {
+                player = arr[0];
+                contraption = arr[1];
+                vs2 = arr[2];
+                mob = arr[3];
+                animal = arr[4];
+                projectile = arr[5];
+                item = arr[6];
+            }
 
-
-/*
-    @Override
-    public void onClose(CompoundTag tag) {
-        super.onClose(tag);
-        MonitorFilter monitorFilter = new MonitorFilter(player, vs2, contraption, mob, animal, projectile, item, playerBlacklist, playerWhitelist, List.of(), vs2Whitelist);
-        tag.put("filter", monitorFilter.toTag());
+        }
     }
 
- */
+    @Override
+    public void removed() {
+        super.removed();
+        sendFlagsToServerAndSave();
+    }
+
+    // Package current flags into boolean[] and send packet
+    private void sendFlagsToServerAndSave() {
+        boolean[] flags = new boolean[COUNT];
+        ItemStack stack = net.minecraft.client.Minecraft.getInstance().player.getItemInHand(InteractionHand.MAIN_HAND);
+        flags[0] = player;
+        flags[1] = contraption;
+        flags[2] = vs2;
+        flags[3] = mob;
+        flags[4] = animal;
+        flags[5] = projectile;
+        flags[6] = item;
+        BoolNBThelper.saveBooleansAsBytes(stack,flags, KEY);
+        // send to server
+        NetworkHandler.CHANNEL.sendToServer(new BoolListPacket(true, flags, KEY));
+
+    }
+
 }

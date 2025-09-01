@@ -167,7 +167,7 @@ public class NetworkFilterer extends WrenchableDirectionalBlock implements IBE<N
             } else if (heldItem == targetItem) {
                 targetSlot = 2;
             } else {
-                player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.invalid").withStyle(ChatFormatting.RED),false);
+                player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.invalid").withStyle(ChatFormatting.RED),true);
                 return InteractionResult.PASS;
             }
 
@@ -190,11 +190,12 @@ public class NetworkFilterer extends WrenchableDirectionalBlock implements IBE<N
                 return InteractionResult.PASS;
             }
     }
+    /*
     private void sendSlotContentsWithNbt(Player player, IItemHandler inv) {
         for (int i = 0; i < 3; i++) {
             ItemStack s = inv.getStackInSlot(i);
             if (s == null || s.isEmpty()) {
-                player.sendSystemMessage(Component.literal("Slot " + (i + 1) + ": (empty)"));
+       //         player.sendSystemMessage(Component.literal("Slot " + (i + 1) + ": (empty)"));
                 continue;
             }
 
@@ -217,4 +218,6 @@ public class NetworkFilterer extends WrenchableDirectionalBlock implements IBE<N
             ));
         }
     }
+    */
+
 }
