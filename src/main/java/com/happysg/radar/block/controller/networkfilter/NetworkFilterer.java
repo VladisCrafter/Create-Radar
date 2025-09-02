@@ -2,6 +2,7 @@ package com.happysg.radar.block.controller.networkfilter;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.registry.ModBlockEntityTypes;
+import com.happysg.radar.registry.ModBlocks;
 import com.happysg.radar.registry.ModItems;
 import com.simibubi.create.AllShapes;
 import com.simibubi.create.foundation.block.IBE;
@@ -9,10 +10,10 @@ import com.simibubi.create.foundation.block.WrenchableDirectionalBlock;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -22,6 +23,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -59,91 +61,99 @@ public class NetworkFilterer extends WrenchableDirectionalBlock implements IBE<N
     public BlockEntityType<? extends NetworkFiltererBlockEntity> getBlockEntityType() {
         return ModBlockEntityTypes.NETWORK_FILTER_BLOCK_ENTITY.get();
     }
+
     @Override
     public @NotNull InteractionResult use(BlockState state, Level world, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
             ItemStack held = player.getItemInHand(hand);
 
-            if (held.isEmpty()) {
-                // client: play hand animation and bail early (server does the work)
-                if (world.isClientSide) return InteractionResult.SUCCESS;
+        if (held.isEmpty()) {
+            // client: play hand animation and bail early (server does the work)
+            if (world.isClientSide) return InteractionResult.SUCCESS;
 
-                // local hit coordinates (0..1 inside the block)
-                Vec3 hitVec = hit.getLocation();
-                double dx = hitVec.x - pos.getX();
-                double dy = hitVec.y - pos.getY();
-                double dz = hitVec.z - pos.getZ();
+            // local hit coordinates (0..1 inside the block)
+            Vec3 hitVec = hit.getLocation();
+            double dx = hitVec.x - pos.getX();
+            double dy = hitVec.y - pos.getY();
+            double dz = hitVec.z - pos.getZ();
 
-                Direction face = hit.getDirection();
+            Direction face = hit.getDirection();
 
-                // compute clicked UV in 0..16 depending on face (matches renderer mapping)
-                double clickU = 0.0;
-                double clickV = 0.0;
-                switch (face) {
-                    case NORTH -> { // -Z
-                        clickU = dx * 16.0;
-                        clickV = (1.0 - dy) * 16.0;
-                    }
-                    case SOUTH -> { // +Z
-                        clickU = (1.0 - dx) * 16.0;
-                        clickV = (1.0 - dy) * 16.0;
-                    }
-                    case WEST -> { // -X
-                        clickU = (1.0 - dz) * 16.0;
-                        clickV = (1.0 - dy) * 16.0;
-                    }
-                    case EAST -> { // +X
-                        clickU = dz * 16.0;
-                        clickV = (1.0 - dy) * 16.0;
-                    }
-                    case UP -> { // +Y
-                        clickU = dx * 16.0;
-                        clickV = (1.0 - dz) * 16.0;
-                    }
-                    case DOWN -> { // -Y
-                        clickU = dx * 16.0;
-                        clickV = dz * 16.0;
-                    }
+            // compute clicked UV in 0..16 depending on face (matches renderer mapping)
+            double clickU = 0.0;
+            double clickV = 0.0;
+            switch (face) {
+                case NORTH -> { // -Z
+                    clickU = dx * 16.0;
+                    clickV = (1.0 - dy) * 16.0;
                 }
-
-                // renderer's UV positions — keep synced with renderer!
-                final double[][] UVS = {{5.0, 11.0}, {11.0, 11.0}, {11.0, 5.0}};
-                final double PIXEL_THRESHOLD = 2.5;// pixels: how close the click must be (tweakable)
-
-                // find clicked slot (if any)
-                int clickedSlot = -1;
-                for (int i = 0; i < UVS.length; i++) {
-                    double du = clickU - UVS[i][0];
-                    double dv = clickV - UVS[i][1];
-                    double distSq = du * du + dv * dv;
-                    if (distSq <= (PIXEL_THRESHOLD * PIXEL_THRESHOLD)) {
-                        clickedSlot = i;
-                        break;
-                    }
+                case SOUTH -> { // +Z
+                    clickU = (1.0 - dx) * 16.0;
+                    clickV = (1.0 - dy) * 16.0;
                 }
-
-                if (clickedSlot == -1) {
-                    // not clicking near any configured UV -> do nothing
-                    return InteractionResult.PASS;
+                case WEST -> { // -X
+                    clickU = (1.0 - dz) * 16.0;
+                    clickV = (1.0 - dy) * 16.0;
                 }
-
-                // got a slot — try to extract a single item from that slot (server-side)
-                BlockEntity be = world.getBlockEntity(pos);
-                if (!(be instanceof NetworkFiltererBlockEntity threeBE)) return InteractionResult.PASS;
-
-                IItemHandler inv = threeBE.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
-                if (inv == null) return InteractionResult.PASS;
-                // extract one item
-                ItemStack extracted = inv.extractItem(clickedSlot, 1, false);
-
-                // try give to player inventory, else drop it
-                boolean added = player.addItem(extracted);
-                if (!added) {
-                    player.drop(extracted, false);
+                case EAST -> { // +X
+                    clickU = dz * 16.0;
+                    clickV = (1.0 - dy) * 16.0;
                 }
-                world.playSound(null, pos, SoundEvents.ITEM_PICKUP, SoundSource.BLOCKS, 0.6f, 1.0f);
-                return InteractionResult.CONSUME;
+                case UP -> { // +Y
+                    clickU = dx * 16.0;
+                    clickV = (1.0 - dz) * 16.0;
+                }
+                case DOWN -> { // -Y
+                    clickU = dx * 16.0;
+                    clickV = dz * 16.0;
+                }
             }
 
+            // renderer's UV positions — keep synced with renderer!
+            final double[][] UVS = {{5.0, 11.0}, {11.0, 11.0}, {11.0, 5.0}};
+            final double PIXEL_THRESHOLD = 2.5;// pixels: how close the click must be (tweakable)
+
+            // find clicked slot (if any)
+            int clickedSlot = -1;
+            for (int i = 0; i < UVS.length; i++) {
+                double du = clickU - UVS[i][0];
+                double dv = clickV - UVS[i][1];
+                double distSq = du * du + dv * dv;
+                if (distSq <= (PIXEL_THRESHOLD * PIXEL_THRESHOLD)) {
+                    clickedSlot = i;
+                    break;
+                }
+            }
+
+            if (clickedSlot == -1) {
+                // not clicking near any configured UV -> do nothing
+                return InteractionResult.PASS;
+            }
+
+            // got a slot — try to extract a single item from that slot (server-side)
+            BlockEntity be = world.getBlockEntity(pos);
+            if (!(be instanceof NetworkFiltererBlockEntity netFC)) return InteractionResult.PASS;
+
+            IItemHandler inv = netFC.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
+            if (inv == null) return InteractionResult.PASS;
+
+            // extract one item
+            ItemStack extracted = inv.extractItem(clickedSlot, 1, false);
+
+            // if nothing was extracted, do nothing (no sound/no message)
+            if (extracted == null || extracted.isEmpty()) {
+                return InteractionResult.PASS;
+            }
+
+            // try give to player inventory, else drop it
+            boolean added = player.addItem(extracted);
+            if (!added) {
+                player.drop(extracted, false);
+            }
+
+            world.playSound(null, pos, SoundEvents.ITEM_PICKUP, SoundSource.BLOCKS, 0.6f, 1.0f);
+            player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.filter_removed").withStyle(ChatFormatting.GOLD), true);
+            return InteractionResult.CONSUME;
+        }
             // --- NON-EMPTY HAND: keep existing insertion logic (unchanged)
             if (world.isClientSide) {
                 return InteractionResult.SUCCESS;
@@ -151,7 +161,7 @@ public class NetworkFilterer extends WrenchableDirectionalBlock implements IBE<N
 
             BlockEntity be = world.getBlockEntity(pos);
             if (!(be instanceof NetworkFiltererBlockEntity)) return InteractionResult.PASS;
-            NetworkFiltererBlockEntity threeBE = (NetworkFiltererBlockEntity) be;
+            NetworkFiltererBlockEntity netFC = (NetworkFiltererBlockEntity) be;
 
             // Allowed items mapping
             Item radarItem = ModItems.RADAR_FILTER_ITEM.get();
@@ -162,16 +172,19 @@ public class NetworkFilterer extends WrenchableDirectionalBlock implements IBE<N
             Item heldItem = held.getItem();
             if (heldItem == radarItem) {
                 targetSlot = 0;
+                player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.success").withStyle(ChatFormatting.GREEN),true);
             } else if (heldItem == identItem) {
                 targetSlot = 1;
+                player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.success").withStyle(ChatFormatting.GREEN),true);
             } else if (heldItem == targetItem) {
                 targetSlot = 2;
+                player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.success").withStyle(ChatFormatting.GREEN),true);
             } else {
                 player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.invalid").withStyle(ChatFormatting.RED),true);
                 return InteractionResult.PASS;
             }
 
-            IItemHandler inv = threeBE.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
+            IItemHandler inv = netFC.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
 
             if (inv == null) return InteractionResult.PASS;
 
@@ -190,6 +203,30 @@ public class NetworkFilterer extends WrenchableDirectionalBlock implements IBE<N
                 return InteractionResult.PASS;
             }
     }
+    @Override
+    public void onRemove(BlockState state, Level world, BlockPos pos, BlockState newState, boolean isMoving) {
+        // Only run when the block is actually being removed/replaced with a different block
+        if (state.getBlock() != newState.getBlock()) {
+            if (!world.isClientSide) {
+                BlockEntity be = world.getBlockEntity(pos);
+                if (be != null) {
+                    be.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent(handler -> {
+                        for (int i = 0; i < handler.getSlots(); i++) {
+                            ItemStack stack = handler.getStackInSlot(i);
+                            if (!stack.isEmpty()) {
+                                Containers.dropItemStack(world, pos.getX(),pos.getY(), pos.getZ(), stack.copy());
+                            }
+                        }
+                    });
+                }
+            }
+
+            // call super last so vanilla can do its cleanup
+            super.onRemove(state, world, pos, newState, isMoving);
+        }
+    }
+
+    //DEBUG ZONE
     /*
     private void sendSlotContentsWithNbt(Player player, IItemHandler inv) {
         for (int i = 0; i < 3; i++) {

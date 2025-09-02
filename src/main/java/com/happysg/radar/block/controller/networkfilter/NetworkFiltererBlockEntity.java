@@ -1,16 +1,9 @@
 package com.happysg.radar.block.controller.networkfilter;
 
-import com.happysg.radar.registry.ModBlockEntityTypes;
-import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -20,31 +13,48 @@ import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
-import net.minecraftforge.registries.ForgeRegistries;
-import org.apache.commons.compress.archivers.dump.DumpArchiveEntry;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
 
 public class NetworkFiltererBlockEntity extends BlockEntity {
     // inventory
+    // inside your BlockEntity
     private final ItemStackHandler inventory = new ItemStackHandler(3) {
         @Override
         protected void onContentsChanged(int slot) {
             super.onContentsChanged(slot);
-            // update our saved slot NBT when the inventory changes
-            updateSlotNbtFromInventory(slot);
-            //sendFullNbtToPlayer(Minecraft.getInstance().player); (Debug
-            // mark dirty and notify clients
             setChanged();
             if (level != null) {
                 level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
             }
         }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            // Enforce a single-item capacity per slot
+            return 1;
+        }
+
+        // Optional: prevent inserting more than 1 even if insertItem is called with higher count
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            if (stack == null || stack.isEmpty()) return stack;
+            // create a single-item copy to try insert (this ensures method respects single-item behavior)
+            ItemStack one = stack.copy();
+            one.setCount(1);
+            ItemStack remainder = super.insertItem(slot, one, simulate);
+            if (remainder.isEmpty()) {
+                // we consumed 1 from the incoming stack
+                ItemStack out = stack.copy();
+                out.shrink(1);
+                return out; // remainder for the original stack (count decreased by 1)
+            }
+            // couldn't insert, return original stack unchanged
+            return stack;
+        }
     };
+
 
     // capability wrapper
     private LazyOptional<IItemHandler> handler = LazyOptional.of(() -> inventory);
@@ -58,14 +68,10 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         // initialize array (nulls by default)
         for (int i = 0; i < slotNbt.length; i++) slotNbt[i] = null;
     }
+    // inside your BlockEntity
 
-    // Try to insert into a mapped/forced slot (example helper).
-    public ItemStack insertIntoSlot(int slot, ItemStack toInsert) {
-        if (toInsert.isEmpty() || slot < 0 || slot >= inventory.getSlots()) return toInsert;
-        ItemStack remainder = inventory.insertItem(slot, toInsert, false);
-        // onContentsChanged will update the slotNbt for us
-        return remainder;
-    }
+
+
 
     // Called after inventory changes: copy the item's tag into slotNbt[slot]
     private void updateSlotNbtFromInventory(int slot) {

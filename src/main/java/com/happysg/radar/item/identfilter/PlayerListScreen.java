@@ -299,6 +299,7 @@ public class PlayerListScreen extends AbstractSimiScreen {
     @Override
     public void removed() {
         super.removed();
+        addItem();
         if (minecraft.player != null && minecraft.level.isClientSide) {
             NetworkHandler.CHANNEL.sendToServer(
                     new SaveListsPacket(this.entries, this.friendorfoe)
