@@ -46,6 +46,7 @@
   "create_radar.card.remove_entry": "Remove Entry",
   "create_radar.linked_monitor": "Linked Monitor: %s",
   "create_radar.no_monitor": "No Monitor Linked",
+  "create_radar.monitor_coords": "(X: %1$s; Y: %2$s; Z: %3$s)",
   "create_radar.id_block.not_on_ship": "Not on a ship",
   "create_radar.id_block.not_on_vs2": "VS2 not found",
   "create_radar.item.safe_zone_designator.end": "Safe Zone Set",

@@ -71,6 +71,7 @@ public class ModLang {
 
         REGISTRATE.addRawLang(CreateRadar.MODID + ".item.safe_zone_designator.set", "Monitor Set");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".linked_monitor", "Linked Monitor: %s");
+        REGISTRATE.addRawLang(CreateRadar.MODID + ".monitor_coords", "(X: %1$s; Y: %2$s; Z: %3$s)");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".item.safe_zone_designator.no_monitor", "No Monitor Linked");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".item.safe_zone_designator.start", "Start Position Set");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".item.safe_zone_designator.reset", "Start Position Clear");

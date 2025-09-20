@@ -40,7 +40,7 @@ public class RadarGuidanceBlockItem extends BlockItem {
         CompoundTag tag = BlockItem.getBlockEntityData(pStack);
         if (tag != null && tag.contains("monitorPos")) {
             BlockPos monitorPos = BlockPos.of(tag.getLong("monitorPos"));
-            pTooltip.add(Component.translatable(CreateRadar.MODID + ".linked_monitor", monitorPos));
+            pTooltip.add(Component.translatable(CreateRadar.MODID + ".linked_monitor", Component.translatable(CreateRadar.MODID + ".monitor_coords", monitorPos.getX(), monitorPos.getY(), monitorPos.getZ())));
         } else {
             pTooltip.add(Component.translatable(CreateRadar.MODID + ".no_monitor"));
         }

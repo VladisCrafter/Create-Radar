@@ -104,7 +104,7 @@ public class SafeZoneDesignatorItem extends Item {
         super.appendHoverText(pStack, pLevel, pTooltipComponents, pIsAdvanced);
         if (pStack.getOrCreateTag().contains("monitorPos")) {
             BlockPos monitorPos = NbtUtils.readBlockPos(pStack.getOrCreateTag().getCompound("monitorPos"));
-            pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".linked_monitor", monitorPos));
+            pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".linked_monitor", Component.translatable(CreateRadar.MODID + ".monitor_coords", monitorPos.getX(), monitorPos.getY(), monitorPos.getZ())));
         } else
             pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".no_monitor"));
     }
