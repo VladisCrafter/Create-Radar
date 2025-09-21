@@ -3,7 +3,7 @@ package com.happysg.radar.block.controller.firing;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.datalink.screens.TargetingConfig;
 import com.happysg.radar.block.network.WeaponNetwork;
-import com.happysg.radar.block.network.WeaponNetworkSavedData;
+import com.happysg.radar.block.network.WeaponNetworkRegistry;
 import com.happysg.radar.block.network.WeaponNetworkUnit;
 import com.happysg.radar.compat.cbc.CannonUtil;
 import com.mojang.logging.LogUtils;
@@ -51,16 +51,15 @@ public class FireControllerBlockEntity extends SmartBlockEntity implements Weapo
         for (Direction direction : Direction.values()) {
             BlockEntity neighborBE = level.getBlockEntity(worldPosition.relative(direction));
             if (neighborBE instanceof CannonMountBlockEntity cannon) {
-                WeaponNetworkSavedData weaponNetworkSavedData = WeaponNetworkSavedData.get(serverLevel);
-                WeaponNetwork weaponNetwork = weaponNetworkSavedData.networkContains(worldPosition);
-                WeaponNetwork cannonWeaponNetwork = weaponNetworkSavedData.networkContains(cannon.getBlockPos());
+                WeaponNetwork weaponNetwork = WeaponNetworkRegistry.networkContains(worldPosition);
+                WeaponNetwork cannonWeaponNetwork = WeaponNetworkRegistry.networkContains(cannon.getBlockPos());
 
                 if (weaponNetwork != null) { // Shouldn't happen normally
                     setWeaponNetwork(weaponNetwork);
                 } else if (cannonWeaponNetwork != null && cannonWeaponNetwork.getFireController() == null) {
                     cannonWeaponNetwork.setFireController(this);
                     setWeaponNetwork(cannonWeaponNetwork);
-                } else if (weaponNetworkSavedData.networkContains(cannon.getBlockPos()) == null) {
+                } else if (WeaponNetworkRegistry.networkContains(cannon.getBlockPos()) == null) {
                     WeaponNetwork newNetwork = new WeaponNetwork(level);
                     newNetwork.setCannonMount(cannon);
                     newNetwork.setFireController(this);
@@ -98,4 +97,5 @@ public class FireControllerBlockEntity extends SmartBlockEntity implements Weapo
     public void setWeaponNetwork(WeaponNetwork weaponNetwork) {
         this.weaponNetwork = weaponNetwork;
     }
+    public BlockEntity getBlockEntity() {return this;}
 }

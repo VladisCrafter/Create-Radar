@@ -1,7 +1,7 @@
 package com.happysg.radar.block.controller.yaw;
 
 import com.happysg.radar.block.network.WeaponNetwork;
-import com.happysg.radar.block.network.WeaponNetworkSavedData;
+import com.happysg.radar.block.network.WeaponNetworkRegistry;
 import com.happysg.radar.block.network.WeaponNetworkUnit;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
@@ -35,16 +35,15 @@ public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity i
         for (Direction direction : Direction.values()) {
             BlockEntity neighborBE = level.getBlockEntity(worldPosition.relative(direction));
             if (neighborBE instanceof CannonMountBlockEntity cannon) {
-                WeaponNetworkSavedData weaponNetworkSavedData = WeaponNetworkSavedData.get(serverLevel);
-                WeaponNetwork weaponNetwork = weaponNetworkSavedData.networkContains(worldPosition);
-                WeaponNetwork cannonWeaponNetwork = weaponNetworkSavedData.networkContains(cannon.getBlockPos());
+                WeaponNetwork weaponNetwork = WeaponNetworkRegistry.networkContains(worldPosition);
+                WeaponNetwork cannonWeaponNetwork = WeaponNetworkRegistry.networkContains(cannon.getBlockPos());
 
                 if (weaponNetwork != null) { // Shouldn't happen normally
                     setWeaponNetwork(weaponNetwork);
                 } else if (cannonWeaponNetwork != null && cannonWeaponNetwork.getAutoYawController() == null) {
                     cannonWeaponNetwork.setAutoYawController(this);
                     setWeaponNetwork(cannonWeaponNetwork);
-                } else if (weaponNetworkSavedData.networkContains(cannon.getBlockPos()) == null) {
+                } else if (WeaponNetworkRegistry.networkContains(cannon.getBlockPos()) == null) {
                     WeaponNetwork newNetwork = new WeaponNetwork(level);
                     newNetwork.setCannonMount(cannon);
                     newNetwork.setAutoYawController(this);
@@ -163,4 +162,6 @@ public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity i
     public void setWeaponNetwork(WeaponNetwork weaponNetwork) {
         this.weaponNetwork = weaponNetwork;
     }
+    public BlockEntity getBlockEntity() {return this;}
+
 }

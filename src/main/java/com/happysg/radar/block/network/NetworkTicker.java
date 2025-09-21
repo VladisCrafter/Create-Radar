@@ -12,15 +12,6 @@ public class NetworkTicker {
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (server == null) return;
-
-        for (ServerLevel level : server.getAllLevels()) {
-            NetworkSavedData data = NetworkSavedData.get(level);
-            if (data != null) {
-                data.tickAll();
-            }
-        }
+        NetworkRegistry.tickAll();
     }
 }

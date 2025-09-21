@@ -57,19 +57,23 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         if (!blockEntity.isController()) {
             return;
         }
+        ms.pushPose();
+        try{
+            // Set up transformation matrix for the monitor face
+            setupMonitorTransform(ms, blockEntity.getBlockState().getValue(MonitorBlock.FACING));
 
-        // Set up transformation matrix for the monitor face
-        setupMonitorTransform(ms, blockEntity.getBlockState().getValue(MonitorBlock.FACING));
+            // Get radar and render if it's running
+            blockEntity.getRadar().ifPresent(radar -> {
+                if (!radar.isRunning()) {
+                    return;
+                }
 
-        // Get radar and render if it's running
-        blockEntity.getRadar().ifPresent(radar -> {
-            if (!radar.isRunning()) {
-                return;
-            }
-
-            // Render all radar display elements
-            renderRadarDisplay(radar, blockEntity, ms, bufferSource, partialTicks);
-        });
+                // Render all radar display elements
+                renderRadarDisplay(radar, blockEntity, ms, bufferSource, partialTicks);
+            });
+        }finally {
+            ms.popPose();
+        }
     }
 
     /**

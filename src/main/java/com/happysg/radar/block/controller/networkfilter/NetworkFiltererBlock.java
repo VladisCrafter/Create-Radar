@@ -2,7 +2,6 @@ package com.happysg.radar.block.controller.networkfilter;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.registry.ModBlockEntityTypes;
-import com.happysg.radar.registry.ModBlocks;
 import com.happysg.radar.registry.ModItems;
 import com.simibubi.create.AllShapes;
 import com.simibubi.create.foundation.block.IBE;
@@ -36,9 +35,9 @@ import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 
 
-public class NetworkFilterer extends WrenchableDirectionalBlock implements IBE<NetworkFiltererBlockEntity> {
+public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements IBE<NetworkFiltererBlockEntity> {
 
-    public NetworkFilterer(Properties properties) {
+    public NetworkFiltererBlock(Properties properties) {
         super(properties);
     }
 

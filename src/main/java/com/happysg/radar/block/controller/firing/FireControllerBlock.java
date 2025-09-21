@@ -1,7 +1,6 @@
 package com.happysg.radar.block.controller.firing;
 
 import com.happysg.radar.block.network.WeaponNetwork;
-import com.happysg.radar.block.network.WeaponNetworkSavedData;
 import com.happysg.radar.registry.ModBlockEntityTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

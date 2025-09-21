@@ -1,7 +1,10 @@
 package com.happysg.radar.block.network;
 
+import com.happysg.radar.block.controller.firing.FireControllerBlock;
 import com.happysg.radar.block.controller.firing.FireControllerBlockEntity;
+import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlock;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
+import com.happysg.radar.block.controller.yaw.AutoYawControllerBlock;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.datalink.screens.TargetingConfig;
 import com.happysg.radar.compat.cbc.CannonTargeting;
@@ -13,10 +16,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
+import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlock;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
@@ -31,6 +36,17 @@ import static com.happysg.radar.compat.cbc.CannonTargeting.calculateProjectileYa
 public class WeaponNetwork {
     private static final Logger LOGGER = LogUtils.getLogger();
 
+    public static boolean isController(Block block) {
+        return block instanceof AutoPitchControllerBlock
+                || block instanceof AutoYawControllerBlock
+                || block instanceof FireControllerBlock;
+    }
+    public static boolean isControllerEntity(BlockEntity blockEntity) {
+        return blockEntity instanceof AutoPitchControllerBlockEntity
+                || blockEntity instanceof AutoYawControllerBlockEntity
+                || blockEntity instanceof FireControllerBlockEntity;
+    }
+
     private CannonMountBlockEntity cannonMount;
     private AutoPitchControllerBlockEntity autoPitchController;
     private AutoYawControllerBlockEntity autoYawController;
@@ -44,15 +60,13 @@ public class WeaponNetwork {
     private Vec3 targetPos;
     private Double targetPitch;
     private Double targetYaw;
-    public WeaponNetwork(Level level){
-        this(UUID.randomUUID(), level, true);
-    }
-    public WeaponNetwork(UUID id, Level level, boolean register) {
+
+    public WeaponNetwork(Level level) {
         if(level == null || level.isClientSide()) return;
         this.dimension = level.dimension();
         this.level = (ServerLevel) level;
-        this.uuid = id;
-        if(register) WeaponNetworkSavedData.get(this.level).register(this);
+        this.uuid = UUID.randomUUID();
+        WeaponNetworkRegistry.register(this);
     }
 
 
@@ -72,6 +86,28 @@ public class WeaponNetwork {
 
     }
 
+    public void checkNeighbors(BlockPos tempPos) {
+        if ((cannonMount == null && tempPos == null) || level == null) return;
+        BlockPos pos = tempPos == null ? cannonMount.getBlockPos() : tempPos;
+        BlockPos[] neighbors = {
+                pos.north(), pos.south(), pos.east(), pos.west(), pos.below()
+        };
+        for (BlockPos neighborPos : neighbors) {
+            BlockEntity neighbor = level.getBlockEntity(neighborPos);
+            if (neighbor != null) {
+                if(neighbor instanceof CannonMountBlockEntity) {
+                    if(setCannonMount((CannonMountBlockEntity) neighbor)){
+                        checkNeighbors(neighborPos);
+                    }
+                }
+                else {
+                    if(setController(neighbor)){
+                        checkNeighbors(neighborPos);
+                    }
+                }
+            }
+        }
+    }
     public UUID getUuid() {
         return uuid;
     }
@@ -79,13 +115,10 @@ public class WeaponNetwork {
     public CannonMountBlockEntity getCannonMount() {
         return cannonMount;
     }
-
-    public void setCannonMount(CannonMountBlockEntity cannonMount){
-        setCannonMount(cannonMount, true);
-    }
-    public void setCannonMount(CannonMountBlockEntity cannonMount, boolean makeDirty) {
+    public boolean setCannonMount(CannonMountBlockEntity cannonMount) {
+        if(this.cannonMount != null) return false;
         this.cannonMount = cannonMount;
-        markDirty();
+        return true;
     }
 
     public AutoPitchControllerBlockEntity getAutoPitchController() {
@@ -97,7 +130,6 @@ public class WeaponNetwork {
     }
     public void setAutoPitchController(AutoPitchControllerBlockEntity autoPitchController, boolean makeDirty) {
         this.autoPitchController = autoPitchController;
-        markDirty();
     }
 
     public AutoYawControllerBlockEntity getAutoYawController() {
@@ -106,7 +138,6 @@ public class WeaponNetwork {
 
     public void setAutoYawController(AutoYawControllerBlockEntity autoYawController, boolean makeDirty) {
         this.autoYawController = autoYawController;
-        markDirty();
     }
     public void setAutoYawController(AutoYawControllerBlockEntity autoYawController) {
         setAutoYawController(autoYawController, true);
@@ -117,7 +148,6 @@ public class WeaponNetwork {
 
     public void setFireController(FireControllerBlockEntity fireController, boolean makeDirty) {
         this.fireController = fireController;
-        markDirty();
     }
     public void setFireController(FireControllerBlockEntity fireController) {
         setFireController(fireController, true);
@@ -167,6 +197,7 @@ public class WeaponNetwork {
         return true;
     }
 
+
     public boolean contains(BlockPos pos) {
         if (level == null || level.isClientSide()) {
             return false;
@@ -188,17 +219,10 @@ public class WeaponNetwork {
 
     public void setTargetPos(Vec3 targetPos) {
         this.targetPos = targetPos;
-        markDirty();
     }
 
     public boolean isEmpty(){
         return cannonMount == null && autoPitchController == null && autoYawController == null && fireController == null;
-    }
-
-    private void markDirty() {
-        if (level != null) {
-            WeaponNetworkSavedData.get(level).setDirty();
-        }
     }
 
     public void setTarget(Vec3 targetPos) {

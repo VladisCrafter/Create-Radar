@@ -1,10 +1,6 @@
 package com.happysg.radar.block.datalink;
 
-import com.happysg.radar.block.datalink.screens.AbstractDataLinkScreen;
-import com.happysg.radar.block.network.Network;
-import com.happysg.radar.block.network.NetworkSavedData;
-import com.happysg.radar.block.network.WeaponNetworkSavedData;
-import com.happysg.radar.block.network.WeaponNetworkUnit;
+import com.happysg.radar.block.network.*;
 import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 import com.happysg.radar.registry.AllDataBehaviors;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
@@ -13,22 +9,18 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class DataLinkBlockEntity extends SmartBlockEntity {
 
     protected BlockPos targetOffset = BlockPos.ZERO;
-
-    public DataPeripheral activeSource;
-    public DataController activeTarget;
 
     private CompoundTag sourceConfig;
     boolean ledState = false;
@@ -48,7 +40,10 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
         ServerLevel serverLevel = (ServerLevel) level;
         BlockEntity targetBlockEntity = level.getBlockEntity(getTargetPosition());
         BlockEntity sourceBlockEntity = level.getBlockEntity(getSourcePosition());
-        if(activeSource != null && activeTarget != null && targetBlockEntity instanceof CannonMountBlockEntity && sourceBlockEntity instanceof WeaponNetworkUnit weaponNetworkUnit){
+        if((targetBlockEntity instanceof CannonMountBlockEntity) && sourceBlockEntity instanceof WeaponNetworkUnit weaponNetworkUnit){
+            weaponNetworkUnit.getWeaponNetwork().removeController(sourceBlockEntity);
+            weaponNetworkUnit.setWeaponNetwork(null);
+        } else if ((sourceBlockEntity instanceof CannonMountBlockEntity) && targetBlockEntity instanceof WeaponNetworkUnit weaponNetworkUnit) {
             weaponNetworkUnit.getWeaponNetwork().removeController(sourceBlockEntity);
             weaponNetworkUnit.setWeaponNetwork(null);
         }
@@ -56,8 +51,8 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
                 (targetBlockEntity instanceof RadarBearingBlockEntity && sourceBlockEntity != null)) {
             BlockEntity networkBlockEntity = (sourceBlockEntity instanceof RadarBearingBlockEntity) ? targetBlockEntity: sourceBlockEntity;
 
-            Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(networkBlockEntity.getBlockPos(), level);
-            network.setRadarPos(null);
+            Network network = NetworkRegistry.networkThatContainsPos(networkBlockEntity.getBlockPos(), serverLevel);
+            if(network != null) network.setRadarPos(null);
         }
         removeWeaponNetwork(serverLevel, sourceBlockEntity, targetBlockEntity);
         removeWeaponNetwork(serverLevel, targetBlockEntity, sourceBlockEntity);
@@ -67,11 +62,10 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
     }
 
     private void removeWeaponNetwork(ServerLevel serverLevel, BlockEntity targetBlockEntity, BlockEntity sourceBlockEntity) {
-        if(targetBlockEntity instanceof CannonMountBlockEntity && sourceBlockEntity != null){
-            Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(sourceBlockEntity.getBlockPos(), level);
+        if((targetBlockEntity instanceof CannonMountBlockEntity || WeaponNetwork.isControllerEntity(targetBlockEntity)) && sourceBlockEntity != null){
+            Network network = NetworkRegistry.networkThatContainsPos(sourceBlockEntity.getBlockPos(), serverLevel);
             if(network != null){
-                WeaponNetworkSavedData weaponNetworkSavedData = WeaponNetworkSavedData.get(serverLevel);
-                network.removeWeaponNetwork(weaponNetworkSavedData.networkContains(targetBlockEntity.getBlockPos()));
+                network.removeWeaponNetwork(WeaponNetworkRegistry.networkContains(targetBlockEntity.getBlockPos()));
             }
         }
     }
@@ -79,7 +73,7 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
     private void removeFromNetwork(ServerLevel serverLevel, BlockEntity targetBlockEntity, BlockEntity sourceBlockEntity) {
         if(sourceBlockEntity != null){
             BlockPos sourcePos = sourceBlockEntity.getBlockPos();
-            Network network = NetworkSavedData.get(serverLevel).networkThatContainsPos(sourcePos, serverLevel);
+            Network network = NetworkRegistry.networkThatContainsPos(sourcePos, serverLevel);
             if(network != null) {
             network.removeNetworkBlock(sourcePos);
                 if (targetBlockEntity != null) {
@@ -101,33 +95,17 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
 
         if (!level.isLoaded(targetPosition) || !level.isLoaded(sourcePosition))
             return;
-
-        DataController target = AllDataBehaviors.targetOf(level, targetPosition);
-        DataPeripheral source = AllDataBehaviors.sourcesOf(level, sourcePosition);
-        boolean notify = false;
-
-        if (activeTarget != target) {
-            activeTarget = target;
-            notify = true;
-        }
-
-        if (activeSource != source) {
-            activeSource = source;
-            sourceConfig = new CompoundTag();
-            notify = true;
-        }
-
-        if (notify)
-            notifyUpdate();
-        if (activeSource == null || activeTarget == null) {
+        ArrayList<DataLinkBehavior> behaviors = AllDataBehaviors.getBehavioursForBlockPoses(sourcePosition, targetPosition, level);
+        if(behaviors.isEmpty()){
             ledState = false;
             return;
         }
-
         ledState = true;
-        activeSource.transferData(new DataLinkContext(level, this), activeTarget);
+        for(DataLinkBehavior behavior : behaviors) {
+            if (behavior == null) continue;
+            behavior.transferData(new DataLinkContext(level, this));
+        }
         sendData();
-        //TODO implement advancement
     }
 
     @Override
@@ -140,19 +118,11 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
     protected void write(CompoundTag tag, boolean clientPacket) {
         super.write(tag, clientPacket);
         writeGatheredData(tag);
-        if (clientPacket && activeTarget != null)
-            tag.putString("TargetType", activeTarget.id.toString());
         tag.putBoolean("LedState", ledState);
     }
 
     private void writeGatheredData(CompoundTag tag) {
         tag.put("TargetOffset", NbtUtils.writeBlockPos(targetOffset));
-
-        if (activeSource != null) {
-            CompoundTag data = sourceConfig.copy();
-            data.putString("Id", activeSource.id.toString());
-            tag.put("Source", data);
-        }
     }
 
     @Override
@@ -160,22 +130,6 @@ public class DataLinkBlockEntity extends SmartBlockEntity {
         super.read(tag, clientPacket);
         targetOffset = NbtUtils.readBlockPos(tag.getCompound("TargetOffset"));
         ledState = tag.getBoolean("LedState");
-        if (clientPacket && tag.contains("TargetType"))
-            activeTarget = AllDataBehaviors.getTarget(new ResourceLocation(tag.getString("TargetType")));
-
-
-        if (!tag.contains("Source"))
-            return;
-
-        CompoundTag data = tag.getCompound("Source");
-        activeSource = AllDataBehaviors.getSource(new ResourceLocation(data.getString("Id")));
-        sourceConfig = new CompoundTag();
-        if (activeSource != null)
-            sourceConfig = data.copy();
-    }
-
-    Optional<AbstractDataLinkScreen> getScreen() {
-        return activeSource == null ? Optional.empty() : Optional.ofNullable(activeSource.getScreen(this));
     }
 
     public void target(BlockPos targetPosition) {

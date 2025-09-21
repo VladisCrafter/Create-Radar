@@ -3,7 +3,7 @@ package com.happysg.radar.block.datalink;
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import com.happysg.radar.block.network.WeaponNetwork;
-import com.happysg.radar.block.network.WeaponNetworkSavedData;
+import com.happysg.radar.block.network.WeaponNetworkRegistry;
 import com.happysg.radar.block.network.WeaponNetworkUnit;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.config.RadarConfig;
@@ -77,7 +77,7 @@ public class DataLinkBlockItem extends BlockItem {
             if (level.isClientSide)
                 return InteractionResult.SUCCESS;
             //todo monitor hardcoded for now
-            if (AllDataBehaviors.targetOf(blockEntity) == null) {
+            if (AllDataBehaviors.getBehavioursForBlockPos(blockEntity.getBlockPos(), level).isEmpty()) {
                 player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".data_link.link_to_monitor_or_mount"), true);
                 return InteractionResult.FAIL;
             }
@@ -96,7 +96,7 @@ public class DataLinkBlockItem extends BlockItem {
         BlockPos selectedPos = NbtUtils.readBlockPos(tag.getCompound("SelectedPos"));
         BlockPos placedPos = pos.relative(pContext.getClickedFace(), state.canBeReplaced() ? 0 : 1);
         if (!level.isClientSide) {
-            WeaponNetwork network = WeaponNetworkSavedData.get((ServerLevel) level).networkContains(selectedPos);
+            WeaponNetwork network = WeaponNetworkRegistry.networkContains(selectedPos);
             if (network != null && network.isControllerFilled(blockEntity)) {
                 player.displayClientMessage(Component.translatable(CreateRadar.MODID + ".data_link.controller_filled"), true);
                 return InteractionResult.FAIL;
@@ -158,10 +158,11 @@ public class DataLinkBlockItem extends BlockItem {
     @OnlyIn(Dist.CLIENT)
     private static AABB getBounds(BlockPos pos) {
         Level world = Minecraft.getInstance().level;
-        DataController target = AllDataBehaviors.targetOf(world, pos);
+        if(world == null) return null;
+        BlockEntity target = world.getBlockEntity(pos);
 
-        if (target != null)
-            return target.getMultiblockBounds(world, pos);
+        if (target instanceof MonitorBlockEntity monitorBlockEntity)
+            return monitorBlockEntity.getMultiblockBounds();
 
         BlockState state = world.getBlockState(pos);
         VoxelShape shape = state.getShape(world, pos);

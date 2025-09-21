@@ -60,9 +60,7 @@ public class DataLinkBlock extends WrenchableDirectionalBlock implements IBE<Dat
             return;
         if (be.targetOffset.equals(BlockPos.ZERO)) {
             player.displayClientMessage(Component.translatable(CreateRadar.MODID + "data_link.fail"), true);
-            return;
         }
-        be.getScreen().ifPresent(ScreenOpener::open);
     }
 
     @Override

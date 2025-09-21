@@ -1,7 +1,6 @@
 package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
-import com.happysg.radar.block.controller.networkfilter.NetworkFilterer;
 import com.happysg.radar.block.controller.networkfilter.NetworkFiltererBlockEntity;
 import com.happysg.radar.block.controller.networkfilter.NetworkFiltererRenderer;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
@@ -17,10 +16,6 @@ import com.simibubi.create.content.contraptions.bearing.BearingRenderer;
 import com.simibubi.create.content.contraptions.bearing.BearingVisual;
 import com.simibubi.create.content.kinetics.base.ShaftRenderer;
 import com.simibubi.create.content.kinetics.base.ShaftVisual;
-import com.simibubi.create.content.kinetics.gearbox.GearboxVisual;
-import com.simibubi.create.content.kinetics.simpleRelays.encased.EncasedCogRenderer;
-import com.simibubi.create.content.kinetics.simpleRelays.encased.EncasedShaftBlock;
-import com.simibubi.create.content.kinetics.transmission.SplitShaftRenderer;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 
 import static com.happysg.radar.CreateRadar.REGISTRATE;

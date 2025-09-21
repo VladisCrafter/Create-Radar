@@ -1,31 +1,22 @@
 package com.happysg.radar.block.controller.pitch;
 
-import com.happysg.radar.block.datalink.screens.TargetingConfig;
 import com.happysg.radar.block.network.WeaponNetwork;
-import com.happysg.radar.block.network.WeaponNetworkSavedData;
+import com.happysg.radar.block.network.WeaponNetworkRegistry;
 import com.happysg.radar.block.network.WeaponNetworkUnit;
 import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.cbc.CannonTargeting;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.slf4j.Logger;
-import com.happysg.radar.compat.cbc.VS2CannonTargeting;
-import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class AutoPitchControllerBlockEntity extends KineticBlockEntity implements WeaponNetworkUnit {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -45,16 +36,15 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity implement
         for (Direction direction : Direction.values()) {
             BlockEntity neighborBE = level.getBlockEntity(worldPosition.relative(direction));
             if (neighborBE instanceof CannonMountBlockEntity cannon) {
-                WeaponNetworkSavedData weaponNetworkSavedData = WeaponNetworkSavedData.get(serverLevel);
-                WeaponNetwork weaponNetwork = weaponNetworkSavedData.networkContains(worldPosition);
-                WeaponNetwork cannonWeaponNetwork = weaponNetworkSavedData.networkContains(cannon.getBlockPos());
+                WeaponNetwork weaponNetwork = WeaponNetworkRegistry.networkContains(worldPosition);
+                WeaponNetwork cannonWeaponNetwork = WeaponNetworkRegistry.networkContains(cannon.getBlockPos());
 
                 if (weaponNetwork != null) { // Shouldn't happen normally
                     setWeaponNetwork(weaponNetwork);
                 } else if (cannonWeaponNetwork != null && cannonWeaponNetwork.getAutoPitchController() == null) {
                     cannonWeaponNetwork.setController(this);
                     setWeaponNetwork(cannonWeaponNetwork);
-                } else if (weaponNetworkSavedData.networkContains(cannon.getBlockPos()) == null) {
+                } else if (WeaponNetworkRegistry.networkContains(cannon.getBlockPos()) == null) {
                     WeaponNetwork newNetwork = new WeaponNetwork(level);
                     newNetwork.setCannonMount(cannon);
                     newNetwork.setController(this);
@@ -198,4 +188,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity implement
     public void setWeaponNetwork(WeaponNetwork weaponNetwork) {
         this.weaponNetwork = weaponNetwork;
     }
+    public BlockEntity getBlockEntity() {return this;}
+
 }

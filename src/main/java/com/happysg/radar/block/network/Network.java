@@ -1,12 +1,13 @@
 package com.happysg.radar.block.network;
 
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
+import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
-import net.minecraft.client.model.AnimationUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 
@@ -14,7 +15,6 @@ import java.util.*;
 
 public class Network {
     private UUID uuid;
-    //private final Set<UUID> networks = new HashSet<>();
     private BlockPos radarPos = null;
     private final Set<UUID> weaponNetworks = new HashSet<>();
     private final HashSet<BlockPos> networkBlocks = new HashSet<>();
@@ -24,17 +24,13 @@ public class Network {
     private ServerLevel level;
 
     public Network(Level level) {
-        this(UUID.randomUUID(), level, true);
-    }
-
-    public Network(UUID uuid, Level level, boolean register) {
         if (level == null || level.isClientSide()){
             return;
         }
         this.dimension = level.dimension();
         this.level = (ServerLevel) level;
-        this.uuid = uuid;
-        if(register) NetworkSavedData.get(this.level).registerNetwork(this);
+        this.uuid = UUID.randomUUID();
+        NetworkRegistry.register(this);
     }
 
     public UUID getUuid() {
@@ -43,7 +39,7 @@ public class Network {
 
     public void tick(){
         if(!weaponNetworks.isEmpty() && networkBlocks.isEmpty()){weaponNetworks.clear();}
-        if(weaponNetworks.isEmpty() && networkBlocks.isEmpty()) NetworkSavedData.get(this.level).destroyNetwork(uuid);
+        if(weaponNetworks.isEmpty() && networkBlocks.isEmpty()) NetworkRegistry.remove(uuid);
         Collection<RadarTrack> cachedTracks = null;
         for (BlockPos blockPos : networkBlocks) {
             BlockEntity blockEntity = level.getBlockEntity(blockPos);
@@ -74,9 +70,8 @@ public class Network {
             }
         }
 
-        WeaponNetworkSavedData savedData = WeaponNetworkSavedData.get(level);
         for (UUID weaponNetworkId : weaponNetworks) {
-            WeaponNetwork weaponNetwork = savedData.get(weaponNetworkId).orElse(null);
+            WeaponNetwork weaponNetwork = WeaponNetworkRegistry.get(weaponNetworkId);
             if(weaponNetwork == null) continue;
             weaponNetwork.setTarget(targetPos);
             weaponNetwork.tick();
@@ -105,40 +100,28 @@ public class Network {
 
     public void addWeaponNetwork(WeaponNetwork network) {
             weaponNetworks.add(network.getUuid());
-            markDirty();
     }
     public void addWeaponNetwork(UUID uuid) {
             weaponNetworks.add(uuid);
-            markDirty();
     }
     public void removeWeaponNetwork(WeaponNetwork network) {
             weaponNetworks.remove(network.getUuid());
-            markDirty();
     }
     public void removeWeaponNetwork(UUID uuid) {
         weaponNetworks.remove(uuid);
-        markDirty();
         if(networkBlocks.isEmpty() && weaponNetworks.isEmpty()){
-            NetworkSavedData.get(level).destroyNetwork(this.uuid);
+           NetworkRegistry.remove(uuid);
         }
     }
-//    public Set<UUID> getNetworks() {
-//        return Collections.unmodifiableSet(networks);
-//    }
-
-//    public boolean containsNetwork(UUID uuid) {
-//        return networks.contains(uuid);
-//    }
     public void addNetworkBlock(BlockPos pos) {
-
-        addNetworkBlock(pos, true);
-    }
-    public void addNetworkBlock(BlockPos pos, boolean makeDirty) {
         if(level.getBlockEntity(pos) instanceof MonitorBlockEntity monitor) {
             pos = monitor.getControllerPos();
+        } else if (level.getBlockEntity(pos) instanceof RadarBearingBlockEntity) {
+            if(radarPos == null) {
+                radarPos = pos;
+            }
         }
         networkBlocks.add(pos);
-        if(makeDirty) markDirty();
     }
 
     public void removeNetworkBlock(BlockPos pos) {
@@ -146,27 +129,26 @@ public class Network {
             pos = monitor.getControllerPos();
         }
         networkBlocks.remove(pos);
-        markDirty();
         if(networkBlocks.isEmpty() && weaponNetworks.isEmpty()){
-            NetworkSavedData.get(level).destroyNetwork(this.uuid);
+            NetworkRegistry.remove(uuid);
         }
     }
 
     public Set<BlockPos> getNetworkBlocks() {
-        return Collections.unmodifiableSet(networkBlocks);
+        HashSet<BlockPos> temp = new HashSet<>(networkBlocks);
+        temp.add(radarPos);
+        return Collections.unmodifiableSet(temp);
     }
-
-    private void markDirty() {
-        if (level != null && !level.isClientSide()) {
-            NetworkSavedData.get(level).setDirty();
+        public void setRadarPos(BlockPos pos) {
+        if(radarPos == null){
+            radarPos = pos;
+            this.getNetworkBlocks().forEach(networkBlock -> {
+                if(level.getBlockEntity(networkBlock) instanceof MonitorBlockEntity monitor){
+                    monitor.setRadarPos(radarPos);
+                    monitor.updateCache();
+                }
+            });
         }
-    }
-    public void setRadarPos(BlockPos pos) {
-        setRadarPos(pos, true);
-    }
-        public void setRadarPos(BlockPos pos, boolean markDirty) {
-        radarPos = pos;
-        if(markDirty) markDirty();
     }
     public BlockPos getRadarPos() {
         return radarPos;
@@ -174,4 +156,5 @@ public class Network {
     public ResourceKey<Level> getDimension() {
         return dimension;
     }
+
 }

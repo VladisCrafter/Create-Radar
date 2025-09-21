@@ -3,7 +3,7 @@ package com.happysg.radar.registry;
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.controller.firing.FireControllerBlock;
 import com.happysg.radar.block.controller.id.IDBlock;
-import com.happysg.radar.block.controller.networkfilter.NetworkFilterer;
+import com.happysg.radar.block.controller.networkfilter.NetworkFiltererBlock;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlock;
 import com.happysg.radar.block.controller.track.TrackControllerBlock;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlock;
@@ -14,7 +14,6 @@ import com.happysg.radar.block.radar.bearing.RadarBearingBlock;
 import com.happysg.radar.block.radar.plane.PlaneRadarBlock;
 import com.happysg.radar.block.radar.receiver.AbstractRadarFrame;
 import com.happysg.radar.block.radar.receiver.RadarReceiverBlock;
-import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.foundation.data.AssetLookup;
 import com.simibubi.create.foundation.data.BuilderTransformers;
 import com.simibubi.create.foundation.data.SharedProperties;
@@ -197,8 +196,8 @@ public class ModBlocks {
                     .transform(axeOrPickaxe())
                     .simpleItem()
                     .register();
-    public static final BlockEntry<NetworkFilterer> NETWORK_FILTERER_BLOCK =
-            REGISTRATE.block("network_filterer", NetworkFilterer::new)
+    public static final BlockEntry<NetworkFiltererBlock> NETWORK_FILTERER_BLOCK =
+            REGISTRATE.block("network_filterer", NetworkFiltererBlock::new)
                     .initialProperties(SharedProperties::softMetal)
                     .properties(BlockBehaviour.Properties::noOcclusion)
                     .transform(axeOrPickaxe())
