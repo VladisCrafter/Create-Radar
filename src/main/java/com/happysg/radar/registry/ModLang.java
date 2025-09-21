@@ -51,8 +51,6 @@ public class ModLang {
         REGISTRATE.addRawLang(CreateRadar.MODID + ".radar.no_receiver", "No Receiver Found");
 
         REGISTRATE.addRawLang(CreateRadar.MODID + ".data_link.fail", "Data Link has no valid target, try placing it again");
-        REGISTRATE.addRawLang(CreateRadar.MODID + ".data_link.no_source", "Not a Data Source");
-        REGISTRATE.addRawLang(CreateRadar.MODID + ".data_link.no_target", "Not a Monitor");
         REGISTRATE.addRawLang(CreateRadar.MODID + ".data_link.title", "Data Link");
 
         REGISTRATE.addRawLang(CreateRadar.MODID + ".radar_button.player", "Player");
