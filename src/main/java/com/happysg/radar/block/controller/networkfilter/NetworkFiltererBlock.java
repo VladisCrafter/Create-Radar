@@ -107,7 +107,7 @@ public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements 
                 }
             }
 
-            // renderer's UV positions — keep synced with renderer!
+
             final double[][] UVS = {{5.0, 11.0}, {11.0, 11.0}, {11.0, 5.0}};
             final double PIXEL_THRESHOLD = 2.5;// pixels: how close the click must be (tweakable)
 
@@ -124,11 +124,11 @@ public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements 
             }
 
             if (clickedSlot == -1) {
-                // not clicking near any configured UV -> do nothing
+
                 return InteractionResult.PASS;
             }
 
-            // got a slot — try to extract a single item from that slot (server-side)
+
             BlockEntity be = world.getBlockEntity(pos);
             if (!(be instanceof NetworkFiltererBlockEntity netFC)) return InteractionResult.PASS;
 
@@ -248,7 +248,7 @@ public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements 
                 nbtString = "(none)";
             }
 
-            // Compose and send. You can switch to displayClientMessage(..., true) if you prefer actionbar
+            // Compose and send.  can switch to displayClientMessage(..., true) if prefer actionbar
             player.sendSystemMessage(Component.literal(
                     "Slot " + (i + 1) + ": " + count + "x " + name + " | NBT: " + nbtString
             ));

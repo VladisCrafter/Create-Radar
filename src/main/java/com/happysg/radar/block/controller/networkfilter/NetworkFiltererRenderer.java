@@ -30,7 +30,6 @@ public class NetworkFiltererRenderer implements BlockEntityRenderer<NetworkFilte
         itemRenderer = context.getItemRenderer();
     }
     // UV coordinates for the three slots (u, v) in 0..16 (texture pixels).
-    // Change these to your desired pixel coordinates.
     private static final float[][] UVS = {
             {5f, 11f},   // slot 0 -> UV(4,4)
             {11f, 11f},   // slot 1 -> UV(8,8)
@@ -50,7 +49,7 @@ public class NetworkFiltererRenderer implements BlockEntityRenderer<NetworkFilte
         BlockState state = be.getBlockState();
         Direction face = Direction.NORTH;
         if (state.hasProperty(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING)) {
-            // safe try: many blocks use FACING; if yours uses a different prop, swap this.
+            // safe try: many blocks use FACING;
             face = state.getValue(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING);
         } else {
             // try common "facing" property with DirectionalBlock / FacingBlock fallback
@@ -148,7 +147,7 @@ public class NetworkFiltererRenderer implements BlockEntityRenderer<NetworkFilte
                 }
             }
 
-            // scale down so it looks like an item in a frame (tweak as desired)
+
             final float scale = 0.3f; // smaller = tighter to face
             ms.scale(scale, scale, scale);
             itemRenderer.renderStatic(stack, ItemDisplayContext.FIXED, packedLight, packedOverlay, ms, buffers,null, 0);
