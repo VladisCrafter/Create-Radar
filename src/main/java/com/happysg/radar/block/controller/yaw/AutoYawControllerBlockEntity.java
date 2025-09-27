@@ -7,6 +7,7 @@ import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.simibubi.create.content.kinetics.base.GeneratingKineticBlockEntity;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
+import com.simibubi.create.content.kinetics.transmission.SplitShaftBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -19,7 +20,7 @@ import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockE
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
 
 
-public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity implements WeaponNetworkUnit {
+public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implements WeaponNetworkUnit {
     private static final double TOLERANCE = 0.1;
     private double targetAngle;
     public boolean isRunning;
@@ -29,6 +30,12 @@ public class AutoYawControllerBlockEntity extends GeneratingKineticBlockEntity i
     public AutoYawControllerBlockEntity(BlockEntityType<?> typeIn, BlockPos pos, BlockState state) {
         super(typeIn, pos, state);
     }
+
+    @Override
+    public float getRotationSpeedModifier(Direction face) {
+        return this.speed;
+    }
+
     public void onPlaced() {
         if (!(level instanceof ServerLevel serverLevel)) return;
 

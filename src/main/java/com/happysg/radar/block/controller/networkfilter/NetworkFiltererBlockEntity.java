@@ -18,8 +18,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 public class NetworkFiltererBlockEntity extends BlockEntity {
-    // inventory
-    // inside your BlockEntity
+
     private final ItemStackHandler inventory = new ItemStackHandler(3) {
         @Override
         protected void onContentsChanged(int slot) {
@@ -32,35 +31,33 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 
         @Override
         public int getSlotLimit(int slot) {
-            // Enforce a single-item capacity per slot
+
             return 1;
         }
 
-        // Optional: prevent inserting more than 1 even if insertItem is called with higher count
+
         @Override
         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
             if (stack == null || stack.isEmpty()) return stack;
-            // create a single-item copy to try insert (this ensures method respects single-item behavior)
             ItemStack one = stack.copy();
             one.setCount(1);
             ItemStack remainder = super.insertItem(slot, one, simulate);
             if (remainder.isEmpty()) {
-                // we consumed 1 from the incoming stack
+
                 ItemStack out = stack.copy();
                 out.shrink(1);
-                return out; // remainder for the original stack (count decreased by 1)
+                return out;
             }
-            // couldn't insert, return original stack unchanged
+
             return stack;
         }
     };
 
 
-    // capability wrapper
+
     private LazyOptional<IItemHandler> handler = LazyOptional.of(() -> inventory);
 
-    // Array storing a *copy* of each slot's item NBT (or null if slot has no tag / is empty)
-    // Index 0..2
+
     private CompoundTag[] slotNbt = new CompoundTag[3];
 
     public NetworkFiltererBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -68,12 +65,12 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         // initialize array (nulls by default)
         for (int i = 0; i < slotNbt.length; i++) slotNbt[i] = null;
     }
-    // inside your BlockEntity
 
 
 
 
-    // Called after inventory changes: copy the item's tag into slotNbt[slot]
+
+
     private void updateSlotNbtFromInventory(int slot) {
         if (slot < 0 || slot >= inventory.getSlots()) return;
         ItemStack s = inventory.getStackInSlot(slot);
@@ -81,11 +78,11 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
             slotNbt[slot] = null;
         } else {
             CompoundTag tag = s.getTag();
-            slotNbt[slot] = tag == null ? null : tag.copy(); // store copy to be safe
+            slotNbt[slot] = tag == null ? null : tag.copy();
         }
     }
 
-    // Public getter to access stored tag (may be null)
+
     @Nullable
     public CompoundTag getSlotNbt(int slot) {
         if (slot < 0 || slot >= slotNbt.length) return null;
@@ -100,24 +97,23 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         if (level != null) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
     }
 
-    // Serialization: save inventory (as before) AND save our slotNbt array
+
     @Override
     public void load(CompoundTag nbt) {
         super.load(nbt);
 
-        // load inventory
+
         if (nbt.contains("inv")) {
             inventory.deserializeNBT(nbt.getCompound("inv"));
         } else {
-            // fallback: try older format if needed
+
         }
 
-        // after inventory deserialized, ensure our slotNbt matches the inventory
+
         for (int i = 0; i < inventory.getSlots(); i++) {
             updateSlotNbtFromInventory(i);
         }
 
-        // load stored per-slot tags if present (prefer this so explicit stored tags survive even if item removed)
         if (nbt.contains("slotTags")) {
             CompoundTag tagsTag = nbt.getCompound("slotTags");
             for (int i = 0; i < slotNbt.length; i++) {
@@ -136,23 +132,23 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     protected void saveAdditional(CompoundTag nbt) {
         super.saveAdditional(nbt);
 
-        // save inventory
+
         nbt.put("inv", inventory.serializeNBT());
 
-        // save the per-slot tags as a compound under "slotTags"
+
         CompoundTag tagsTag = new CompoundTag();
         for (int i = 0; i < slotNbt.length; i++) {
             if (slotNbt[i] != null) {
                 tagsTag.put("slot" + i, slotNbt[i].copy());
             } else {
-                // keep an empty compound so keys are stable (optional)
+
                 tagsTag.put("slot" + i, new CompoundTag());
             }
         }
         nbt.put("slotTags", tagsTag);
     }
 
-    // Networking helpers: ensure clients get the slotNbt when block entity updates
+
     @Override
     public CompoundTag getUpdateTag() {
         return saveWithoutMetadata();
@@ -164,7 +160,7 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         return ClientboundBlockEntityDataPacket.create(this);
     }
 
-    // Capability plumbing
+
     @Nonnull
     @Override
     public <T> LazyOptional<T> getCapability(@Nonnull Capability<T> cap, @Nullable Direction side) {
@@ -188,7 +184,6 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         handler.invalidate();
     }
 
-    // Convenience: expose the raw item handler if needed
 
     public IItemHandler getItemHandler() {
         return inventory;
