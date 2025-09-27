@@ -37,6 +37,7 @@ public class FireControllerBlockEntity extends SmartBlockEntity implements Weapo
     //private TargetingConfig targetingConfig = TargetingConfig.DEFAULT;
     //private Vec3 target;
     //public List<AABB> safeZones = new ArrayList<>();
+    public boolean turnedOn = false;
     private WeaponNetwork weaponNetwork;
 
       // server-time when we last got a target update
@@ -80,14 +81,16 @@ public class FireControllerBlockEntity extends SmartBlockEntity implements Weapo
 
     }
 
-    private void turnOff() {
+    public void turnOff() {
         BlockState state = getBlockState();
         level.setBlockAndUpdate(this.getBlockPos(), state.setValue(BlockStateProperties.POWERED, false));
+        turnedOn = false;
     }
 
-    private void turnOn() {
+    public void turnOn() {
         BlockState state = getBlockState();
-        level.setBlockAndUpdate(this.getBlockPos(), state.setValue(BlockStateProperties.POWERED, false));
+        level.setBlockAndUpdate(this.getBlockPos(), state.setValue(BlockStateProperties.POWERED, true));
+        turnedOn = true;
     }
 
     public WeaponNetwork  getWeaponNetwork() {

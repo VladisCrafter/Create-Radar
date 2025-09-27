@@ -13,6 +13,7 @@ import com.happysg.radar.compat.cbc.VS2CannonTargeting;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -21,17 +22,18 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
-import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlock;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static com.happysg.radar.compat.cbc.CannonTargeting.calculateProjectileYatX;
+import static java.lang.Math.abs;
 
 public class WeaponNetwork {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -55,8 +57,6 @@ public class WeaponNetwork {
     private ServerLevel level;
     private UUID uuid;
 
-    private List<AABB> safeZones; //TODO add to save data
-    private TargetingConfig targetingConfig; //TODO same
     private Vec3 targetPos;
     private Double targetPitch;
     private Double targetYaw;
@@ -69,9 +69,10 @@ public class WeaponNetwork {
         WeaponNetworkRegistry.register(this);
     }
 
-
+    boolean firePrimed = false;
     public void tick(){
 
+        if(fireController != null) fireController.turnOff();
         if(cannonMount == null) return;
         Double targetPitch = getTargetPitch();
         if(autoPitchController != null){
@@ -83,6 +84,21 @@ public class WeaponNetwork {
             if(targetYaw != null) autoYawController.setTargetAngle(targetYaw.floatValue());
             autoYawController.isRunning = targetYaw != null;
         }
+        if(fireController != null){
+            if(fireController.turnedOn) fireController.turnOff();
+            else if(isReadyToFire()) {
+                if(firePrimed) {
+                    firePrimed = false;
+                    fireController.turnOn();
+                }
+                firePrimed = true;
+            }
+            else {
+                firePrimed = false;
+                fireController.turnOff();
+            }
+        }
+
 
     }
 
@@ -120,6 +136,7 @@ public class WeaponNetwork {
         this.cannonMount = cannonMount;
         return true;
     }
+
 
     public AutoPitchControllerBlockEntity getAutoPitchController() {
         return autoPitchController;
@@ -170,16 +187,27 @@ public class WeaponNetwork {
     }
     public boolean isControllerFilled(BlockEntity controller) {
         if (controller instanceof AutoPitchControllerBlockEntity && this.autoPitchController != null) {
-            return true;
+            if(level.getBlockEntity(this.autoPitchController.getBlockPos()) instanceof AutoPitchControllerBlockEntity) {
+                return true;
+            }
+            removeController(controller);
         } else if (controller instanceof AutoYawControllerBlockEntity && this.autoYawController != null) {
-            return true;
+            if(level.getBlockEntity(this.autoYawController.getBlockPos()) instanceof AutoYawControllerBlockEntity) {
+                return true;
+            }
+            removeController(controller);
         } else if (controller instanceof FireControllerBlockEntity && this.fireController != null) {
-            return true;
+            if(level.getBlockEntity(this.fireController.getBlockPos()) instanceof FireControllerBlockEntity) {
+                return true;
+            }
+            removeController(controller);
         } else if (controller instanceof CannonMountBlockEntity && this.cannonMount != null) {
-            return true;
+            if (level.getBlockEntity(this.cannonMount.getBlockPos()) instanceof CannonMountBlockEntity) {
+                return true;
+            }
+            cannonMount = null;
         }
-        return false;
-
+            return false;
     }
     public boolean removeController(BlockEntity controller) {
         if (controller instanceof AutoPitchControllerBlockEntity) {
@@ -209,18 +237,10 @@ public class WeaponNetwork {
                 || (fireController != null && pos.equals(fireController.getBlockPos()));
     }
 
-    public Vec3 getTargetPos() {
-        return targetPos;
-    }
 
     public ResourceKey<Level> getDimension() {
         return dimension;
     }
-
-    public void setTargetPos(Vec3 targetPos) {
-        this.targetPos = targetPos;
-    }
-
     public boolean isEmpty(){
         return cannonMount == null && autoPitchController == null && autoYawController == null && fireController == null;
     }
@@ -230,7 +250,9 @@ public class WeaponNetwork {
             LOGGER.debug(" • bailing: client side or null target → isRunning=false");
             return;
         }
-
+        setTargetPos(targetPos);
+        setTargetPitch(null);
+        setTargetYaw(null);
         if (targetPos == null) {
             return;
         }
@@ -294,13 +316,12 @@ public class WeaponNetwork {
 
 
     private boolean isReadyToFire() {
-        boolean hasTarget     = targetPos != null;
+        boolean hasTarget = targetPos != null;
         boolean correctOrient = hasCorrectYawPitch();
         boolean safeZoneClear = !passesSafeZone();
-        LOGGER.debug("isTargetInRange() check → hasTarget={}, yawPitchOK={}, safeZoneClear={}",
-                hasTarget, correctOrient, safeZoneClear);
+        LOGGER.debug("isTargetInRange() check →, yawPitchOK={}, safeZoneClear={}", correctOrient, safeZoneClear);
 
-        return hasTarget && correctOrient && safeZoneClear;
+        return correctOrient && safeZoneClear && hasTarget;
     }
     public void setSafeZones(List<AABB> safeZones) {
         LOGGER.debug("setSafeZones() → {} zones", safeZones.size());
@@ -308,6 +329,7 @@ public class WeaponNetwork {
     }
 
     private boolean passesSafeZone() {
+        if(safeZones == null) return false;
         LOGGER.debug("passesSafeZone() → checking {} safe zones", safeZones.size());
         Vec3 target = this.getTargetPos();
 
@@ -377,21 +399,34 @@ public class WeaponNetwork {
     }
 
     private boolean hasCorrectYawPitch() {
-        LOGGER.debug("hasCorrectYawPitch() start");
-        BlockPos below = cannonMount.getBlockPos().below();
-        if (!(level.getBlockEntity(below) instanceof AutoYawControllerBlockEntity)) {
-            below = cannonMount.getBlockPos().above();
-            LOGGER.debug("  → no yaw controller at {}", below);
-        }
+        float prevYaw;
+        float prevPitch;
+        float yaw;
+        float pitch;
+        if(targetYaw == null || targetPitch == null) return false;
+        try {
+            Field prevPitchField = CannonMountBlockEntity.class.getDeclaredField("prevPitch");
+            prevPitchField.setAccessible(true);
+            prevPitch = prevPitchField.getFloat(cannonMount);
 
-        if (!(level.getBlockEntity(below) instanceof AutoYawControllerBlockEntity yawCtrl)) {
-            LOGGER.debug("  → no yaw controller at {}", below);
-            return false;
+            Field prevYawField = CannonMountBlockEntity.class.getDeclaredField("prevYaw");
+            prevYawField.setAccessible(true);
+            prevYaw = prevYawField.getFloat(cannonMount);
+
+            Field yawField = CannonMountBlockEntity.class.getDeclaredField("cannonYaw");
+            yawField.setAccessible(true);
+            yaw = yawField.getFloat(cannonMount);
+
+            Field pitchField = CannonMountBlockEntity.class.getDeclaredField("cannonPitch");
+            pitchField.setAccessible(true);
+            pitch = pitchField.getFloat(cannonMount);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to access cannonYaw", e);
         }
-        boolean ok = yawCtrl.atTargetYaw() && getAutoPitchController().atTargetPitch();
-        LOGGER.debug("  → yaw ok={}, pitch ok={}", yawCtrl.atTargetYaw(), getAutoPitchController().atTargetPitch());
-        return ok;
+        return abs(yaw - targetYaw) < 0.01 && abs(pitch - targetPitch) < 0.01 && abs(prevYaw - targetYaw) < 0.01 && abs(prevPitch - targetPitch) < 0.01;
     }
+    public Vec3 getTargetPos() {return targetPos;}
+    public void setTargetPos(Vec3 targetPos) {this.targetPos = targetPos;}
 
     public Double getTargetPitch() {
         return targetPitch;
