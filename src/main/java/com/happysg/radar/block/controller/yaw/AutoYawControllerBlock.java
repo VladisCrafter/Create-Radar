@@ -48,6 +48,7 @@ public class AutoYawControllerBlock extends HorizontalKineticBlock implements IB
         if (be instanceof AutoYawControllerBlockEntity AutoyawControllerBlockEntity) {
             AutoyawControllerBlockEntity.onRemoved();
         }
+        super.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
     }
 
     @Override
