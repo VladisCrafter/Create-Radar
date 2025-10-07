@@ -1,7 +1,8 @@
 package com.happysg.radar.compat.computercraft;
 
 import com.happysg.radar.CreateRadar;
-import com.happysg.radar.block.controller.WIP.AutoYawControllerBlockEntity;
+
+import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import dan200.computercraft.api.lua.LuaFunction;
 import dan200.computercraft.api.peripheral.GenericPeripheral;
 

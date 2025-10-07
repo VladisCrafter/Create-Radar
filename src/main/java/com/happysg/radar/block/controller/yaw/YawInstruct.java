@@ -1,10 +1,6 @@
 package com.happysg.radar.block.controller.yaw;
 
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
-import com.simibubi.create.content.kinetics.transmission.sequencer.Instruction;
-import com.simibubi.create.content.kinetics.transmission.sequencer.InstructionSpeedModifiers;
-import com.simibubi.create.content.kinetics.transmission.sequencer.OnIsPoweredResult;
-import com.simibubi.create.content.kinetics.transmission.sequencer.SequencerInstructions;
 import net.createmod.catnip.nbt.NBTHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -13,20 +9,20 @@ import java.util.Vector;
 
 public class YawInstruct {
 
-    public SequencerInstructions instruction;
+    public ControllerInst continstruction;
     InstSpeedMod speedModifier;
     public int value;
 
-    public YawInstruct(SequencerInstructions instruction) {
+    public YawInstruct(ControllerInst instruction) {
         this(instruction, 1);
     }
 
-    public YawInstruct(SequencerInstructions instruction, int value) {
+    public YawInstruct(ControllerInst instruction, int value) {
         this(instruction, InstSpeedMod.FORWARD, value);
     }
 
-    public YawInstruct(SequencerInstructions instruction, InstSpeedMod speedModifier, int value) {
-        this.instruction = instruction;
+    public YawInstruct(ControllerInst instruction, InstSpeedMod speedModifier, int value) {
+        this.continstruction = instruction;
         this.speedModifier = speedModifier;
         this.value = value;
     }
@@ -36,7 +32,7 @@ public class YawInstruct {
         speed = Math.abs(speed);
         double target = value - currentProgress;
 
-        switch (instruction) {
+        switch (continstruction) {
 
             // Always overshoot, target will stop early
             case TURN_ANGLE:
@@ -60,7 +56,7 @@ public class YawInstruct {
     }
 
     public float getTickProgress(float speed) {
-        switch (instruction) {
+        switch (continstruction) {
 
             case TURN_ANGLE:
                 return KineticBlockEntity.convertToAngular(speed);
@@ -81,7 +77,7 @@ public class YawInstruct {
     }
 
     int getSpeedModifier() {
-        switch (instruction) {
+        switch (continstruction) {
 
             case TURN_ANGLE:
             case TURN_DISTANCE:
@@ -97,42 +93,40 @@ public class YawInstruct {
         return 0;
     }
 
-    public OnIsPoweredResult onRedstonePulse() {
-        return OnIsPoweredResult.CONTINUE;
-    }
 
-    public static ListTag serializeAll(Vector<Instruction> instructions) {
+
+    public static ListTag serializeAll(Vector<YawInstruct> instructions) {
         ListTag list = new ListTag();
         instructions.forEach(i -> list.add(i.serialize()));
         return list;
     }
 
-    public static Vector<Instruction> deserializeAll(ListTag list) {
+    public static Vector<YawInstruct> deserializeAll(ListTag list) {
         if (list.isEmpty())
             return createDefault();
-        Vector<Instruction> instructions = new Vector<>(5);
+        Vector<YawInstruct> instructions = new Vector<>(5);
         list.forEach(inbt -> instructions.add(deserialize((CompoundTag) inbt)));
         return instructions;
     }
 
-    public static Vector<Instruction> createDefault() {
-        Vector<Instruction> instructions = new Vector<>(5);
-        instructions.add(new Instruction(SequencerInstructions.TURN_ANGLE, 90));
-        instructions.add(new Instruction(SequencerInstructions.END));
+    public static Vector<YawInstruct> createDefault() {
+        Vector<YawInstruct> instructions = new Vector<>(5);
+        instructions.add(new YawInstruct(ControllerInst.TURN_ANGLE, 90));
+        instructions.add(new YawInstruct(ControllerInst.END));
         return instructions;
     }
 
     CompoundTag serialize() {
         CompoundTag tag = new CompoundTag();
-        NBTHelper.writeEnum(tag, "Type", instruction);
+        NBTHelper.writeEnum(tag, "Type", continstruction);
         NBTHelper.writeEnum(tag, "Modifier", speedModifier);
         tag.putInt("Value", value);
         return tag;
     }
 
-    static Instruction deserialize(CompoundTag tag) {
-        Instruction instruction = new Instruction(NBTHelper.readEnum(tag, "Type", SequencerInstructions.class));
-        instruction.speedModifier = NBTHelper.readEnum(tag, "Modifier", InstructionSpeedModifiers.class);
+    static YawInstruct deserialize(CompoundTag tag) {
+        YawInstruct instruction = new YawInstruct(NBTHelper.readEnum(tag, "Type", ControllerInst.class));
+        instruction.speedModifier = NBTHelper.readEnum(tag, "Modifier", InstSpeedMod.class);
         instruction.value = tag.getInt("Value");
         return instruction;
     }

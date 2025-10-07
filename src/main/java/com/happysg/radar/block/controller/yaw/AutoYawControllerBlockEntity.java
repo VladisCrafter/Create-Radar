@@ -1,13 +1,9 @@
 package com.happysg.radar.block.controller.yaw;
 
-import com.happysg.radar.block.controller.kineticstuff.YawInstruct;
 import com.happysg.radar.block.network.WeaponNetwork;
 import com.happysg.radar.block.network.WeaponNetworkUnit;
-import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
+
 import com.simibubi.create.content.kinetics.transmission.SplitShaftBlockEntity;
-import com.simibubi.create.content.kinetics.transmission.sequencer.Instruction;
-import com.simibubi.create.content.kinetics.transmission.sequencer.SequencedGearshiftBlock;
-import com.simibubi.create.content.kinetics.transmission.sequencer.SequencerInstructions;
 import net.createmod.catnip.nbt.NBTHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -23,18 +19,21 @@ import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContr
 import java.util.Vector;
 
 
+
+
 public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implements WeaponNetworkUnit {
     private static final double TOLERANCE = 0.1;
     private double targetAngle;
     private double currentAngle = 0.0;
     public boolean isRunning;
     private WeaponNetwork weaponNetwork;
-    Vector<Instruction> instructions;
+    Vector<YawInstruct> instructions;
     int currentInstruction;
     int currentInstructionDuration;
     float currentInstructionProgress;
     int timer;
     boolean poweredPreviously;
+    ContSequenceContext contsequenceContext;
 
     public AutoYawControllerBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -46,11 +45,12 @@ public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implemen
         poweredPreviously = false;
 
     }
-    public record SequenceContext(SequencerInstructions instruction, double relativeValue) {
-        public static com.simibubi.create.content.kinetics.transmission.sequencer.SequencedGearshiftBlockEntity.SequenceContext fromGearshift(SequencerInstructions instruction, double kineticSpeed,
-                                                                                                                                                  int absoluteValue) {
+
+    public record ContSequenceContext(ControllerInst instruction, double relativeValue) {
+        public static ContSequenceContext Fromcontroller(ControllerInst instruction, double kineticSpeed,
+                                                         int absoluteValue) {
                 return instruction.needsPropagation()
-                        ? new com.simibubi.create.content.kinetics.transmission.sequencer.SequencedGearshiftBlockEntity.SequenceContext(instruction, kineticSpeed == 0 ? 0 : absoluteValue / kineticSpeed)
+                        ? new ContSequenceContext(instruction, kineticSpeed == 0 ? 0 : absoluteValue / kineticSpeed)
                         : null;
             }
 
@@ -65,10 +65,10 @@ public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implemen
                 return nbt;
             }
 
-            public static com.simibubi.create.content.kinetics.transmission.sequencer.SequencedGearshiftBlockEntity.SequenceContext fromNBT(CompoundTag nbt) {
+            public static ContSequenceContext fromNBT(CompoundTag nbt) {
                 if (nbt.isEmpty())
                     return null;
-                return new com.simibubi.create.content.kinetics.transmission.sequencer.SequencedGearshiftBlockEntity.SequenceContext(NBTHelper.readEnum(nbt, "Mode", SequencerInstructions.class),
+                return new ContSequenceContext(NBTHelper.readEnum(nbt, "Mode", ControllerInst.class),
                         nbt.getDouble("Value"));
             }
 
@@ -79,6 +79,7 @@ public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implemen
         @Override
         public void tick() {
             super.tick();
+            instructionsForTargetAngle(targetAngle);
 
             if (isIdle())
                 return;
@@ -94,23 +95,48 @@ public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implemen
             run(currentInstruction + 1);
         }
 
-        @Override
-        public void onSpeedChanged(float previousSpeed) {
-            super.onSpeedChanged(previousSpeed);
-            if (isIdle())
-                return;
-            float currentSpeed = Math.abs(speed);
-            if (Math.abs(previousSpeed) == currentSpeed)
-                return;
-            YawInstruct instruction = getInstruction(currentInstruction);
-            if (instruction == null)
-                return;
-            if (getSpeed() == 0)
-                run(-1);
+
+    private static int mapAngleToValue(double normalizedAngle, int maxValue) {
+        // raw mapping: 0 -> 0, 359.6 -> 360 etc. Round to nearest.
+        int v = (int) Math.round(normalizedAngle);
+        // GUI uses range 1..maxValue (see screen code using withRange(1, max+1)), so treat 0 as maxValue.
+        if (v == 0)
+            v = Math.max(1, maxValue);
+        if (v < 1)
+            v = 1;
+        if (v > maxValue)
+            v = maxValue;
+        return v;
+    }
+    public static Vector<YawInstruct> instructionsForTargetAngle(double targetAngleDeg) {
+        Vector<YawInstruct> seq = new Vector<>();
+        double normalized = ((targetAngleDeg % 360.0) + 360.0) % 360.0;
+        int mapped = mapAngleToValue(normalized, ControllerInst.TURN_ANGLE.maxValue);
+        if (mapped <= 0)
+            return seq;
+        InstSpeedMod speed = InstSpeedMod.FORWARD;
+        seq.add(new YawInstruct(ControllerInst.TURN_ANGLE, speed, mapped));
+        return seq;
+    }
+
+
+    @Override
+    public void onSpeedChanged(float previousSpeed) {
+        super.onSpeedChanged(previousSpeed);
+        if (isIdle())
+            return;
+        float currentSpeed = Math.abs(speed);
+        if (Math.abs(previousSpeed) == currentSpeed)
+            return;
+        YawInstruct instruction = getInstruction(currentInstruction);
+        if (instruction == null)
+            return;
+        if (getSpeed() == 0)
+            run(-1);
 
             // Update instruction time with regards to new speed
-            currentInstructionDuration = instruction.getDuration(currentInstructionProgress, getTheoreticalSpeed());
-            timer = 0;
+        currentInstructionDuration = instruction.getDuration(currentInstructionProgress, getTheoreticalSpeed());
+        timer = 0;
         }
 
         public boolean isIdle() {
@@ -123,7 +149,7 @@ public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implemen
             if (isPowered == isRunning)
                 return;
             if (!level.hasNeighborSignal(worldPosition)) {
-                level.setBlock(worldPosition, getBlockState().setValue(SequencedGearshiftBlock.STATE, 0), 3);
+                level.setBlock(worldPosition, getBlockState().setValue(AutoYawControllerBlock.STATE, 0), 3);
                 return;
             }
             if (getSpeed() == 0)
@@ -131,36 +157,16 @@ public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implemen
             run(0);
         }
 
-        public void risingFlank() {
-            YawInstruct instruction = getInstruction(currentInstruction);
-            if (instruction == null)
-                return;
-            if (poweredPreviously)
-                return;
-            poweredPreviously = true;
-
-            switch (instruction.onRedstonePulse()) {
-                case CONTINUE:
-                    run(currentInstruction + 1);
-                    break;
-                default:
-                    break;
-            }
-        }
-
         public void run(int instructionIndex) {
             YawInstruct instruction = getInstruction(instructionIndex);
-            if (instruction == null || instruction.instruction == SequencerInstructions.END) {
+            if (instruction == null || instruction.continstruction == ControllerInst.END) {
                 if (getModifier() != 0)
                     detachKinetics();
                 currentInstruction = -1;
                 currentInstructionDuration = -1;
                 currentInstructionProgress = 0;
-                sequenceContext = null;
+                contsequenceContext = null;
                 timer = 0;
-                if (!level.hasNeighborSignal(worldPosition))
-                    level.setBlock(worldPosition, getBlockState().setValue(SequencedGearshiftBlock.STATE, 0), 3);
-                else
                     sendData();
                 return;
             }
@@ -169,10 +175,12 @@ public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implemen
             currentInstructionDuration = instruction.getDuration(0, getTheoreticalSpeed());
             currentInstruction = instructionIndex;
             currentInstructionProgress = 0;
-            sequenceContext = com.simibubi.create.content.kinetics.transmission.sequencer.SequencedGearshiftBlockEntity.SequenceContext.fromGearshift(instruction.instruction, getTheoreticalSpeed() * getModifier(),
-                    instruction.value);
+            contsequenceContext = ContSequenceContext.Fromcontroller(
+                    instruction.continstruction, // ← if that’s the field name in YawInstruct
+                    getTheoreticalSpeed() * getModifier(),
+                    instruction.value
+            );
             timer = 0;
-            level.setBlock(worldPosition, getBlockState().setValue(SequencedGearshiftBlock.STATE, instructionIndex + 1), 3);
         }
 
         public YawInstruct getInstruction(int instructionIndex) {
@@ -180,8 +188,7 @@ public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implemen
                     : null;
         }
 
-        @Override
-        protected void copySequenceContextFrom(KineticBlockEntity sourceBE) {}
+        protected void copySequenceContextFrom(AutoYawControllerBlockEntity sourceBE) {}
 
         @Override
         public void write(CompoundTag compound, boolean clientPacket) {
@@ -190,7 +197,7 @@ public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implemen
             compound.putFloat("InstructionProgress", currentInstructionProgress);
             compound.putInt("Timer", timer);
             compound.putBoolean("PrevPowered", poweredPreviously);
-            compound.put("Instructions", Instruction.serializeAll(instructions));
+            compound.put("Instructions", YawInstruct.serializeAll(instructions));
             super.write(compound, clientPacket);
         }
 
@@ -201,7 +208,7 @@ public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implemen
             currentInstructionProgress = compound.getFloat("InstructionProgress");
             poweredPreviously = compound.getBoolean("PrevPowered");
             timer = compound.getInt("Timer");
-            instructions = Instruction.deserializeAll(compound.getList("Instructions", Tag.TAG_COMPOUND));
+            instructions = YawInstruct.deserializeAll(compound.getList("Instructions", Tag.TAG_COMPOUND));
             super.read(compound, clientPacket);
         }
 
@@ -222,11 +229,37 @@ public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implemen
           }
         }
 
-        public Vector<Instruction> getInstructions() {
+        public Vector<YawInstruct> getInstructions() {
             return this.instructions;
         }
+    /*
+    public void onPlace(BlockState pState, Level pLevel, BlockPos pPos, BlockState pOldState, boolean pIsMoving) {
+        for(Direction direction : Direction.values()) {
+            pLevel.updateNeighborsAt(pPos.relative(direction), this);
+        }
+        BlockEntity be = pLevel.getBlockEntity(pPos);
+        if (be instanceof archive AutoyawControllerBlockEntity) {
+            AutoyawControllerBlockEntity.onPlaced();
+        }
+    }
 
 
+    public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
+        if (!pIsMoving) {
+            for(Direction direction : Direction.values()) {
+                pLevel.updateNeighborsAt(pPos.relative(direction), getBlockPos());
+            }
+        }
+        BlockEntity be = pLevel.getBlockEntity(pPos);
+        if (be instanceof archive AutoyawControllerBlockEntity) {
+            AutoyawControllerBlockEntity.onRemoved();
+        }
+    }
+
+     */
+    public double getTargetAngle() {
+        return targetAngle;
+    }
     public boolean atTargetYaw() {
         BlockPos turretPos = getBlockPos().above();
         if (level == null || !(level.getBlockEntity(turretPos) instanceof CannonMountBlockEntity mount))
@@ -235,6 +268,10 @@ public class AutoYawControllerBlockEntity extends SplitShaftBlockEntity implemen
         if (contraption == null)
             return false;
         return Math.abs(contraption.yaw - targetAngle) < TOLERANCE;
+    }
+    public void setTargetAngle(float targetAngle) {
+        this.targetAngle = targetAngle;
+        notifyUpdate();
     }
     public WeaponNetwork getWeaponNetwork() {
         return weaponNetwork;
