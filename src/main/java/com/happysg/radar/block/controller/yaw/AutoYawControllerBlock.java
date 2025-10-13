@@ -24,16 +24,15 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
-
+import static com.simibubi.create.content.kinetics.transmission.sequencer.SequencedGearshiftBlock.STATE;
 import static com.simibubi.create.content.kinetics.transmission.sequencer.SequencedGearshiftBlock.VERTICAL;
 
 public class AutoYawControllerBlock extends HorizontalAxisKineticBlock implements IBE<AutoYawControllerBlockEntity> {
 
-    public static final IntegerProperty STATE = IntegerProperty.create("state", 0, 5);
+
     public AutoYawControllerBlock(Properties properties) {
         super(properties);
     }
@@ -74,6 +73,14 @@ public class AutoYawControllerBlock extends HorizontalAxisKineticBlock implement
             return face.getAxis()
                     .isVertical();
         return super.hasShaftTowards(world, pos, state, face);
+    }
+
+
+
+    @OnlyIn(value = Dist.CLIENT)
+    protected void displayScreen(SequencedGearshiftBlockEntity be, Player player) {
+        if (player instanceof LocalPlayer)
+            ScreenOpener.open(new SequencedGearshiftScreen(be));
     }
 
     @Override
@@ -123,7 +130,7 @@ public class AutoYawControllerBlock extends HorizontalAxisKineticBlock implement
         }
         BlockEntity be = pLevel.getBlockEntity(pPos);
         if (be instanceof AutoYawControllerBlockEntity AutoyawControllerBlockEntity) {
-         //   AutoyawControllerBlockEntity.onPlaced();
+            AutoyawControllerBlockEntity.onPlaced();
         }
     }
 
@@ -136,7 +143,7 @@ public class AutoYawControllerBlock extends HorizontalAxisKineticBlock implement
         }
         BlockEntity be = pLevel.getBlockEntity(pPos);
         if (be instanceof AutoYawControllerBlockEntity AutoyawControllerBlockEntity) {
-          //  AutoyawControllerBlockEntity.onRemoved();
+            AutoyawControllerBlockEntity.onRemoved();
         }
     }
 
@@ -149,5 +156,4 @@ public class AutoYawControllerBlock extends HorizontalAxisKineticBlock implement
     public BlockEntityType<? extends AutoYawControllerBlockEntity> getBlockEntityType() {
         return ModBlockEntityTypes.AUTO_YAW_CONTROLLER.get();
     }
-
 }

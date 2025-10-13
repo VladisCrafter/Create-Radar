@@ -6,9 +6,7 @@ import com.happysg.radar.block.controller.networkfilter.NetworkFiltererBlockEnti
 import com.happysg.radar.block.controller.networkfilter.NetworkFiltererRenderer;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
 import com.happysg.radar.block.controller.track.TrackControllerBlockEntity;
-
-import com.happysg.radar.block.controller.yaw.AutoYawControllerBlock;
-import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
+import com.happysg.radar.block.controller.WIP.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.datalink.DataLinkBlockEntity;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import com.happysg.radar.block.monitor.MonitorRenderer;
