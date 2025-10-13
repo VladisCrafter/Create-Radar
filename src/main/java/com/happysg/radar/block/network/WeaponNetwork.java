@@ -57,8 +57,6 @@ public class WeaponNetwork {
     private ServerLevel level;
     private UUID uuid;
 
-    private List<AABB> safeZones;
-    private TargetingConfig targetingConfig;
     private Vec3 targetPos;
     private Double targetPitch;
     private Double targetYaw;

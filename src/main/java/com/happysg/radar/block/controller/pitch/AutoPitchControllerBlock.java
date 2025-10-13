@@ -51,7 +51,6 @@ public class AutoPitchControllerBlock extends HorizontalKineticBlock implements 
         if (be instanceof AutoPitchControllerBlockEntity autoPitchControllerBlockEntity) {
             autoPitchControllerBlockEntity.onRemoved();
         }
-        super.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
     }
 
     @Override
