@@ -6,7 +6,7 @@ import com.happysg.radar.block.controller.id.IDBlock;
 import com.happysg.radar.block.controller.networkfilter.NetworkFiltererBlock;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlock;
 import com.happysg.radar.block.controller.track.TrackControllerBlock;
-import com.happysg.radar.block.controller.WIP.AutoYawControllerBlock;
+import com.happysg.radar.block.controller.yaw.AutoYawControllerBlock;
 import com.happysg.radar.block.datalink.DataLinkBlock;
 import com.happysg.radar.block.datalink.DataLinkBlockItem;
 import com.happysg.radar.block.monitor.MonitorBlock;
