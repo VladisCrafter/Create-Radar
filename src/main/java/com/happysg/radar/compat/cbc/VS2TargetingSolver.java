@@ -1,11 +1,17 @@
 package com.happysg.radar.compat.cbc;
+import com.happysg.radar.math3.analysis.MultivariateFunction;
+import com.happysg.radar.math3.optim.InitialGuess;
+import com.happysg.radar.math3.optim.MaxEval;
+import com.happysg.radar.math3.optim.PointValuePair;
+import com.happysg.radar.math3.optim.SimpleBounds;
+import com.happysg.radar.math3.optim.nonlinear.scalar.GoalType;
+import com.happysg.radar.math3.optim.nonlinear.scalar.MultiStartMultivariateOptimizer;
+import com.happysg.radar.math3.optim.nonlinear.scalar.ObjectiveFunction;
+import com.happysg.radar.math3.optim.nonlinear.scalar.noderiv.BOBYQAOptimizer;
+import com.happysg.radar.math3.random.RandomVectorGenerator;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import org.apache.commons.math3.analysis.MultivariateFunction;
-import org.apache.commons.math3.optim.*;
-import org.apache.commons.math3.optim.nonlinear.scalar.*;
-import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.*;
-import org.apache.commons.math3.random.RandomVectorGenerator;
+
 import org.joml.Matrix4dc;
 import org.joml.Vector3f;
 import org.valkyrienskies.core.api.ships.Ship;

@@ -113,6 +113,13 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
             monitor.notifyUpdate();
         }
     }
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        if (level.isClientSide) {
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 2);
+        }
+    }
 
     @Override
     protected void read(CompoundTag tag, boolean clientPacket) {

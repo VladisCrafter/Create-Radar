@@ -143,14 +143,16 @@ public class FiringControlBlockEntity {
 
     private boolean passesSafeZone() {
         LOGGER.debug("passesSafeZone() → checking {} safe zones", safeZones.size());
-
+        if(safeZones.isEmpty()){
+            return false;
+        }
         if (!(level instanceof ServerLevel serverLevel)) {
             LOGGER.debug("  → not server level, skip safe-zone check");
             return false;
         }
 
         if (target == null) {
-            LOGGER.warn("  → target is null, skipping safe zone check");
+            LOGGER.debug("  → target is null, skipping safe zone check");
             return false;
         }
 
