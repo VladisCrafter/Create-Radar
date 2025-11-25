@@ -458,13 +458,13 @@ public class KolmogorovSmirnovTest {
      * Calculates \(P(D_n < d)\) using the method described in [1] with quick decisions for extreme
      * values given in [2] (see above). The result is not exact as with
      * {@link #cdfExact(double, int)} because calculations are based on
-     * {@code double} rather than {@link com.happysg.radar.math3.fraction.BigFraction}.
+     * {@code double} rather than {@link BigFraction}.
      *
      * @param d statistic
      * @param n sample size
      * @return \(P(D_n < d)\)
      * @throws MathArithmeticException if algorithm fails to convert {@code h} to a
-     *         {@link com.happysg.radar.math3.fraction.BigFraction} in expressing {@code d} as \((k
+     *         {@link BigFraction} in expressing {@code d} as \((k
      *         - h) / m\) for integer {@code k, m} and \(0 \le h < 1\)
      */
     public double cdf(double d, int n)
@@ -483,7 +483,7 @@ public class KolmogorovSmirnovTest {
      * @param n sample size
      * @return \(P(D_n < d)\)
      * @throws MathArithmeticException if the algorithm fails to convert {@code h} to a
-     *         {@link com.happysg.radar.math3.fraction.BigFraction} in expressing {@code d} as \((k
+     *         {@link BigFraction} in expressing {@code d} as \((k
      *         - h) / m\) for integer {@code k, m} and \(0 \le h < 1\)
      */
     public double cdfExact(double d, int n)
@@ -498,13 +498,13 @@ public class KolmogorovSmirnovTest {
      * @param d statistic
      * @param n sample size
      * @param exact whether the probability should be calculated exact using
-     *        {@link com.happysg.radar.math3.fraction.BigFraction} everywhere at the expense of
+     *        {@link BigFraction} everywhere at the expense of
      *        very slow execution time, or if {@code double} should be used convenient places to
      *        gain speed. Almost never choose {@code true} in real applications unless you are very
      *        sure; {@code true} is almost solely for verification purposes.
      * @return \(P(D_n < d)\)
      * @throws MathArithmeticException if algorithm fails to convert {@code h} to a
-     *         {@link com.happysg.radar.math3.fraction.BigFraction} in expressing {@code d} as \((k
+     *         {@link BigFraction} in expressing {@code d} as \((k
      *         - h) / m\) for integer {@code k, m} and \(0 \le h < 1\).
      */
     public double cdf(double d, int n, boolean exact)
@@ -539,14 +539,14 @@ public class KolmogorovSmirnovTest {
 
     /**
      * Calculates the exact value of {@code P(D_n < d)} using the method described in [1] (reference
-     * in class javadoc above) and {@link com.happysg.radar.math3.fraction.BigFraction} (see
+     * in class javadoc above) and {@link BigFraction} (see
      * above).
      *
      * @param d statistic
      * @param n sample size
      * @return the two-sided probability of \(P(D_n < d)\)
      * @throws MathArithmeticException if algorithm fails to convert {@code h} to a
-     *         {@link com.happysg.radar.math3.fraction.BigFraction} in expressing {@code d} as \((k
+     *         {@link BigFraction} in expressing {@code d} as \((k
      *         - h) / m\) for integer {@code k, m} and \(0 \le h < 1\).
      */
     private double exactK(double d, int n)
@@ -741,7 +741,7 @@ public class KolmogorovSmirnovTest {
      * @return H matrix
      * @throws NumberIsTooLargeException if fractional part is greater than 1
      * @throws FractionConversionException if algorithm fails to convert {@code h} to a
-     *         {@link com.happysg.radar.math3.fraction.BigFraction} in expressing {@code d} as \((k
+     *         {@link BigFraction} in expressing {@code d} as \((k
      *         - h) / m\) for integer {@code k, m} and \(0 <= h < 1\).
      */
     private FieldMatrix<BigFraction> createExactH(double d, int n)

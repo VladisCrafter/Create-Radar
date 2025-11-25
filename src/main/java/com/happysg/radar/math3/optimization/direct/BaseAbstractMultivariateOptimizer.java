@@ -154,9 +154,9 @@ public abstract class BaseAbstractMultivariateOptimizer<FUNC extends Multivariat
      * @param maxEval Maximum number of function evaluations.
      * @return the point/value pair giving the optimal value for objective
      * function.
-     * @throws com.happysg.radar.math3.exception.DimensionMismatchException
+     * @throws DimensionMismatchException
      * if the start point dimension is wrong.
-     * @throws com.happysg.radar.math3.exception.TooManyEvaluationsException
+     * @throws TooManyEvaluationsException
      * if the maximal number of evaluations is exceeded.
      * @throws com.happysg.radar.math3.exception.NullArgumentException if
      * any argument is {@code null}.

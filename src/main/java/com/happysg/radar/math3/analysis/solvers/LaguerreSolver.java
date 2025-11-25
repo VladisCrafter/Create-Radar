@@ -134,12 +134,12 @@ public class LaguerreSolver extends AbstractPolynomialSolver {
      * Find a real root in the given interval.
      *
      * Despite the bracketing condition, the root returned by
-     * {@link LaguerreSolver.ComplexSolver#solve(Complex[],Complex)} may
+     * {@link ComplexSolver#solve(Complex[],Complex)} may
      * not be a real zero inside {@code [min, max]}.
      * For example, <code> p(x) = x<sup>3</sup> + 1, </code>
      * with {@code min = -2}, {@code max = 2}, {@code initial = 0}.
      * When it occurs, this code calls
-     * {@link LaguerreSolver.ComplexSolver#solveAll(Complex[],Complex)}
+     * {@link ComplexSolver#solveAll(Complex[],Complex)}
      * in order to obtain all roots and picks up one real root.
      *
      * @param lo Lower bound of the search interval.
@@ -182,7 +182,7 @@ public class LaguerreSolver extends AbstractPolynomialSolver {
      * @param coefficients Polynomial coefficients.
      * @param initial Start value.
      * @return the full set of complex roots of the polynomial
-     * @throws com.happysg.radar.math3.exception.TooManyEvaluationsException
+     * @throws TooManyEvaluationsException
      * if the maximum number of evaluations is exceeded when solving for one of the roots
      * @throws NullArgumentException if the {@code coefficients} is
      * {@code null}.
@@ -207,7 +207,7 @@ public class LaguerreSolver extends AbstractPolynomialSolver {
      * @param initial start value
      * @param maxEval maximum number of evaluations
      * @return the full set of complex roots of the polynomial
-     * @throws com.happysg.radar.math3.exception.TooManyEvaluationsException
+     * @throws TooManyEvaluationsException
      * if the maximum number of evaluations is exceeded when solving for one of the roots
      * @throws NullArgumentException if the {@code coefficients} is
      * {@code null}
@@ -237,7 +237,7 @@ public class LaguerreSolver extends AbstractPolynomialSolver {
      * @param coefficients Polynomial coefficients.
      * @param initial Start value.
      * @return a complex root of the polynomial
-     * @throws com.happysg.radar.math3.exception.TooManyEvaluationsException
+     * @throws TooManyEvaluationsException
      * if the maximum number of evaluations is exceeded.
      * @throws NullArgumentException if the {@code coefficients} is
      * {@code null}.
@@ -262,7 +262,7 @@ public class LaguerreSolver extends AbstractPolynomialSolver {
      * @param initial start value
      * @param maxEval maximum number of evaluations
      * @return a complex root of the polynomial
-     * @throws com.happysg.radar.math3.exception.TooManyEvaluationsException
+     * @throws TooManyEvaluationsException
      * if the maximum number of evaluations is exceeded
      * @throws NullArgumentException if the {@code coefficients} is
      * {@code null}
@@ -312,7 +312,7 @@ public class LaguerreSolver extends AbstractPolynomialSolver {
          * @param coefficients Polynomial coefficients.
          * @param initial Start value.
          * @return the point at which the function value is zero.
-         * @throws com.happysg.radar.math3.exception.TooManyEvaluationsException
+         * @throws TooManyEvaluationsException
          * if the maximum number of evaluations is exceeded.
          * @throws NullArgumentException if the {@code coefficients} is
          * {@code null}.
@@ -361,7 +361,7 @@ public class LaguerreSolver extends AbstractPolynomialSolver {
          * @param coefficients Polynomial coefficients.
          * @param initial Start value.
          * @return the point at which the function value is zero.
-         * @throws com.happysg.radar.math3.exception.TooManyEvaluationsException
+         * @throws TooManyEvaluationsException
          * if the maximum number of evaluations is exceeded.
          * @throws NullArgumentException if the {@code coefficients} is
          * {@code null}.

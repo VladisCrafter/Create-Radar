@@ -165,11 +165,11 @@ public abstract class BaseAbstractMultivariateVectorOptimizer<FUNC extends Multi
      * @return the point/value pair giving the optimal value for objective
      * function.
      * @param maxEval Maximum number of function evaluations.
-     * @throws com.happysg.radar.math3.exception.DimensionMismatchException
+     * @throws DimensionMismatchException
      * if the start point dimension is wrong.
-     * @throws com.happysg.radar.math3.exception.TooManyEvaluationsException
+     * @throws TooManyEvaluationsException
      * if the maximal number of evaluations is exceeded.
-     * @throws com.happysg.radar.math3.exception.NullArgumentException if
+     * @throws NullArgumentException if
      * any argument is {@code null}.
      * @deprecated As of 3.1. Please use
      * {@link #optimizeInternal(int,MultivariateVectorFunction,OptimizationData[])}

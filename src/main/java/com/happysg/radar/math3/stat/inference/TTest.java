@@ -51,7 +51,7 @@ import com.happysg.radar.math3.util.FastMath;
  * <p>
  * Input to tests can be either <code>double[]</code> arrays or
  * {@link StatisticalSummary} instances.</p><p>
- * Uses commons-math {@link com.happysg.radar.math3.distribution.TDistribution}
+ * Uses commons-math {@link TDistribution}
  * implementation to estimate exact p-values.</p>
  *
  */

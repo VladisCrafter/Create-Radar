@@ -22,7 +22,7 @@ import com.happysg.radar.math3.linear.RealMatrix;
 
 /**
  * Implementation of
- * {@link com.happysg.radar.math3.stat.descriptive.MultivariateSummaryStatistics} that
+ * {@link MultivariateSummaryStatistics} that
  * is safe to use in a multithreaded environment.  Multiple threads can safely
  * operate on a single instance without causing runtime exceptions due to race
  * conditions.  In effect, this implementation makes modification and access

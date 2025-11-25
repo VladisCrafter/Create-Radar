@@ -108,8 +108,8 @@ public class SimpleCurveFitter extends AbstractCurveFitter {
             ++count;
         }
 
-        final AbstractCurveFitter.TheoreticalValuesFunction model
-            = new AbstractCurveFitter.TheoreticalValuesFunction(function,
+        final TheoreticalValuesFunction model
+            = new TheoreticalValuesFunction(function,
                                                                 observations);
 
         // Create an optimizer for fitting the curve to the observed points.

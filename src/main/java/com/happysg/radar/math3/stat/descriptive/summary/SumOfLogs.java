@@ -27,7 +27,7 @@ import com.happysg.radar.math3.util.MathUtils;
 /**
  * Returns the sum of the natural logs for this collection of values.
  * <p>
- * Uses {@link com.happysg.radar.math3.util.FastMath#log(double)} to compute the logs.
+ * Uses {@link FastMath#log(double)} to compute the logs.
  * Therefore,
  * <ul>
  * <li>If any of values are &lt; 0, the result is <code>NaN.</code></li>

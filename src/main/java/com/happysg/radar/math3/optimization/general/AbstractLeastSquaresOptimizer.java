@@ -52,9 +52,9 @@ import com.happysg.radar.math3.util.FastMath;
  * optimize} and assumes that the rows of that matrix iterate on the model
  * functions while the columns iterate on the parameters; thus, the numbers
  * of rows is equal to the dimension of the
- * {@link com.happysg.radar.math3.optimization.Target Target} while
+ * {@link Target Target} while
  * the number of columns is equal to the dimension of the
- * {@link com.happysg.radar.math3.optimization.InitialGuess InitialGuess}.
+ * {@link InitialGuess InitialGuess}.
  *
  * @deprecated As of 3.1 (to be removed in 4.0).
  * @since 1.2
@@ -441,7 +441,7 @@ public abstract class AbstractLeastSquaresOptimizer
      * @return the point/value pair giving the optimal value for objective
      * function.
      * @param maxEval Maximum number of function evaluations.
-     * @throws com.happysg.radar.math3.exception.DimensionMismatchException
+     * @throws DimensionMismatchException
      * if the start point dimension is wrong.
      * @throws com.happysg.radar.math3.exception.TooManyEvaluationsException
      * if the maximal number of evaluations is exceeded.

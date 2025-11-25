@@ -163,7 +163,7 @@ public class LoessInterpolator
      * Compute an interpolating function by performing a loess fit
      * on the data at the original abscissae and then building a cubic spline
      * with a
-     * {@link com.happysg.radar.math3.analysis.interpolation.SplineInterpolator}
+     * {@link SplineInterpolator}
      * on the resulting fit.
      *
      * @param xval the arguments for the interpolation points
@@ -462,7 +462,7 @@ public class LoessInterpolator
      * Check that all elements of an array are finite real numbers.
      *
      * @param values Values array.
-     * @throws com.happysg.radar.math3.exception.NotFiniteNumberException
+     * @throws NotFiniteNumberException
      * if one of the values is not a finite real number.
      */
     private static void checkAllFiniteReal(final double[] values) {

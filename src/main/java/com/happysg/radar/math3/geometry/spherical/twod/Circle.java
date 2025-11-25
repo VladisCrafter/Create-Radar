@@ -274,12 +274,12 @@ public class Circle implements Hyperplane<Sphere2D>, Embedding<Sphere2D, Sphere1
         return Vector3D.dotProduct(pole, otherC.pole) >= 0.0;
     }
 
-    /** Get a {@link com.happysg.radar.math3.geometry.partitioning.Transform
+    /** Get a {@link Transform
      * Transform} embedding a 3D rotation.
      * @param rotation rotation to use
      * @return a new transform that can be applied to either {@link
      * Point Point}, {@link Circle Line} or {@link
-     * com.happysg.radar.math3.geometry.partitioning.SubHyperplane
+     * SubHyperplane
      * SubHyperplane} instances
      */
     public static Transform<Sphere2D, Sphere1D> getTransform(final Rotation rotation) {

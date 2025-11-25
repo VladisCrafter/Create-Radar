@@ -82,7 +82,7 @@ public interface FirstOrderFieldIntegrator<T extends RealFieldElement<T>> {
      * @param maxIterationCount upper limit of the iteration count in
      * the event time search events.
      * @see #addEventHandler(FieldEventHandler, double, double, int,
-     * com.happysg.radar.math3.analysis.solvers.BracketedRealFieldUnivariateSolver)
+     * BracketedRealFieldUnivariateSolver)
      * @see #getEventHandlers()
      * @see #clearEventHandlers()
      */
@@ -176,7 +176,7 @@ public interface FirstOrderFieldIntegrator<T extends RealFieldElement<T>> {
      * (can be set to a value smaller than {@code t0} for backward integration)
      * @return final state, its time will be the same as {@code finalTime} if
      * integration reached its target, but may be different if some {@link
-     * com.happysg.radar.math3.ode.events.FieldEventHandler} stops it at some point.
+     * FieldEventHandler} stops it at some point.
      * @exception NumberIsTooSmallException if integration step is too small
      * @exception MaxCountExceededException if the number of functions evaluations is exceeded
      * @exception NoBracketingException if the location of an event cannot be bracketed

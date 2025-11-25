@@ -104,7 +104,7 @@ public class ArcsSet extends AbstractRegion<Sphere1D, Sphere1D> implements Itera
      * boundary does not really separate an inside open from an outside
      * open (open having here its topological meaning), then subsequent
      * calls to the {@link
-     * com.happysg.radar.math3.geometry.partitioning.Region#checkPoint(com.happysg.radar.math3.geometry.Point)
+     * com.happysg.radar.math3.geometry.partitioning.Region#checkPoint(Point)
      * checkPoint} method will not be meaningful anymore.</p>
      * <p>If the boundary is empty, the region will represent the whole
      * space.</p>
@@ -935,7 +935,7 @@ public class ArcsSet extends AbstractRegion<Sphere1D, Sphere1D> implements Itera
     /** Specialized exception for inconsistent BSP tree state inconsistency.
      * <p>
      * This exception is thrown at {@link ArcsSet} construction time when the
-     * {@link com.happysg.radar.math3.geometry.partitioning.Region.Location inside/outside}
+     * {@link Location inside/outside}
      * state is not consistent at the 0, \(2 \pi \) crossing.
      * </p>
      */

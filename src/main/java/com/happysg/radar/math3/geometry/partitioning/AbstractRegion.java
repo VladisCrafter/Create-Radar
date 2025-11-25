@@ -306,8 +306,8 @@ public abstract class AbstractRegion<S extends Space, T extends Space> implement
     /** Check a point with respect to the region.
      * @param point point to check
      * @return a code representing the point status: either {@link
-     * Region.Location#INSIDE}, {@link Region.Location#OUTSIDE} or
-     * {@link Region.Location#BOUNDARY}
+     * Location#INSIDE}, {@link Location#OUTSIDE} or
+     * {@link Location#BOUNDARY}
      */
     public Location checkPoint(final Vector<S> point) {
         return checkPoint((Point<S>) point);
@@ -322,8 +322,8 @@ public abstract class AbstractRegion<S extends Space, T extends Space> implement
      * @param node root node of the region
      * @param point point to check
      * @return a code representing the point status: either {@link
-     * Region.Location#INSIDE INSIDE}, {@link Region.Location#OUTSIDE
-     * OUTSIDE} or {@link Region.Location#BOUNDARY BOUNDARY}
+     * Location#INSIDE INSIDE}, {@link Location#OUTSIDE
+     * OUTSIDE} or {@link Location#BOUNDARY BOUNDARY}
      */
     protected Location checkPoint(final BSPTree<S> node, final Vector<S> point) {
         return checkPoint(node, (Point<S>) point);
@@ -333,8 +333,8 @@ public abstract class AbstractRegion<S extends Space, T extends Space> implement
      * @param node root node of the region
      * @param point point to check
      * @return a code representing the point status: either {@link
-     * Region.Location#INSIDE INSIDE}, {@link Region.Location#OUTSIDE
-     * OUTSIDE} or {@link Region.Location#BOUNDARY BOUNDARY}
+     * Location#INSIDE INSIDE}, {@link Location#OUTSIDE
+     * OUTSIDE} or {@link Location#BOUNDARY BOUNDARY}
      */
     protected Location checkPoint(final BSPTree<S> node, final Point<S> point) {
         final BSPTree<S> cell = node.getCell(point, tolerance);

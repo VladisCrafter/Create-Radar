@@ -36,9 +36,9 @@ package com.happysg.radar.math3.optimization;
  *
  * @param <PAIR> Type of the (point, objective value) pair.
  *
- * @see com.happysg.radar.math3.optimization.SimplePointChecker
- * @see com.happysg.radar.math3.optimization.SimpleValueChecker
- * @see com.happysg.radar.math3.optimization.SimpleVectorValueChecker
+ * @see SimplePointChecker
+ * @see SimpleValueChecker
+ * @see SimpleVectorValueChecker
  *
  * @deprecated As of 3.1 (to be removed in 4.0).
  * @since 3.0

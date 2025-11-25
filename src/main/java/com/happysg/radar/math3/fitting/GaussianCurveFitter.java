@@ -36,7 +36,7 @@ import com.happysg.radar.math3.util.FastMath;
 
 /**
  * Fits points to a {@link
- * com.happysg.radar.math3.analysis.function.Gaussian.Parametric Gaussian}
+ * Gaussian.Parametric Gaussian}
  * function.
  * <br/>
  * The {@link #withStartPoint(double[]) initial guess values} must be passed
@@ -167,8 +167,8 @@ public class GaussianCurveFitter extends AbstractCurveFitter {
             ++i;
         }
 
-        final AbstractCurveFitter.TheoreticalValuesFunction model =
-                new AbstractCurveFitter.TheoreticalValuesFunction(FUNCTION, observations);
+        final TheoreticalValuesFunction model =
+                new TheoreticalValuesFunction(FUNCTION, observations);
 
         final double[] startPoint = initialGuess != null ?
             initialGuess :
@@ -190,7 +190,7 @@ public class GaussianCurveFitter extends AbstractCurveFitter {
 
     /**
      * Guesses the parameters {@code norm}, {@code mean}, and {@code sigma}
-     * of a {@link com.happysg.radar.math3.analysis.function.Gaussian.Parametric}
+     * of a {@link Gaussian.Parametric}
      * based on the specified observed points.
      */
     public static class ParameterGuesser {

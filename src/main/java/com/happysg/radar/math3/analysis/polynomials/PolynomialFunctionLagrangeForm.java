@@ -90,7 +90,7 @@ public class PolynomialFunctionLagrangeForm implements UnivariateFunction {
      * @return the function value.
      * @throws DimensionMismatchException if {@code x} and {@code y} have
      * different lengths.
-     * @throws com.happysg.radar.math3.exception.NonMonotonicSequenceException
+     * @throws NonMonotonicSequenceException
      * if {@code x} is not sorted in strictly increasing order.
      * @throws NumberIsTooSmallException if the size of {@code x} is less
      * than 2.
@@ -198,7 +198,7 @@ public class PolynomialFunctionLagrangeForm implements UnivariateFunction {
      * @return the function value.
      * @throws DimensionMismatchException if {@code x} and {@code y} have
      * different lengths.
-     * @throws com.happysg.radar.math3.exception.NonMonotonicSequenceException
+     * @throws NonMonotonicSequenceException
      * if {@code x} is not sorted in strictly increasing order.
      * @throws NumberIsTooSmallException if the size of {@code x} is less
      * than 2.
@@ -304,7 +304,7 @@ public class PolynomialFunctionLagrangeForm implements UnivariateFunction {
      * @param abort Whether to throw an exception if {@code x} is not sorted.
      * @throws DimensionMismatchException if the array lengths are different.
      * @throws NumberIsTooSmallException if the number of points is less than 2.
-     * @throws com.happysg.radar.math3.exception.NonMonotonicSequenceException
+     * @throws NonMonotonicSequenceException
      * if {@code x} is not sorted in strictly increasing order and {@code abort}
      * is {@code true}.
      * @return {@code false} if the {@code x} is not sorted in increasing order,

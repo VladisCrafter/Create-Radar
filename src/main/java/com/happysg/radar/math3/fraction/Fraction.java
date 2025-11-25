@@ -650,7 +650,7 @@ public class Fraction
      * </p>
      *
      * @return a string representation of the fraction.
-     * @see java.lang.Object#toString()
+     * @see Object#toString()
      */
     @Override
     public String toString() {

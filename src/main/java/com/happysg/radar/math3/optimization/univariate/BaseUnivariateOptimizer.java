@@ -26,7 +26,7 @@ import com.happysg.radar.math3.optimization.GoalType;
  * Commons-Math. Users of the API are advised to base their code on
  * the following interfaces:
  * <ul>
- *  <li>{@link com.happysg.radar.math3.optimization.univariate.UnivariateOptimizer}</li>
+ *  <li>{@link UnivariateOptimizer}</li>
  * </ul>
  *
  * @param <FUNC> Type of the objective function to be optimized.

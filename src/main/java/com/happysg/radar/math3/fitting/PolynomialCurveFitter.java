@@ -26,7 +26,7 @@ import com.happysg.radar.math3.linear.DiagonalMatrix;
 
 /**
  * Fits points to a {@link
- * com.happysg.radar.math3.analysis.polynomials.PolynomialFunction.Parametric polynomial}
+ * PolynomialFunction.Parametric polynomial}
  * function.
  * <br/>
  * The size of the {@link #withStartPoint(double[]) initial guess} array defines the
@@ -108,8 +108,8 @@ public class PolynomialCurveFitter extends AbstractCurveFitter {
             ++i;
         }
 
-        final AbstractCurveFitter.TheoreticalValuesFunction model =
-                new AbstractCurveFitter.TheoreticalValuesFunction(FUNCTION, observations);
+        final TheoreticalValuesFunction model =
+                new TheoreticalValuesFunction(FUNCTION, observations);
 
         if (initialGuess == null) {
             throw new MathInternalError();

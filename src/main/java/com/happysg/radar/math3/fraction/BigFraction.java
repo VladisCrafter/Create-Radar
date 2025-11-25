@@ -610,7 +610,7 @@ public class BigFraction
      *            the object to compare to, must not be <code>null</code>.
      * @return -1 if this is less than {@code object}, +1 if this is greater
      *         than {@code object}, 0 if they are equal.
-     * @see java.lang.Comparable#compareTo(java.lang.Object)
+     * @see Comparable#compareTo(Object)
      */
     public int compareTo(final BigFraction object) {
         int lhsSigNum = numerator.signum();
@@ -712,7 +712,7 @@ public class BigFraction
      * </p>
      *
      * @return the fraction as a {@code double}
-     * @see java.lang.Number#doubleValue()
+     * @see Number#doubleValue()
      */
     @Override
     public double doubleValue() {
@@ -741,7 +741,7 @@ public class BigFraction
      * @return true if two fractions are equal, false if object is
      *         <code>null</code>, not an instance of {@link BigFraction}, or not
      *         equal to this fraction instance.
-     * @see java.lang.Object#equals(java.lang.Object)
+     * @see Object#equals(Object)
      */
     @Override
     public boolean equals(final Object other) {
@@ -765,7 +765,7 @@ public class BigFraction
      * </p>
      *
      * @return the fraction as a {@code float}.
-     * @see java.lang.Number#floatValue()
+     * @see Number#floatValue()
      */
     @Override
     public float floatValue() {
@@ -853,7 +853,7 @@ public class BigFraction
      * </p>
      *
      * @return a hash code value for this object.
-     * @see java.lang.Object#hashCode()
+     * @see Object#hashCode()
      */
     @Override
     public int hashCode() {
@@ -867,7 +867,7 @@ public class BigFraction
      * </p>
      *
      * @return the whole number fraction part.
-     * @see java.lang.Number#intValue()
+     * @see Number#intValue()
      */
     @Override
     public int intValue() {
@@ -881,7 +881,7 @@ public class BigFraction
      * </p>
      *
      * @return the whole number fraction part.
-     * @see java.lang.Number#longValue()
+     * @see Number#longValue()
      */
     @Override
     public long longValue() {
@@ -1203,7 +1203,7 @@ public class BigFraction
      * </p>
      *
      * @return a string representation of the fraction.
-     * @see java.lang.Object#toString()
+     * @see Object#toString()
      */
     @Override
     public String toString() {

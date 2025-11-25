@@ -24,8 +24,8 @@ import com.happysg.radar.math3.analysis.MultivariateFunction;
  * Commons-FastMath. Users of the API are advised to base their code on
  * the following interfaces:
  * <ul>
- *  <li>{@link com.happysg.radar.math3.optimization.MultivariateOptimizer}</li>
- *  <li>{@link com.happysg.radar.math3.optimization.MultivariateDifferentiableOptimizer}</li>
+ *  <li>{@link MultivariateOptimizer}</li>
+ *  <li>{@link MultivariateDifferentiableOptimizer}</li>
  * </ul>
  *
  * @param <FUNC> Type of the objective function to be optimized.

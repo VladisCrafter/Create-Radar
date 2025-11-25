@@ -259,7 +259,7 @@ public class ComplexFormat {
      * @param pos On input: an alignment field, if desired. On output: the
      *            offsets of the alignment field
      * @return the value passed in as toAppendTo.
-     * @see java.text.Format#format(java.lang.Object, java.lang.StringBuffer, java.text.FieldPosition)
+     * @see java.text.Format#format(Object, StringBuffer, FieldPosition)
      * @throws MathIllegalArgumentException is {@code obj} is not a valid type.
      */
     public StringBuffer format(Object obj, StringBuffer toAppendTo,

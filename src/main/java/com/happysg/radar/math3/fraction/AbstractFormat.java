@@ -72,7 +72,7 @@ public abstract class AbstractFormat extends NumberFormat implements Serializabl
 
     /**
      * Create a default number format.  The default number format is based on
-     * {@link NumberFormat#getNumberInstance(java.util.Locale)}. The only
+     * {@link NumberFormat#getNumberInstance(Locale)}. The only
      * customization is the maximum number of BigFraction digits, which is set to 0.
      * @return the default number format.
      */
@@ -82,7 +82,7 @@ public abstract class AbstractFormat extends NumberFormat implements Serializabl
 
     /**
      * Create a default number format.  The default number format is based on
-     * {@link NumberFormat#getNumberInstance(java.util.Locale)}. The only
+     * {@link NumberFormat#getNumberInstance(Locale)}. The only
      * customization is the maximum number of BigFraction digits, which is set to 0.
      * @param locale the specific locale used by the format.
      * @return the default number format specific to the given locale.

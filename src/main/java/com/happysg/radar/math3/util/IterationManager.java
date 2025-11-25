@@ -55,7 +55,7 @@ public class IterationManager {
      * @throws com.happysg.radar.math3.exception.NullArgumentException if {@code callBack} is {@code null}
      * @since 3.1
      * @deprecated as of 3.6, replaced with {@link #IterationManager(int,
-     * com.happysg.radar.math3.util.IntegerSequence.Incrementor.MaxCountExceededCallback)}
+     * IntegerSequence.Incrementor.MaxCountExceededCallback)}
      */
     @Deprecated
     public IterationManager(final int maxIterations,

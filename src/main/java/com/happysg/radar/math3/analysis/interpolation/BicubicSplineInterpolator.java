@@ -29,7 +29,7 @@ import com.happysg.radar.math3.util.MathArrays;
  * be used.
  *
  * @since 2.2
- * @deprecated as of 3.4 replaced by {@link com.happysg.radar.math3.analysis.interpolation.PiecewiseBicubicSplineInterpolator}
+ * @deprecated as of 3.4 replaced by {@link PiecewiseBicubicSplineInterpolator}
  */
 @Deprecated
 public class BicubicSplineInterpolator

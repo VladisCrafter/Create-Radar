@@ -376,8 +376,8 @@ public class ContinuousOutputModel
    * to be preserved across several calls to the associated
    * {@link #setInterpolatedTime(double)} method.</p>
    * @param secondaryStateIndex index of the secondary set, as returned by {@link
-   * com.happysg.radar.math3.ode.ExpandableStatefulODE#addSecondaryEquations(
-   * com.happysg.radar.math3.ode.SecondaryEquations)
+   * ExpandableStatefulODE#addSecondaryEquations(
+   * SecondaryEquations)
    * ExpandableStatefulODE.addSecondaryEquations(SecondaryEquations)}
    * @return interpolated secondary state at the current interpolation date
    * @see #setInterpolatedTime(double)
@@ -398,8 +398,8 @@ public class ContinuousOutputModel
    * to be preserved across several calls to the associated
    * {@link #setInterpolatedTime(double)} method.</p>
    * @param secondaryStateIndex index of the secondary set, as returned by {@link
-   * com.happysg.radar.math3.ode.ExpandableStatefulODE#addSecondaryEquations(
-   * com.happysg.radar.math3.ode.SecondaryEquations)
+   * ExpandableStatefulODE#addSecondaryEquations(
+   * SecondaryEquations)
    * ExpandableStatefulODE.addSecondaryEquations(SecondaryEquations)}
    * @return interpolated secondary derivatives at the current interpolation date
    * @see #setInterpolatedTime(double)

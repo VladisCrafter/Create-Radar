@@ -35,9 +35,9 @@ import com.happysg.radar.math3.util.MathUtils;
  * <p> Tests for differences between two or more categories of univariate data
  * (for example, the body mass index of accountants, lawyers, doctors and
  * computer programmers).  When two categories are given, this is equivalent to
- * the {@link com.happysg.radar.math3.stat.inference.TTest}.
+ * the {@link TTest}.
  * </p><p>
- * Uses the {@link com.happysg.radar.math3.distribution.FDistribution
+ * Uses the {@link FDistribution
  * commons-math F Distribution implementation} to estimate exact p-values.</p>
  * <p>This implementation is based on a description at
  * http://faculty.vassar.edu/lowry/ch13pt1.html</p>
@@ -103,7 +103,7 @@ public class OneWayAnova {
      * <code>categoryData</code> collection and each of these arrays must
      * contain at least two values.</li></ul></p><p>
      * This implementation uses the
-     * {@link com.happysg.radar.math3.distribution.FDistribution
+     * {@link FDistribution
      * commons-math F Distribution implementation} to estimate the exact
      * p-value, using the formula<pre>
      *   p = 1 - cumulativeProbability(F)</pre>
@@ -142,7 +142,7 @@ public class OneWayAnova {
      * <code>categoryData</code> collection and each of these statistics must
      * contain at least two values.</li></ul></p><p>
      * This implementation uses the
-     * {@link com.happysg.radar.math3.distribution.FDistribution
+     * {@link FDistribution
      * commons-math F Distribution implementation} to estimate the exact
      * p-value, using the formula<pre>
      *   p = 1 - cumulativeProbability(F)</pre>
@@ -223,7 +223,7 @@ public class OneWayAnova {
      * <li>alpha must be strictly greater than 0 and less than or equal to 0.5.
      * </li></ul></p><p>
      * This implementation uses the
-     * {@link com.happysg.radar.math3.distribution.FDistribution
+     * {@link FDistribution
      * commons-math F Distribution implementation} to estimate the exact
      * p-value, using the formula<pre>
      *   p = 1 - cumulativeProbability(F)</pre>

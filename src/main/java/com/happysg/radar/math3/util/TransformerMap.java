@@ -135,7 +135,7 @@ public class TransformerMap implements NumberTransformer, Serializable {
      * @return the double value of the Object.
      * @throws MathIllegalArgumentException if the Object can not be
      * transformed into a Double.
-     * @see com.happysg.radar.math3.util.NumberTransformer#transform(java.lang.Object)
+     * @see NumberTransformer#transform(Object)
      */
     public double transform(Object o) throws MathIllegalArgumentException {
         double value = Double.NaN;

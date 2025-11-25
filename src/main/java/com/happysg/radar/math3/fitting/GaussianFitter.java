@@ -30,7 +30,7 @@ import com.happysg.radar.math3.util.FastMath;
 
 /**
  * Fits points to a {@link
- * com.happysg.radar.math3.analysis.function.Gaussian.Parametric Gaussian} function.
+ * Gaussian.Parametric Gaussian} function.
  * <p>
  * Usage example:
  * <pre>
@@ -124,7 +124,7 @@ public class GaussianFitter extends CurveFitter<Gaussian.Parametric> {
 
     /**
      * Guesses the parameters {@code norm}, {@code mean}, and {@code sigma}
-     * of a {@link com.happysg.radar.math3.analysis.function.Gaussian.Parametric}
+     * of a {@link Gaussian.Parametric}
      * based on the specified observed points.
      */
     public static class ParameterGuesser {

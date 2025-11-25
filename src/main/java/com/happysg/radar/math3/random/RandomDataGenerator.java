@@ -50,7 +50,7 @@ import com.happysg.radar.math3.util.MathArrays;
 
 /**
  * Implements the {@link RandomData} interface using a {@link RandomGenerator}
- * instance to generate non-secure data and a {@link java.security.SecureRandom}
+ * instance to generate non-secure data and a {@link SecureRandom}
  * instance to provide data for the <code>nextSecureXxx</code> methods. If no
  * <code>RandomGenerator</code> is provided in the constructor, the default is
  * to use a {@link Well19937c} generator. To plug in a different
@@ -63,7 +63,7 @@ import com.happysg.radar.math3.util.MathArrays;
  * </p>
  * <p>
  * For details on the default PRNGs, see {@link java.util.Random} and
- * {@link java.security.SecureRandom}.
+ * {@link SecureRandom}.
  * </p>
  * <p>
  * <strong>Usage Notes</strong>:
@@ -398,7 +398,7 @@ public class RandomDataGenerator implements RandomData, Serializable {
 
     /**
      * <p>Generates a random value from the
-     * {@link com.happysg.radar.math3.distribution.GammaDistribution Gamma Distribution}.</p>
+     * {@link GammaDistribution Gamma Distribution}.</p>
      *
      * <p>This implementation uses the following algorithms: </p>
      *

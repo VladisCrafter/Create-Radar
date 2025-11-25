@@ -53,7 +53,7 @@ public abstract class AbstractStorelessUnivariateStatistic
      * @param values input array
      * @return the value of the statistic applied to the input array
      * @throws MathIllegalArgumentException if values is null
-     * @see com.happysg.radar.math3.stat.descriptive.UnivariateStatistic#evaluate(double[])
+     * @see UnivariateStatistic#evaluate(double[])
      */
     @Override
     public double evaluate(final double[] values) throws MathIllegalArgumentException {
@@ -83,7 +83,7 @@ public abstract class AbstractStorelessUnivariateStatistic
      * @param length the number of elements to include
      * @return the value of the statistic applied to the included array entries
      * @throws MathIllegalArgumentException if the array is null or the indices are not valid
-     * @see com.happysg.radar.math3.stat.descriptive.UnivariateStatistic#evaluate(double[], int, int)
+     * @see UnivariateStatistic#evaluate(double[], int, int)
      */
     @Override
     public double evaluate(final double[] values, final int begin,
@@ -124,7 +124,7 @@ public abstract class AbstractStorelessUnivariateStatistic
      *
      * @param values values to add
      * @throws MathIllegalArgumentException if values is null
-     * @see com.happysg.radar.math3.stat.descriptive.StorelessUnivariateStatistic#incrementAll(double[])
+     * @see StorelessUnivariateStatistic#incrementAll(double[])
      */
     public void incrementAll(double[] values) throws MathIllegalArgumentException {
         if (values == null) {
@@ -143,7 +143,7 @@ public abstract class AbstractStorelessUnivariateStatistic
      * @param begin   index of the first array element to add
      * @param length  number of array elements to add
      * @throws MathIllegalArgumentException if values is null
-     * @see com.happysg.radar.math3.stat.descriptive.StorelessUnivariateStatistic#incrementAll(double[], int, int)
+     * @see StorelessUnivariateStatistic#incrementAll(double[], int, int)
      */
     public void incrementAll(double[] values, int begin, int length) throws MathIllegalArgumentException {
         if (test(values, begin, length)) {

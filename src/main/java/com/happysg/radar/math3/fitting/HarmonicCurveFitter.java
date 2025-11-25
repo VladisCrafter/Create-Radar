@@ -32,7 +32,7 @@ import com.happysg.radar.math3.util.FastMath;
 
 /**
  * Fits points to a {@link
- * com.happysg.radar.math3.analysis.function.HarmonicOscillator.Parametric harmonic oscillator}
+ * HarmonicOscillator.Parametric harmonic oscillator}
  * function.
  * <br/>
  * The {@link #withStartPoint(double[]) initial guess values} must be passed
@@ -117,8 +117,8 @@ public class HarmonicCurveFitter extends AbstractCurveFitter {
             ++i;
         }
 
-        final AbstractCurveFitter.TheoreticalValuesFunction model
-            = new AbstractCurveFitter.TheoreticalValuesFunction(FUNCTION,
+        final TheoreticalValuesFunction model
+            = new TheoreticalValuesFunction(FUNCTION,
                                                                 observations);
 
         final double[] startPoint = initialGuess != null ?

@@ -32,7 +32,7 @@ import com.happysg.radar.math3.util.MathArrays;
  *
  * @since 2.1
  * @deprecated as of 3.4 replaced by
- * {@link com.happysg.radar.math3.analysis.interpolation.PiecewiseBicubicSplineInterpolatingFunction}
+ * {@link PiecewiseBicubicSplineInterpolatingFunction}
  */
 @Deprecated
 public class BicubicSplineInterpolatingFunction

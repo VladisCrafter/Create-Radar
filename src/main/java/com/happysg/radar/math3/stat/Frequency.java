@@ -273,7 +273,7 @@ public class Frequency implements Serializable {
      * @return entry set Iterator
      * @since 3.1
      */
-    public Iterator<Map.Entry<Comparable<?>, Long>> entrySetIterator() {
+    public Iterator<Entry<Comparable<?>, Long>> entrySetIterator() {
         return freqTable.entrySet().iterator();
     }
 
@@ -598,9 +598,9 @@ public class Frequency implements Serializable {
     public void merge(final Frequency other) throws NullArgumentException {
         MathUtils.checkNotNull(other, LocalizedFormats.NULL_NOT_ALLOWED);
 
-        final Iterator<Map.Entry<Comparable<?>, Long>> iter = other.entrySetIterator();
+        final Iterator<Entry<Comparable<?>, Long>> iter = other.entrySetIterator();
         while (iter.hasNext()) {
-            final Map.Entry<Comparable<?>, Long> entry = iter.next();
+            final Entry<Comparable<?>, Long> entry = iter.next();
             incrementValue(entry.getKey(), entry.getValue().longValue());
         }
     }

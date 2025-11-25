@@ -23,7 +23,7 @@ import com.happysg.radar.math3.util.FastMath;
 
 /**
  * Static implementations of common
- * {@link com.happysg.radar.math3.complex.Complex} utilities functions.
+ * {@link Complex} utilities functions.
  *
  */
 public class ComplexUtils {

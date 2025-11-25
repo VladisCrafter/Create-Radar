@@ -98,12 +98,12 @@ public class KolmogorovSmirnovDistribution implements Serializable {
      * exact as with
      * {@link KolmogorovSmirnovDistribution#cdfExact(double)} because
      * calculations are based on {@code double} rather than
-     * {@link com.happysg.radar.math3.fraction.BigFraction}.
+     * {@link BigFraction}.
      *
      * @param d statistic
      * @return the two-sided probability of {@code P(D_n < d)}
      * @throws MathArithmeticException if algorithm fails to convert {@code h}
-     * to a {@link com.happysg.radar.math3.fraction.BigFraction} in expressing
+     * to a {@link BigFraction} in expressing
      * {@code d} as {@code (k - h) / m} for integer {@code k, m} and
      * {@code 0 <= h < 1}.
      */
@@ -123,7 +123,7 @@ public class KolmogorovSmirnovDistribution implements Serializable {
      * @param d statistic
      * @return the two-sided probability of {@code P(D_n < d)}
      * @throws MathArithmeticException if algorithm fails to convert {@code h}
-     * to a {@link com.happysg.radar.math3.fraction.BigFraction} in expressing
+     * to a {@link BigFraction} in expressing
      * {@code d} as {@code (k - h) / m} for integer {@code k, m} and
      * {@code 0 <= h < 1}.
      */
@@ -137,14 +137,14 @@ public class KolmogorovSmirnovDistribution implements Serializable {
      *
      * @param d statistic
      * @param exact whether the probability should be calculated exact using
-     * {@link com.happysg.radar.math3.fraction.BigFraction} everywhere at the
+     * {@link BigFraction} everywhere at the
      * expense of very slow execution time, or if {@code double} should be used
      * convenient places to gain speed. Almost never choose {@code true} in real
      * applications unless you are very sure; {@code true} is almost solely for
      * verification purposes.
      * @return the two-sided probability of {@code P(D_n < d)}
      * @throws MathArithmeticException if algorithm fails to convert {@code h}
-     * to a {@link com.happysg.radar.math3.fraction.BigFraction} in expressing
+     * to a {@link BigFraction} in expressing
      * {@code d} as {@code (k - h) / m} for integer {@code k, m} and
      * {@code 0 <= h < 1}.
      */
@@ -183,13 +183,13 @@ public class KolmogorovSmirnovDistribution implements Serializable {
 
     /**
      * Calculates the exact value of {@code P(D_n < d)} using method described
-     * in [1] and {@link com.happysg.radar.math3.fraction.BigFraction} (see
+     * in [1] and {@link BigFraction} (see
      * above).
      *
      * @param d statistic
      * @return the two-sided probability of {@code P(D_n < d)}
      * @throws MathArithmeticException if algorithm fails to convert {@code h}
-     * to a {@link com.happysg.radar.math3.fraction.BigFraction} in expressing
+     * to a {@link BigFraction} in expressing
      * {@code d} as {@code (k - h) / m} for integer {@code k, m} and
      * {@code 0 <= h < 1}.
      */
@@ -221,7 +221,7 @@ public class KolmogorovSmirnovDistribution implements Serializable {
      * @param d statistic
      * @return the two-sided probability of {@code P(D_n < d)}
      * @throws MathArithmeticException if algorithm fails to convert {@code h}
-     * to a {@link com.happysg.radar.math3.fraction.BigFraction} in expressing
+     * to a {@link BigFraction} in expressing
      * {@code d} as {@code (k - h) / m} for integer {@code k, m} and
      * {@code 0 <= h < 1}.
      */
@@ -261,7 +261,7 @@ public class KolmogorovSmirnovDistribution implements Serializable {
      * @return H matrix
      * @throws NumberIsTooLargeException if fractional part is greater than 1
      * @throws FractionConversionException if algorithm fails to convert
-     * {@code h} to a {@link com.happysg.radar.math3.fraction.BigFraction} in
+     * {@code h} to a {@link BigFraction} in
      * expressing {@code d} as {@code (k - h) / m} for integer {@code k, m} and
      * {@code 0 <= h < 1}.
      */

@@ -22,9 +22,9 @@ package com.happysg.radar.math3.optimization;
  * Commons-Math. Users of the API are advised to base their code on
  * the following interfaces:
  * <ul>
- *  <li>{@link com.happysg.radar.math3.optimization.MultivariateOptimizer}</li>
- *  <li>{@link com.happysg.radar.math3.optimization.MultivariateDifferentiableOptimizer}</li>
- *  <li>{@link com.happysg.radar.math3.optimization.MultivariateDifferentiableVectorOptimizer}</li>
+ *  <li>{@link MultivariateOptimizer}</li>
+ *  <li>{@link MultivariateDifferentiableOptimizer}</li>
+ *  <li>{@link MultivariateDifferentiableVectorOptimizer}</li>
  *  <li>{@link com.happysg.radar.math3.optimization.univariate.UnivariateOptimizer}</li>
  * </ul>
  *

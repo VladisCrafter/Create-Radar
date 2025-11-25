@@ -851,7 +851,7 @@ public class MathArrays {
 
         // Create comparators for increasing and decreasing orders.
         final Comparator<PairDoubleInteger> comp
-            = dir == MathArrays.OrderDirection.INCREASING ?
+            = dir == OrderDirection.INCREASING ?
             new Comparator<PairDoubleInteger>() {
             /** {@inheritDoc} */
             public int compare(PairDoubleInteger o1,

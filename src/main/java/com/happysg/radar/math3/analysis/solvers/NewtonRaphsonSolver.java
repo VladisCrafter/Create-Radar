@@ -56,7 +56,7 @@ public class NewtonRaphsonSolver extends AbstractUnivariateDifferentiableSolver 
      * @param max Upper bound for the interval.
      * @param maxEval Maximum number of evaluations.
      * @return the value where the function is zero.
-     * @throws com.happysg.radar.math3.exception.TooManyEvaluationsException
+     * @throws TooManyEvaluationsException
      * if the maximum evaluation count is exceeded.
      * @throws com.happysg.radar.math3.exception.NumberIsTooLargeException
      * if {@code min >= max}.

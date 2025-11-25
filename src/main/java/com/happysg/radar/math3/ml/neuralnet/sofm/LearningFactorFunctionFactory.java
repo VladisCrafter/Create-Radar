@@ -45,7 +45,7 @@ public class LearningFactorFunctionFactory {
      * @param numCall Argument for which the function returns
      * {@code valueAtNumCall}.
      * @return the learning factor function.
-     * @throws com.happysg.radar.math3.exception.OutOfRangeException
+     * @throws OutOfRangeException
      * if {@code initValue <= 0} or {@code initValue > 1}.
      * @throws com.happysg.radar.math3.exception.NotStrictlyPositiveException
      * if {@code valueAtNumCall <= 0}.
@@ -88,7 +88,7 @@ public class LearningFactorFunctionFactory {
      * @param slope Value of the function derivative at {@code numCall}.
      * @param numCall Inflexion point.
      * @return the learning factor function.
-     * @throws com.happysg.radar.math3.exception.OutOfRangeException
+     * @throws OutOfRangeException
      * if {@code initValue <= 0} or {@code initValue > 1}.
      * @throws com.happysg.radar.math3.exception.NumberIsTooLargeException
      * if {@code slope >= 0}.

@@ -435,16 +435,16 @@ public class Line implements Hyperplane<Euclidean2D>, Embedding<Euclidean2D, Euc
         originOffset = offset;
     }
 
-    /** Get a {@link com.happysg.radar.math3.geometry.partitioning.Transform
+    /** Get a {@link Transform
      * Transform} embedding an affine transform.
      * @param transform affine transform to embed (must be inversible
      * otherwise the {@link
-     * com.happysg.radar.math3.geometry.partitioning.Transform#apply(Hyperplane)
+     * Transform#apply(Hyperplane)
      * apply(Hyperplane)} method would work only for some lines, and
      * fail for other ones)
      * @return a new transform that can be applied to either {@link
      * Vector2D Vector2D}, {@link Line Line} or {@link
-     * com.happysg.radar.math3.geometry.partitioning.SubHyperplane
+     * SubHyperplane
      * SubHyperplane} instances
      * @exception MathIllegalArgumentException if the transform is non invertible
      * @deprecated as of 3.6, replaced with {@link #getTransform(double, double, double, double, double, double)}
@@ -457,7 +457,7 @@ public class Line implements Hyperplane<Euclidean2D>, Embedding<Euclidean2D, Euc
         return new LineTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
     }
 
-    /** Get a {@link com.happysg.radar.math3.geometry.partitioning.Transform
+    /** Get a {@link Transform
      * Transform} embedding an affine transform.
      * @param cXX transform factor between input abscissa and output abscissa
      * @param cYX transform factor between input abscissa and output ordinate
@@ -467,7 +467,7 @@ public class Line implements Hyperplane<Euclidean2D>, Embedding<Euclidean2D, Euc
      * @param cY1 transform addendum for output ordinate
      * @return a new transform that can be applied to either {@link
      * Vector2D Vector2D}, {@link Line Line} or {@link
-     * com.happysg.radar.math3.geometry.partitioning.SubHyperplane
+     * SubHyperplane
      * SubHyperplane} instances
      * @exception MathIllegalArgumentException if the transform is non invertible
      * @since 3.6

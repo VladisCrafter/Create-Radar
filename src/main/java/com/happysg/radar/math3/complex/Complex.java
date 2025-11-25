@@ -34,7 +34,7 @@ import com.happysg.radar.math3.util.Precision;
  * real and imaginary part.
  * <p>
  * Implementations of arithmetic operations handle {@code NaN} and
- * infinite values according to the rules for {@link java.lang.Double}, i.e.
+ * infinite values according to the rules for {@link Double}, i.e.
  * {@link #equals} is an equivalence relation for all instances that have
  * a {@code NaN} in either real or imaginary part, e.g. the following are
  * considered equal:
@@ -46,8 +46,8 @@ import com.happysg.radar.math3.util.Precision;
  * Note that this contradicts the IEEE-754 standard for floating
  * point numbers (according to which the test {@code x == x} must fail if
  * {@code x} is {@code NaN}). The method
- * {@link com.happysg.radar.math3.util.Precision#equals(double,double,int)
- * equals for primitive double} in {@link com.happysg.radar.math3.util.Precision}
+ * {@link Precision#equals(double,double,int)
+ * equals for primitive double} in {@link Precision}
  * conforms with IEEE-754 while this class conforms with the standard behavior
  * for Java object types.</p>
  *
@@ -142,7 +142,7 @@ public class Complex implements FieldElement<Complex>, Serializable  {
      * If either {@code this} or {@code addend} has a {@code NaN} value in
      * either part, {@link #NaN} is returned; otherwise {@code Infinite}
      * and {@code NaN} values are returned in the parts of the result
-     * according to the rules for {@link java.lang.Double} arithmetic.
+     * according to the rules for {@link Double} arithmetic.
      *
      * @param  addend Value to be added to this {@code Complex}.
      * @return {@code this + addend}.
@@ -229,7 +229,7 @@ public class Complex implements FieldElement<Complex>, Serializable  {
      *  </li>
      *  <li>If {@code this} is infinite and {@code divisor} is finite,
      *   {@code NaN} values are returned in the parts of the result if the
-     *   {@link java.lang.Double} rules applied to the definitional formula
+     *   {@link Double} rules applied to the definitional formula
      *   force {@code NaN} results.
      *  </li>
      * </ul>
@@ -595,7 +595,7 @@ public class Complex implements FieldElement<Complex>, Serializable  {
      * If either {@code this} or {@code subtrahend} has a {@code NaN]} value in either part,
      * {@link #NaN} is returned; otherwise infinite and {@code NaN} values are
      * returned in the parts of the result according to the rules for
-     * {@link java.lang.Double} arithmetic.
+     * {@link Double} arithmetic.
      *
      * @param  subtrahend value to be subtracted from this {@code Complex}.
      * @return {@code this - subtrahend}.

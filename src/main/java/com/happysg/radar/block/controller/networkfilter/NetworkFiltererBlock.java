@@ -1,15 +1,20 @@
 package com.happysg.radar.block.controller.networkfilter;
 
 import com.happysg.radar.CreateRadar;
+import com.happysg.radar.block.network.Network;
+import com.happysg.radar.block.network.NetworkRegistry;
 import com.happysg.radar.registry.ModBlockEntityTypes;
+import com.happysg.radar.registry.ModBlocks;
 import com.happysg.radar.registry.ModItems;
 import com.simibubi.create.AllShapes;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.block.WrenchableDirectionalBlock;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Containers;
@@ -33,6 +38,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 
 public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements IBE<NetworkFiltererBlockEntity> {
@@ -49,8 +55,31 @@ public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         BlockState placed = super.getStateForPlacement(context);
-        return placed.setValue(FACING, context.getClickedFace());
+
+        Level level = context.getLevel();
+        BlockPos pos = context.getClickedPos();
+        BlockPos onPos = pos.relative(context.getClickedFace().getOpposite());
+        BlockState onState = level.getBlockState(onPos);
+
+        // Example: only allow placement on Create Shafts or Andesite Casing
+        boolean valid = onState.is(ModBlocks.MONITOR.get());
+
+        if (!valid) {
+            if (level.isClientSide()) {
+                context.getPlayer().displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.invalid_block").withStyle(ChatFormatting.RED), true);
+            }
+            return null; // Reject placement
+        }else{
+            if (level.isClientSide()) {
+                context.getPlayer().displayClientMessage(Component.translatable(CreateRadar.MODID + ".network_filter.valid_block"), true);
+
+            }
+            return placed.setValue(FACING, context.getClickedFace());
+        }
+
     }
+
+
 
     public Class<NetworkFiltererBlockEntity> getBlockEntityClass() {
         return NetworkFiltererBlockEntity.class;

@@ -133,9 +133,9 @@ public interface BaseUnivariateSolver<FUNC extends UnivariateFunction> {
      * @param startValue Start value to use.
      * @return a value where the function is zero.
      * @param maxEval Maximum number of evaluations.
-     * @throws com.happysg.radar.math3.exception.MathIllegalArgumentException
+     * @throws MathIllegalArgumentException
      * if the arguments do not satisfy the requirements specified by the solver.
-     * @throws com.happysg.radar.math3.exception.TooManyEvaluationsException if
+     * @throws TooManyEvaluationsException if
      * the allowed number of evaluations is exceeded.
      */
     double solve(int maxEval, FUNC f, double startValue);

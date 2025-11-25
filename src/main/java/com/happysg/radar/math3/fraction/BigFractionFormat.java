@@ -157,7 +157,7 @@ public class BigFractionFormat extends AbstractFormat implements Serializable {
      * @param pos On input: an alignment field, if desired. On output: the
      *            offsets of the alignment field
      * @return the value passed in as toAppendTo.
-     * @see java.text.Format#format(java.lang.Object, java.lang.StringBuffer, java.text.FieldPosition)
+     * @see java.text.Format#format(Object, StringBuffer, FieldPosition)
      * @throws MathIllegalArgumentException if <code>obj</code> is not a valid type.
      */
     @Override

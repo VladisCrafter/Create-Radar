@@ -44,7 +44,7 @@ public class CompositeFormat {
 
     /**
      * Create a default number format.  The default number format is based on
-     * {@link NumberFormat#getInstance(java.util.Locale)} with the only
+     * {@link NumberFormat#getInstance(Locale)} with the only
      * customizing that the maximum number of fraction digits is set to 10.
      * @param locale the specific locale used by the format.
      * @return the default number format specific to the given locale.

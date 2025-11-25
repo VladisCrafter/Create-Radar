@@ -121,7 +121,7 @@ public class FractionFormat extends AbstractFormat {
 
     /**
      * Create a default number format.  The default number format is based on
-     * {@link NumberFormat#getNumberInstance(java.util.Locale)} with the only
+     * {@link NumberFormat#getNumberInstance(Locale)} with the only
      * customizing is the maximum number of fraction digits, which is set to 0.
      * @return the default number format.
      */
@@ -163,7 +163,7 @@ public class FractionFormat extends AbstractFormat {
      * @param pos On input: an alignment field, if desired. On output: the
      *            offsets of the alignment field
      * @return the value passed in as toAppendTo.
-     * @see java.text.Format#format(java.lang.Object, java.lang.StringBuffer, java.text.FieldPosition)
+     * @see java.text.Format#format(Object, StringBuffer, FieldPosition)
      * @throws FractionConversionException if the number cannot be converted to a fraction
      * @throws MathIllegalArgumentException if <code>obj</code> is not a valid type.
      */

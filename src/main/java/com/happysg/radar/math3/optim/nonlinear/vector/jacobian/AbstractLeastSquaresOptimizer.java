@@ -186,7 +186,7 @@ public abstract class AbstractLeastSquaresOptimizer
      * {@link JacobianMultivariateVectorOptimizer#parseOptimizationData(OptimizationData[])
      * JacobianMultivariateVectorOptimizer}, this method will register the following data:
      * <ul>
-     *  <li>{@link com.happysg.radar.math3.optim.nonlinear.vector.Weight}</li>
+     *  <li>{@link Weight}</li>
      * </ul>
      * @return {@inheritDoc}
      * @throws TooManyEvaluationsException if the maximal number of

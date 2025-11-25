@@ -191,7 +191,7 @@ public final class StatUtils {
      * <p>
      * Throws <code>IllegalArgumentException</code> if the array is null.</p>
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.summary.SumOfLogs}.
+     * See {@link SumOfLogs}.
      * </p>
      *
      * @param values the input array
@@ -211,7 +211,7 @@ public final class StatUtils {
      * <p>
      * Throws <code>IllegalArgumentException</code> if the array is null.</p>
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.summary.SumOfLogs}.
+     * See {@link SumOfLogs}.
      * </p>
      *
      * @param values the input array
@@ -233,7 +233,7 @@ public final class StatUtils {
      * <p>
      * Throws <code>IllegalArgumentException</code> if the array is null.</p>
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.moment.Mean} for
+     * See {@link Mean} for
      * details on the computing algorithm.</p>
      *
      * @param values the input array
@@ -252,7 +252,7 @@ public final class StatUtils {
      * <p>
      * Throws <code>IllegalArgumentException</code> if the array is null.</p>
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.moment.Mean} for
+     * See {@link Mean} for
      * details on the computing algorithm.</p>
      *
      * @param values the input array
@@ -273,7 +273,7 @@ public final class StatUtils {
      * <p>
      * Throws <code>IllegalArgumentException</code> if the array is null.</p>
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.moment.GeometricMean}
+     * See {@link GeometricMean}
      * for details on the computing algorithm.</p>
      *
      * @param values the input array
@@ -292,7 +292,7 @@ public final class StatUtils {
      * <p>
      * Throws <code>IllegalArgumentException</code> if the array is null.</p>
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.moment.GeometricMean}
+     * See {@link GeometricMean}
      * for details on the computing algorithm.</p>
      *
      * @param values the input array
@@ -316,7 +316,7 @@ public final class StatUtils {
      * the denominator).  Use {@link #populationVariance(double[])} for the non-bias-corrected
      * population variance.</p>
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.moment.Variance} for
+     * See {@link Variance} for
      * details on the computing algorithm.</p>
      * <p>
      * Returns 0 for a single-value (i.e. length = 1) sample.</p>
@@ -340,7 +340,7 @@ public final class StatUtils {
      * the denominator).  Use {@link #populationVariance(double[], int, int)} for the non-bias-corrected
      * population variance.</p>
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.moment.Variance} for
+     * See {@link Variance} for
      * details on the computing algorithm.</p>
      * <p>
      * Returns 0 for a single-value (i.e. length = 1) sample.</p>
@@ -369,7 +369,7 @@ public final class StatUtils {
      * the denominator).  Use {@link #populationVariance(double[], double, int, int)} for the non-bias-corrected
      * population variance.</p>
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.moment.Variance} for
+     * See {@link Variance} for
      * details on the computing algorithm.</p>
      * <p>
      * The formula used assumes that the supplied mean value is the arithmetic
@@ -404,7 +404,7 @@ public final class StatUtils {
      * the denominator).  Use {@link #populationVariance(double[], double)} for the non-bias-corrected
      * population variance.</p>
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.moment.Variance} for
+     * See {@link Variance} for
      * details on the computing algorithm.</p>
      * <p>
      * The formula used assumes that the supplied mean value is the arithmetic
@@ -431,7 +431,7 @@ public final class StatUtils {
      * population variance</a> of the entries in the input array, or
      * <code>Double.NaN</code> if the array is empty.
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.moment.Variance} for
+     * See {@link Variance} for
      * details on the formula and computing algorithm.</p>
      * <p>
      * Returns 0 for a single-value (i.e. length = 1) sample.</p>
@@ -453,7 +453,7 @@ public final class StatUtils {
      * the input array, or <code>Double.NaN</code> if the designated subarray
      * is empty.
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.moment.Variance} for
+     * See {@link Variance} for
      * details on the computing algorithm.</p>
      * <p>
      * Returns 0 for a single-value (i.e. length = 1) sample.</p>
@@ -479,7 +479,7 @@ public final class StatUtils {
      * the input array, using the precomputed mean value.  Returns
      * <code>Double.NaN</code> if the designated subarray is empty.
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.moment.Variance} for
+     * See {@link Variance} for
      * details on the computing algorithm.</p>
      * <p>
      * The formula used assumes that the supplied mean value is the arithmetic
@@ -511,7 +511,7 @@ public final class StatUtils {
      * precomputed mean value.  Returns <code>Double.NaN</code> if the array
      * is empty.
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.moment.Variance} for
+     * See {@link Variance} for
      * details on the computing algorithm.</p>
      * <p>
      * The formula used assumes that the supplied mean value is the arithmetic
@@ -643,7 +643,7 @@ public final class StatUtils {
      * and less than or equal to 100)</li>
      * </ul></p>
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.rank.Percentile} for
+     * See {@link Percentile} for
      * a description of the percentile estimation algorithm used.</p>
      *
      * @param values input array of values
@@ -673,7 +673,7 @@ public final class StatUtils {
      * and less than or equal to 100)</li>
      * </ul></p>
      * <p>
-     * See {@link com.happysg.radar.math3.stat.descriptive.rank.Percentile} for
+     * See {@link Percentile} for
      * a description of the percentile estimation algorithm used.</p>
      *
      * @param values array of input values

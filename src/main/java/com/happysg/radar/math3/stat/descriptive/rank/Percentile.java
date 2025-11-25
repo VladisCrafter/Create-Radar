@@ -62,7 +62,7 @@ import com.happysg.radar.math3.util.Precision;
  * To compute percentiles, the data must be at least partially ordered.  Input
  * arrays are copied and recursively partitioned using an ordering definition.
  * The ordering used by <code>Arrays.sort(double[])</code> is the one determined
- * by {@link java.lang.Double#compareTo(Double)}.  This ordering makes
+ * by {@link Double#compareTo(Double)}.  This ordering makes
  * <code>Double.NaN</code> larger than any other value (including
  * <code>Double.POSITIVE_INFINITY</code>).  Therefore, for example, the median
  * (50th percentile) of

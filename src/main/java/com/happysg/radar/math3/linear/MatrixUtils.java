@@ -116,7 +116,7 @@ public class MatrixUtils {
      *
      * @param data input array
      * @return  RealMatrix containing the values of the array
-     * @throws com.happysg.radar.math3.exception.DimensionMismatchException
+     * @throws DimensionMismatchException
      * if {@code data} is not rectangular (not all rows have the same length).
      * @throws NoDataException if a row or column is empty.
      * @throws NullArgumentException if either {@code data} or {@code data[0]}
@@ -146,7 +146,7 @@ public class MatrixUtils {
      * @param <T> the type of the field elements
      * @param data input array
      * @return a matrix containing the values of the array.
-     * @throws com.happysg.radar.math3.exception.DimensionMismatchException
+     * @throws DimensionMismatchException
      * if {@code data} is not rectangular (not all rows have the same length).
      * @throws NoDataException if a row or column is empty.
      * @throws NullArgumentException if either {@code data} or {@code data[0]}

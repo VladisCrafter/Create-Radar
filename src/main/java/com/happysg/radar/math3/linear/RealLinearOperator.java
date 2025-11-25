@@ -84,7 +84,7 @@ public abstract class RealLinearOperator {
      * @param x the vector to operate on
      * @return the product of the transpose of {@code this} instance with
      * {@code x}
-     * @throws com.happysg.radar.math3.exception.DimensionMismatchException
+     * @throws DimensionMismatchException
      * if the row dimension does not match the size of {@code x}
      * @throws UnsupportedOperationException if this operation is not supported
      * by {@code this} operator
