@@ -40,6 +40,7 @@ public class RadarTrack {
             case ANIMAL -> new Color(RadarConfig.client().friendlyColor.get());
             case HOSTILE -> new Color(RadarConfig.client().hostileColor.get());
             case PROJECTILE -> new Color(RadarConfig.client().projectileColor.get());
+            case ITEM-> new Color(RadarConfig.client().itemcolor.get());
             default -> Color.WHITE;
         };
     }

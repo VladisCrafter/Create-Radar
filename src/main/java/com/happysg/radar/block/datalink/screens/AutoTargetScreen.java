@@ -3,10 +3,15 @@ package com.happysg.radar.block.datalink.screens;
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.datalink.DataLinkBlockEntity;
 import com.happysg.radar.registry.ModGuiTextures;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.Indicator;
+import dev.engine_room.flywheel.lib.transform.TransformStack;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 
 public class AutoTargetScreen extends AbstractDataLinkScreen {
 
@@ -17,6 +22,7 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
     boolean projectile;
     boolean autoTarget;
     boolean autoFire;
+    boolean lineofSight;
 
     protected IconButton playerButton;
     protected Indicator playerIndicator;
@@ -31,8 +37,9 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
     protected IconButton autoTargetButton;
     protected Indicator autoTargetIndicator;
     protected IconButton autoFireButton;
-
-
+    protected IconButton lineofSightButton;
+    protected Indicator lineofSightIndicator;
+    protected IconButton confirmButton;
     public AutoTargetScreen(DataLinkBlockEntity be) {
         super(be);
         this.background = ModGuiTextures.CANNON_TARGETING;
@@ -47,15 +54,45 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
         projectile = targetingConfig.projectile();
         autoTarget = targetingConfig.autoTarget();
         autoFire = targetingConfig.autoFire();
+        lineofSight = targetingConfig.lineOfSight();
     }
+    protected void renderWindow(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        int x = guiLeft;
+        int y = guiTop;
 
+        background.render(graphics, x, y);
+        MutableComponent header = Component.translatable(CreateRadar.MODID + ".target_filter.title");
+        graphics.drawString(font, header, x + background.width / 2 - font.width(header) / 2, y + 4, 0, false);
+
+        PoseStack ms = graphics.pose();
+        ms.pushPose();
+        ms.translate(0, guiTop + 46, 0);
+        ms.translate(0, 21, 0);
+        ms.popPose();
+
+        ms.pushPose();
+        TransformStack.of(ms)
+                .pushPose()
+                .translate(x + background.width + 4, y + background.height + 4, 100)
+                .scale(40)
+                .rotateX(-22)
+                .rotateY(63);
+        ms.popPose();
+
+    }
 
     @Override
     protected void init() {
+        setWindowSize(background.width, background.height);
+
         super.init();
-        playerButton = new IconButton(guiLeft + 42, guiTop + 26, ModGuiTextures.PLAYER_BUTTON);
+        clearWidgets();
+        int X = guiLeft;
+        int Y = guiTop;
+       // loadFlagsFromHeldItem();
+        playerButton = new IconButton(guiLeft + 22, guiTop + 43, ModGuiTextures.PLAYER_BUTTON);
         playerButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.player"));
-        playerIndicator = new Indicator(guiLeft + 42, guiTop + 19, Component.empty());
+        playerIndicator = new Indicator(guiLeft + 22, guiTop + 36, Component.empty());
         playerIndicator.state = player ? Indicator.State.GREEN : Indicator.State.RED;
         playerButton.withCallback((x, y) -> {
             player = !player;
@@ -63,9 +100,9 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
         });
         addRenderableWidget(playerButton);
         addRenderableWidget(playerIndicator);
-        contraptionButton = new IconButton(guiLeft + 70, guiTop + 26, ModGuiTextures.CONTRAPTION_BUTTON);
+        contraptionButton = new IconButton(guiLeft + 42, guiTop + 43, ModGuiTextures.VS2_BUTTON);
         contraptionButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.contraption"));
-        contraptionIndicator = new Indicator(guiLeft + 70, guiTop + 19, Component.empty());
+        contraptionIndicator = new Indicator(guiLeft + 42, guiTop + 36, Component.empty());
         contraptionIndicator.state = contraption ? Indicator.State.GREEN : Indicator.State.RED;
         contraptionButton.withCallback((x, y) -> {
             contraption = !contraption;
@@ -74,9 +111,9 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
         addRenderableWidget(contraptionButton);
         addRenderableWidget(contraptionIndicator);
 
-        mobButton = new IconButton(guiLeft + 98, guiTop + 26, ModGuiTextures.MOB_BUTTON);
+        mobButton = new IconButton(guiLeft + 62, guiTop + 43, ModGuiTextures.MOB_BUTTON);
         mobButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.hostile"));
-        mobIndicator = new Indicator(guiLeft + 98, guiTop + 19, Component.empty());
+        mobIndicator = new Indicator(guiLeft + 62, guiTop + 36, Component.empty());
         mobIndicator.state = mob ? Indicator.State.GREEN : Indicator.State.RED;
         mobButton.withCallback((x, y) -> {
             mob = !mob;
@@ -85,9 +122,9 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
         addRenderableWidget(mobButton);
         addRenderableWidget(mobIndicator);
 
-        animalButton = new IconButton(guiLeft + 126, guiTop + 26, ModGuiTextures.ANIMAL_BUTTON);
+        animalButton = new IconButton(guiLeft + 82, guiTop + 43, ModGuiTextures.ANIMAL_BUTTON);
         animalButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.animal"));
-        animalIndicator = new Indicator(guiLeft + 126, guiTop + 19, Component.empty());
+        animalIndicator = new Indicator(guiLeft + 82, guiTop + 36, Component.empty());
         animalIndicator.state = animal ? Indicator.State.GREEN : Indicator.State.RED;
         animalButton.withCallback((x, y) -> {
             animal = !animal;
@@ -96,9 +133,9 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
         addRenderableWidget(animalButton);
         addRenderableWidget(animalIndicator);
 
-        projectileButton = new IconButton(guiLeft + 154, guiTop + 26, ModGuiTextures.PROJECTILE_BUTTON);
+        projectileButton = new IconButton(guiLeft + 102, guiTop + 43, ModGuiTextures.PROJECTILE_BUTTON);
         projectileButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.projectile"));
-        projectileIndicator = new Indicator(guiLeft + 154, guiTop + 19, Component.empty());
+        projectileIndicator = new Indicator(guiLeft + 102, guiTop + 36, Component.empty());
         projectileIndicator.state = projectile ? Indicator.State.GREEN : Indicator.State.RED;
         projectileButton.withCallback((x, y) -> {
             projectile = !projectile;
@@ -107,9 +144,20 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
         addRenderableWidget(projectileButton);
         addRenderableWidget(projectileIndicator);
 
-        autoTargetButton = new IconButton(guiLeft + 202, guiTop + 47, ModGuiTextures.AUTO_TARGET);
+        lineofSightButton = new IconButton(guiLeft + 122, guiTop + 43, ModGuiTextures.LOS_BUTTON);
+        lineofSightButton.setToolTip(Component.translatable(CreateRadar.MODID +".radar_button.lineofsight"));
+        lineofSightIndicator = new Indicator(guiLeft + 122, guiTop + 36,Component.empty());
+        lineofSightIndicator.state = lineofSight ? Indicator.State.GREEN : Indicator.State.RED;
+        lineofSightButton.withCallback((x,y) -> {
+            lineofSight = !lineofSight;
+            lineofSightIndicator.state = lineofSight ? Indicator.State.GREEN : Indicator.State.RED;
+        });
+        addRenderableWidget(lineofSightButton);
+        addRenderableWidget(lineofSightIndicator);
+
+        autoTargetButton = new IconButton(guiLeft + 170, guiTop + 42, ModGuiTextures.AUTO_TARGET);
         autoTargetButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.auto_target"));
-        autoTargetIndicator = new Indicator(guiLeft + 202, guiTop + 40, Component.empty());
+        autoTargetIndicator = new Indicator(guiLeft + 170, guiTop + 35, Component.empty());
         autoTargetIndicator.state = autoTarget ? Indicator.State.GREEN : Indicator.State.RED;
         autoTargetButton.withCallback((x, y) -> {
             autoTarget = !autoTarget;
@@ -118,20 +166,17 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
         addRenderableWidget(autoTargetButton);
         addRenderableWidget(autoTargetIndicator);
 
-        autoFireButton = new IconButton(guiLeft + 98, guiTop + 69, autoFire ? ModGuiTextures.AUTO_FIRE : ModGuiTextures.MANUAL_FIRE);
-        autoFireButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.auto_fire"));
-        autoFireButton.withCallback((x, y) -> {
-            autoFire = !autoFire;
-            autoFireButton.setIcon(autoFire ? ModGuiTextures.AUTO_FIRE : ModGuiTextures.MANUAL_FIRE);
-        });
-        addRenderableWidget(autoFireButton);
+        confirmButton = new IconButton(guiLeft+191,guiTop+83, AllIcons.I_CONFIRM);
+        confirmButton.withCallback(this::onClose);
+        addRenderableWidget(confirmButton);
+
 
     }
 
     @Override
     public void onClose(CompoundTag tag) {
         super.onClose(tag);
-        TargetingConfig targetingConfig = new TargetingConfig(player, contraption, mob, animal, projectile, autoTarget, autoFire);
+        TargetingConfig targetingConfig = new TargetingConfig(player, contraption, mob, animal, projectile, autoTarget, autoFire,lineofSight);
         tag.put("targeting", targetingConfig.toTag());
     }
 }

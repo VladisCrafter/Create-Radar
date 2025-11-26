@@ -4,11 +4,14 @@ import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.datalink.DataLinkBlockEntity;
 import com.happysg.radar.block.monitor.MonitorFilter;
 import com.happysg.radar.registry.ModGuiTextures;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.gui.widget.IconButton;
 import com.simibubi.create.foundation.gui.widget.Indicator;
+import dev.engine_room.flywheel.lib.transform.TransformStack;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 
 import java.util.List;
 
@@ -19,6 +22,8 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
     boolean contraption;
     boolean mob;
     boolean projectile;
+    boolean animal;
+    boolean item;
 
     protected IconButton playerButton;
     protected Indicator playerIndicator;
@@ -28,8 +33,12 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
     protected Indicator contraptionIndicator;
     protected IconButton mobButton;
     protected Indicator mobIndicator;
+    protected IconButton animalButton;
+    protected Indicator animalIndicator;
     protected IconButton projectileButton;
     protected Indicator projectileIndicator;
+    protected IconButton itemButton;
+    protected Indicator itemIndicator;
 
     List<String> playerBlacklist;
     List<String> playerWhitelist;
@@ -37,7 +46,7 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
 
     public RadarFilterScreen(DataLinkBlockEntity be) {
         super(be);
-        this.background = ModGuiTextures.RADAR_FILTER;
+        this.background = ModGuiTextures.DETECTION_FILTER;
         MonitorFilter monitorFilter = MonitorFilter.DEFAULT;
         if (be.getSourceConfig().contains("filter")) {
             monitorFilter = MonitorFilter.fromTag(be.getSourceConfig().getCompound("filter"));
@@ -50,15 +59,17 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
         playerBlacklist = monitorFilter.blacklistPlayers();
         playerWhitelist = monitorFilter.whitelistPlayers();
         vs2Whitelist = monitorFilter.whitelistVS();
+        animal = monitorFilter.animal();
+        item = monitorFilter.item();
     }
 
 
     @Override
     protected void init() {
         super.init();
-        playerButton = new IconButton(guiLeft + 42, guiTop + 32, ModGuiTextures.PLAYER_BUTTON);
+        playerButton = new IconButton(guiLeft + 32, guiTop + 38, ModGuiTextures.PLAYER_BUTTON);
         playerButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.player"));
-        playerIndicator = new Indicator(guiLeft + 42, guiTop + 25, Component.empty());
+        playerIndicator = new Indicator(guiLeft + 32, guiTop + 31, Component.empty());
         playerIndicator.state = player ? Indicator.State.GREEN : Indicator.State.RED;
         playerButton.withCallback((x, y) -> {
             player = !player;
@@ -67,9 +78,9 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
         addRenderableWidget(playerButton);
         addRenderableWidget(playerIndicator);
 
-        vs2Button = new IconButton(guiLeft + 70, guiTop + 32, ModGuiTextures.VS2_BUTTON);
+        vs2Button = new IconButton(guiLeft + 60, guiTop + 38, ModGuiTextures.VS2_BUTTON);
         vs2Button.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.vs2"));
-        vs2Indicator = new Indicator(guiLeft + 70, guiTop + 25, Component.empty());
+        vs2Indicator = new Indicator(guiLeft + 60, guiTop + 31, Component.empty());
         vs2Indicator.state = vs2 ? Indicator.State.GREEN : Indicator.State.RED;
         vs2Button.withCallback((x, y) -> {
             vs2 = !vs2;
@@ -78,9 +89,9 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
         addRenderableWidget(vs2Button);
         addRenderableWidget(vs2Indicator);
 
-        contraptionButton = new IconButton(guiLeft + 98, guiTop + 32, ModGuiTextures.CONTRAPTION_BUTTON);
+        contraptionButton = new IconButton(guiLeft + 88, guiTop + 38, ModGuiTextures.CONTRAPTION_BUTTON);
         contraptionButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.contraption"));
-        contraptionIndicator = new Indicator(guiLeft + 98, guiTop + 25, Component.empty());
+        contraptionIndicator = new Indicator(guiLeft + 88, guiTop + 31, Component.empty());
         contraptionIndicator.state = contraption ? Indicator.State.GREEN : Indicator.State.RED;
         contraptionButton.withCallback((x, y) -> {
             contraption = !contraption;
@@ -89,9 +100,9 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
         addRenderableWidget(contraptionButton);
         addRenderableWidget(contraptionIndicator);
 
-        mobButton = new IconButton(guiLeft + 126, guiTop + 32, ModGuiTextures.MOB_BUTTON);
+        mobButton = new IconButton(guiLeft + 116, guiTop + 38, ModGuiTextures.MOB_BUTTON);
         mobButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.mob"));
-        mobIndicator = new Indicator(guiLeft + 126, guiTop + 25, Component.empty());
+        mobIndicator = new Indicator(guiLeft + 116, guiTop + 31, Component.empty());
         mobIndicator.state = mob ? Indicator.State.GREEN : Indicator.State.RED;
         mobButton.withCallback((x, y) -> {
             mob = !mob;
@@ -100,9 +111,20 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
         addRenderableWidget(mobButton);
         addRenderableWidget(mobIndicator);
 
-        projectileButton = new IconButton(guiLeft + 154, guiTop + 32, ModGuiTextures.PROJECTILE_BUTTON);
+        animalButton = new IconButton(guiLeft + 144, guiTop + 38, ModGuiTextures.ANIMAL_BUTTON);
+        animalButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.animal"));
+        animalIndicator = new Indicator(guiLeft + 144, guiTop + 31, Component.empty());
+        animalIndicator.state = animal ? Indicator.State.GREEN : Indicator.State.RED;
+        animalButton.withCallback((x, y) -> {
+            animal = !animal;
+            animalIndicator.state = animal ? Indicator.State.GREEN : Indicator.State.RED;
+        });
+        addRenderableWidget(animalButton);
+        addRenderableWidget(animalIndicator);
+
+        projectileButton = new IconButton(guiLeft + 172, guiTop + 38, ModGuiTextures.PROJECTILE_BUTTON);
         projectileButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.projectile"));
-        projectileIndicator = new Indicator(guiLeft + 154, guiTop + 25, Component.empty());
+        projectileIndicator = new Indicator(guiLeft + 172, guiTop + 31, Component.empty());
         projectileIndicator.state = projectile ? Indicator.State.GREEN : Indicator.State.RED;
         projectileButton.withCallback((x, y) -> {
             projectile = !projectile;
@@ -111,17 +133,48 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
         addRenderableWidget(projectileButton);
         addRenderableWidget(projectileIndicator);
 
+        itemButton = new IconButton(guiLeft + 200, guiTop + 38, ModGuiTextures.ITEM_BUTTON);
+        itemButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.item"));
+        itemIndicator = new Indicator(guiLeft + 200, guiTop + 31, Component.empty());
+        itemIndicator.state = item ? Indicator.State.GREEN : Indicator.State.RED;
+        itemButton.withCallback((x, y) -> {
+            item = !item;
+            itemIndicator.state = item ? Indicator.State.GREEN : Indicator.State.RED;
+        });
+        addRenderableWidget(itemButton);
+        addRenderableWidget(itemIndicator);
+
     }
 
-    @Override
     protected void renderWindow(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
-        super.renderWindow(graphics, mouseX, mouseY, partialTicks);
+        int x = guiLeft;
+        int y = guiTop;
+
+        background.render(graphics, x, y);
+        MutableComponent header = Component.translatable(CreateRadar.MODID + ".detection_filter.title");
+        graphics.drawString(font, header, x + background.width / 2 - font.width(header) / 2, y + 4, 0, false);
+
+        PoseStack ms = graphics.pose();
+        ms.pushPose();
+        ms.translate(0, guiTop + 46, 0);
+        ms.translate(0, 21, 0);
+        ms.popPose();
+
+        ms.pushPose();
+        TransformStack.of(ms)
+                .pushPose()
+                .translate(x + background.width + 4, y + background.height + 4, 100)
+                .scale(40)
+                .rotateX(-22)
+                .rotateY(63);
+        ms.popPose();
+
     }
 
     @Override
     public void onClose(CompoundTag tag) {
         super.onClose(tag);
-        MonitorFilter monitorFilter = new MonitorFilter(player, vs2, contraption, mob, projectile, playerBlacklist, playerWhitelist, List.of(), vs2Whitelist);
+        MonitorFilter monitorFilter = new MonitorFilter(player, vs2, contraption, mob, projectile, animal, item, playerBlacklist, playerWhitelist, List.of(), vs2Whitelist);
         tag.put("filter", monitorFilter.toTag());
     }
 }

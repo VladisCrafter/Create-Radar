@@ -5,17 +5,18 @@ import com.happysg.radar.block.radar.track.TrackCategory;
 import com.happysg.radar.config.RadarConfig;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.Item;
 
 import java.util.List;
 
-public record MonitorFilter(boolean player, boolean vs2, boolean contraption, boolean mob, boolean projectile,
+public record MonitorFilter(boolean player, boolean vs2, boolean contraption, boolean mob, boolean projectile, boolean animal, boolean item,
                             List<String> blacklistPlayers, List<String> whitelistPlayers, List<String> blacklistVS2,
                             List<String> whitelistVS) {
 
-    public static final MonitorFilter DEFAULT = new MonitorFilter(true, true, true, true, true);
+    public static final MonitorFilter DEFAULT = new MonitorFilter(true, true, true, true, true,true,true);
 
-    public MonitorFilter(boolean player, boolean vs2, boolean contraption, boolean mob, boolean projectile) {
-        this(player, vs2, contraption, mob, projectile, List.of(), List.of(), List.of(), List.of());
+    public MonitorFilter(boolean player, boolean vs2, boolean contraption, boolean mob, boolean projectile,boolean animal, boolean item) {
+        this(player, vs2, contraption, mob, projectile,animal, item, List.of(), List.of(), List.of(), List.of());
     }
 
     public CompoundTag toTag() {
@@ -25,6 +26,8 @@ public record MonitorFilter(boolean player, boolean vs2, boolean contraption, bo
         tag.putBoolean("contraption", contraption);
         tag.putBoolean("mob", mob);
         tag.putBoolean("projectile", projectile);
+        tag.putBoolean("animal", animal);
+        tag.putBoolean("item",item);
         CompoundTag playersListTag = new CompoundTag();
         blacklistPlayers.forEach(player -> playersListTag.putBoolean(player, false));
         whitelistPlayers.forEach(player -> playersListTag.putBoolean(player, true));
@@ -42,11 +45,13 @@ public record MonitorFilter(boolean player, boolean vs2, boolean contraption, bo
         boolean contraption = tag.getBoolean("contraption");
         boolean mob = tag.getBoolean("mob");
         boolean projectile = tag.getBoolean("projectile");
+        boolean animal = tag.getBoolean("animal");
+        boolean item = tag.getBoolean("item");
         List<String> blacklistPlayers = tag.getCompound("playerList").getAllKeys().stream().filter(key -> !tag.getCompound("playerList").getBoolean(key)).toList();
         List<String> whitelistPlayers = tag.getCompound("playerList").getAllKeys().stream().filter(key -> tag.getCompound("playerList").getBoolean(key)).toList();
         List<String> blacklistVS2 = tag.getCompound("vs2Ships").getAllKeys().stream().filter(key -> !tag.getCompound("vs2Ships").getBoolean(key)).toList();
         List<String> whitelistVS = tag.getCompound("vs2Ships").getAllKeys().stream().filter(key -> tag.getCompound("vs2Ships").getBoolean(key)).toList();
-        return new MonitorFilter(player, vs2, contraption, mob, projectile, blacklistPlayers, whitelistPlayers, blacklistVS2, whitelistVS);
+        return new MonitorFilter(player, vs2, contraption, mob, projectile, animal, item, blacklistPlayers, whitelistPlayers, blacklistVS2, whitelistVS);
     }
 
     public boolean test(RadarTrack track) {
@@ -80,10 +85,14 @@ public record MonitorFilter(boolean player, boolean vs2, boolean contraption, bo
             return vs2;
         } else if (trackCategory == TrackCategory.CONTRAPTION) {
             return contraption;
-        } else if (trackCategory == TrackCategory.MOB || trackCategory == TrackCategory.ANIMAL || trackCategory == TrackCategory.HOSTILE) {
+        } else if (trackCategory == TrackCategory.MOB || trackCategory == TrackCategory.HOSTILE) {
             return mob;
         } else if (trackCategory == TrackCategory.PROJECTILE) {
             return projectile;
+        } else if (trackCategory == TrackCategory.ANIMAL ){
+            return animal;
+        }else if (trackCategory == TrackCategory.ITEM){
+            return item;
         }
         return false;
     }
