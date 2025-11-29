@@ -16,10 +16,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
@@ -325,6 +327,87 @@ public class WeaponNetwork {
 
         return correctOrient && safeZoneClear && hasTarget;
     }
+
+    private boolean checkLineOfSight() {
+        // If config does not require LOS, always pass.
+        if (!targetingConfig.lineofSight()) {
+            LOGGER.debug("LOS check skipped (config disabled)");
+            return true;
+        }
+
+        if (!(level instanceof ServerLevel)) {
+            LOGGER.debug("LOS check skipped (not ServerLevel)");
+            return true;
+        }
+
+        if (targetPos == null) {
+            LOGGER.debug("LOS check failed (no target)");
+            return false;
+        }
+
+        // Raise both points by 2 blocks
+        Vec3 start = cannonMount.getBlockPos().getCenter().add(0, 2, 0);
+        Vec3 end   = targetPos.add(0, 1, 0);
+
+        LOGGER.debug("LOS elevated by +2 → start={} end={}", start, end);
+
+        /*
+        if (level instanceof ServerLevel server) {
+            Vec3 dir = end.subtract(start).normalize();
+
+        double dist = start.distanceTo(end);
+
+        for (double d = 0; d < dist; d += 0.5) {
+            Vec3 p = start.add(dir.scale(d));
+
+            server.sendParticles(
+                    net.minecraft.core.particles.DustParticleOptions.REDSTONE, // red dust trail
+                    p.x, p.y, p.z,
+                    1,             // count
+                    0, 0, 0,       // offset
+                    0              // speed
+            );
+
+
+        }
+
+
+    }
+
+         */
+        var context = new ClipContext(
+                start,
+                end,
+                ClipContext.Block.VISUAL,
+                ClipContext.Fluid.NONE,
+                null
+        );
+
+
+        var result = level.clip(context);
+
+        // Miss → no block in the way → clear shot
+        if (result.getType() == HitResult.Type.MISS) {
+            LOGGER.debug("LOS ok (raycast MISS)");
+            return true;
+        }
+
+        BlockPos hitPos = result.getBlockPos();
+        BlockPos targetPoss = BlockPos.containing(targetPos);
+
+
+        double distToHit = result.getLocation().distanceTo(start);
+        double distToTarget = end.distanceTo(start);
+
+// If the hit is *farther* than the target, the ray passed clean through → LOS OK
+        boolean ok = distToHit >= distToTarget;
+
+
+        LOGGER.debug("LOS result → hitPos={} targetPos={} ok={}", hitPos, targetPoss, ok);
+
+        return ok;
+    }
+
     public void setSafeZones(List<AABB> safeZones) {
         LOGGER.debug("setSafeZones() → {} zones", safeZones.size());
         this.safeZones = safeZones;
