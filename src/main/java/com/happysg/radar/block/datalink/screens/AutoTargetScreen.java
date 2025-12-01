@@ -42,7 +42,7 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
     protected IconButton confirmButton;
     public AutoTargetScreen(DataLinkBlockEntity be) {
         super(be);
-        this.background = ModGuiTextures.CANNON_TARGETING;
+        this.background = ModGuiTextures.TARGETING_FILTER;
         TargetingConfig targetingConfig = TargetingConfig.DEFAULT;
         if (be.getSourceConfig().contains("targeting")) {
             targetingConfig = TargetingConfig.fromTag(be.getSourceConfig());
