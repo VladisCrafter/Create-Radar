@@ -4,6 +4,7 @@ import com.happysg.radar.block.datalink.screens.TargetingConfig;
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.RadarTrackUtil;
+import com.happysg.radar.block.radar.track.TrackCategory;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.simibubi.create.AllSpecialTextures;
 import com.simibubi.create.CreateClient;
@@ -16,13 +17,18 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
+import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -41,6 +47,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     IRadar radar;
     protected String hoveredEntity;
     protected String selectedEntity;
+
 
     Collection<RadarTrack> cachedTracks = List.of();
     MonitorFilter filter = MonitorFilter.DEFAULT;
@@ -247,6 +254,71 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
 
         return targetPos.get();
     }
+    private boolean projectileApproaching(RadarTrack track) {
+
+        // Only apply to projectile tracks; other types always allowed
+        if (track.trackCategory() != TrackCategory.PROJECTILE) {
+            return true;
+        }
+
+        Vec3 trackVel = track.velocity();
+        if (trackVel == null || trackVel.lengthSqr() == 0)
+            return false; // stationary = not approaching
+
+        Vec3 trackPos = track.position();
+        Vec3 cannonPos = Vec3.atCenterOf(getControllerPos());
+
+        Vec3 toCannon = cannonPos.subtract(trackPos).normalize();
+        double dot = trackVel.normalize().dot(toCannon);
+
+        // dot > 0  => moving *toward* the cannon
+        return dot > 0;
+    }
+
+    private boolean hasLineOfSight(TargetingConfig targetingConfig, RadarTrack track) {
+
+        // If LOS disabled, always pass
+        if (!targetingConfig.lineOfSight()) {
+            return true;
+        }
+
+        Vec3 start = Vec3.atCenterOf(getControllerPos()).add(0, 2, 0);
+        Vec3 end   = track.position().add(0, 1, 0);
+
+        if (!(level instanceof ServerLevel))
+            return true;
+
+        // Safe zone blocking
+        for (AABB zone : safeZones) {
+            if (zone == null) continue;
+
+            Optional<Vec3> entry = zone.clip(start, end);
+            Optional<Vec3> exit  = zone.clip(end, start);
+
+            if (entry.isPresent() && exit.isPresent()) {
+                return false; // safe zone is in the path
+            }
+        }
+
+        var ctx = new ClipContext(
+                start, end,
+                ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE,
+                null
+        );
+
+        var hit = level.clip(ctx);
+
+        if (hit.getType() == HitResult.Type.MISS)
+            return true;
+
+        double distHit = hit.getLocation().distanceTo(start);
+        double distTarget = end.distanceTo(start);
+
+        return distHit >= distTarget;
+    }
+
+
 
     private void tryFindAutoTarget(TargetingConfig targetingConfig) {
         if (!targetingConfig.autoTarget())
@@ -259,16 +331,18 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
                                 track.position().distanceTo(Vec3.atCenterOf(getControllerPos())) < distance[0]
                                 && !isInSafeZone(track.position())
                         ) {
-                            selectedEntity = track.id();
-                            distance[0] = track.position().distanceTo(Vec3.atCenterOf(getControllerPos()));
+                            if (hasLineOfSight(targetingConfig, track) && projectileApproaching(track)) {
+                                selectedEntity = track.id();
+                                distance[0] = track.position().distanceTo(Vec3.atCenterOf(getControllerPos()));
+                            }
                         }
                     }
-
                 }
         );
         if (selectedEntity != null)
             notifyUpdate();
     }
+
 
     public void setFilter(MonitorFilter filter) {
         this.getController().filter = filter;

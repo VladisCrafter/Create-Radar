@@ -1,6 +1,8 @@
 package com.happysg.radar.block.controller.firing;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.HitResult;
 import org.slf4j.Logger;
 
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
@@ -48,6 +50,78 @@ public class FiringControlBlockEntity {
         this.level = cannonMount.getLevel();
         LOGGER.debug("FiringControlBlockEntity.<init>() → controller={} mountPos={}", controller, cannonMount.getBlockPos());
     }
+
+    private boolean checkLineOfSight() {
+        // If config does not require LOS, always pass.
+        if (!targetingConfig.lineOfSight()) {
+            LOGGER.debug("LOS check skipped (config disabled)");
+            return true;
+        }
+
+        if (!(level instanceof ServerLevel)) {
+            LOGGER.debug("LOS check skipped (not ServerLevel)");
+            return true;
+        }
+
+        if (target == null) {
+            LOGGER.debug("LOS check failed (no target)");
+            return false;
+        }
+
+        // Raise both points by 2 blocks
+        Vec3 start = cannonMount.getBlockPos().getCenter().add(0, 2, 0);
+        Vec3 end   = target.add(0, 1, 0);
+
+        LOGGER.debug("LOS elevated by +2 → start={} end={}", start, end);
+
+        // --------------------------------------------------------------------
+        //  SAFE ZONE INTERSECTION CHECK
+        //  If the ray (start → end) intersects any safe zone AABB → skip target
+        // --------------------------------------------------------------------
+        for (AABB zone : safeZones) {
+            if (zone == null) continue;
+
+            // We use AABB.clip(), which returns Optional<Vec3>
+            Optional<Vec3> entry = zone.clip(start, end);
+            Optional<Vec3> exit  = zone.clip(end, start);
+
+            if (entry.isPresent() && exit.isPresent()) {
+                LOGGER.debug("LOS blocked by SAFE ZONE → segment intersects {}", zone);
+                return false;
+            }
+        }
+        // --------------------------------------------------------------------
+
+        var context = new ClipContext(
+                start,
+                end,
+                ClipContext.Block.VISUAL,
+                ClipContext.Fluid.NONE,
+                null
+        );
+
+        var result = level.clip(context);
+
+        // Miss → no block in the way → clear shot
+        if (result.getType() == HitResult.Type.MISS) {
+            LOGGER.debug("LOS ok (raycast MISS)");
+            return true;
+        }
+
+        BlockPos hitPos = result.getBlockPos();
+        BlockPos targetPoss = BlockPos.containing(target);
+
+        double distToHit = result.getLocation().distanceTo(start);
+        double distToTarget = end.distanceTo(start);
+
+        // If the hit is *farther* than the target → passed clean through → LOS OK
+        boolean ok = distToHit >= distToTarget;
+
+        LOGGER.debug("LOS result → hitPos={} targetPos={} ok={}", hitPos, targetPoss, ok);
+
+        return ok;
+    }
+
 
     public void setSafeZones(List<AABB> safeZones) {
         LOGGER.debug("setSafeZones() → {} zones", safeZones.size());
@@ -110,7 +184,7 @@ public class FiringControlBlockEntity {
         this.target = target;
         this.targetingConfig = config;
         this.lastTargetTick  = level != null ? level.getGameTime() : 0L;
-        LOGGER.debug("  → stored target & config; lastTargetTick={}", this.lastTargetTick);
+
 
         // — propagate to pitch controller so it can start adjusting elevation —
         if (this.pitchController != null) {
@@ -131,14 +205,16 @@ public class FiringControlBlockEntity {
         }
     }
 
+
     private boolean isTargetInRange() {
         boolean hasTarget     = target != null;
         boolean correctOrient = hasCorrectYawPitch();
         boolean safeZoneClear = !passesSafeZone();
+        boolean lineOfSight   = checkLineOfSight();
         LOGGER.debug("isTargetInRange() check → hasTarget={}, yawPitchOK={}, safeZoneClear={}",
                 hasTarget, correctOrient, safeZoneClear);
 
-        return hasTarget && correctOrient && safeZoneClear;
+        return hasTarget && correctOrient && safeZoneClear && lineOfSight;
     }
 
     private boolean passesSafeZone() {
