@@ -20,9 +20,11 @@ import net.minecraft.world.level.LevelAccessor;
 
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModContainer;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -45,6 +47,10 @@ public class CreateRadar {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(MODID);
+    @SubscribeEvent
+    public void onRegisterCommands(RegisterCommandsEvent event) {
+        ModCommands.register(event.getDispatcher());
+    }
 
     public CreateRadar() {
         getLogger().info("Initializing Create Radar!");
@@ -80,6 +86,7 @@ public class CreateRadar {
             CCCompatRegister.registerPeripherals();
     }
 
+
     private static void clientTick(TickEvent.ClientTickEvent event) {
         DataLinkBlockItem.clientTick();
     }
@@ -91,6 +98,8 @@ public class CreateRadar {
     public static ResourceLocation asResource(String path) {
         return new ResourceLocation(MODID, path);
     }
+
+
 
     public static String toHumanReadable(String key) {
         String s = key.replace("_", " ");
@@ -107,6 +116,7 @@ public class CreateRadar {
         //
         // PonderTagRegistrationHelper<ResourceLocation> tagHelper = PonderTagRegistrationHelper.forMod(CreateRadar.MODID);
         // ModPonderTags.register(tagHelper);
+
     }
 
     public static void onLoadComplete(FMLLoadCompleteEvent event) {
@@ -129,7 +139,6 @@ public class CreateRadar {
         event.enqueueWork(() -> {
             // Must be registered after registries open
             ModContraptionTypes.register();
-
             // Stress values
             BlockStressValues.IMPACTS.register(ModBlocks.RADAR_BEARING_BLOCK.get(), () -> 4d);
             BlockStressValues.IMPACTS.register(ModBlocks.AUTO_YAW_CONTROLLER_BLOCK.get(), () -> 128d);
@@ -146,4 +155,6 @@ public class CreateRadar {
         ModDisplayBehaviors.register();
         AllDataBehaviors.registerDefaults();
     }
+
+
 }

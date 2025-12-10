@@ -1,14 +1,18 @@
 package com.happysg.radar.block.controller.firing;
 
+import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.config.RadarConfig;
 import com.mojang.logging.LogUtils;
+import com.simibubi.create.content.contraptions.Contraption;
+import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
+import org.joml.Vector3f;
 import org.slf4j.Logger;
 
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.datalink.screens.TargetingConfig;
-import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlock;
 import com.happysg.radar.compat.cbc.CannonUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -33,6 +37,7 @@ public class FiringControlBlockEntity {
     private TargetingConfig targetingConfig = TargetingConfig.DEFAULT;
     private Vec3 target;
     private boolean firing;
+    private float offset;
 
     private boolean prevAssemblyPowered = false;
     private boolean prevFirePowered     = false;
@@ -40,87 +45,144 @@ public class FiringControlBlockEntity {
     public final CannonMountBlockEntity cannonMount;
     public final AutoPitchControllerBlockEntity pitchController;
     public final Level level;
+    private RadarTrack activetrack;
 
     public List<AABB> safeZones = new ArrayList<>();
     private long lastTargetTick = -1;   // server-time when we last got a target update
+    private enum RayResult {
+        CLEAR,
+        BLOCKED_BLOCK,
+        BLOCKED_SAFEZONE;
+
+        public boolean isClear() {
+            return this == CLEAR;
+        }
+    }
 
     public FiringControlBlockEntity(AutoPitchControllerBlockEntity controller, CannonMountBlockEntity cannonMount) {
         this.cannonMount = cannonMount;
         this.pitchController = controller;
         this.level = cannonMount.getLevel();
+
         LOGGER.debug("FiringControlBlockEntity.<init>() → controller={} mountPos={}", controller, cannonMount.getBlockPos());
     }
+    private RayResult rayClear(Vec3 start, Vec3 end) {
 
-    private boolean checkLineOfSight() {
-        // If config does not require LOS, always pass.
-        if (!targetingConfig.lineOfSight()) {
-            LOGGER.debug("LOS check skipped (config disabled)");
-            return true;
-        }
+        RayResult result = RayResult.CLEAR;
 
-        if (!(level instanceof ServerLevel)) {
-            LOGGER.debug("LOS check skipped (not ServerLevel)");
-            return true;
-        }
+        // ---------------------------------------------------------------
+        // 1) SAFE ZONE CHECK
+        // ---------------------------------------------------------------
+        if (!safeZones.isEmpty()) {
+            for (AABB zone : safeZones) {
+                if (zone == null) continue;
 
-        if (target == null) {
-            LOGGER.debug("LOS check failed (no target)");
-            return false;
-        }
+                Optional<Vec3> entry = zone.clip(start, end);
+                Optional<Vec3> exit  = zone.clip(end, start);
 
-        // Raise both points by 2 blocks
-        Vec3 start = cannonMount.getBlockPos().getCenter().add(0, 2, 0);
-        Vec3 end   = target.add(0, 1, 0);
-
-        LOGGER.debug("LOS elevated by +2 → start={} end={}", start, end);
-
-        // --------------------------------------------------------------------
-        //  SAFE ZONE INTERSECTION CHECK
-        //  If the ray (start → end) intersects any safe zone AABB → skip target
-        // --------------------------------------------------------------------
-        for (AABB zone : safeZones) {
-            if (zone == null) continue;
-
-            // We use AABB.clip(), which returns Optional<Vec3>
-            Optional<Vec3> entry = zone.clip(start, end);
-            Optional<Vec3> exit  = zone.clip(end, start);
-
-            if (entry.isPresent() && exit.isPresent()) {
-                LOGGER.debug("LOS blocked by SAFE ZONE → segment intersects {}", zone);
-                return false;
+                if (entry.isPresent() && exit.isPresent()) {
+                    result = RayResult.BLOCKED_SAFEZONE;
+                    break;
+                }
             }
         }
-        // --------------------------------------------------------------------
 
-        var context = new ClipContext(
-                start,
-                end,
-                ClipContext.Block.VISUAL,
-                ClipContext.Fluid.NONE,
-                null
-        );
+        // ---------------------------------------------------------------
+        // 2) BLOCK COLLISION CHECK
+        // ---------------------------------------------------------------
+        if (result == RayResult.CLEAR) {
+            ClipContext ctx = new ClipContext(
+                    start, end,
+                    ClipContext.Block.COLLIDER,
+                    ClipContext.Fluid.NONE,
+                    null
+            );
 
-        var result = level.clip(context);
+            HitResult hit = level.clip(ctx);
 
-        // Miss → no block in the way → clear shot
-        if (result.getType() == HitResult.Type.MISS) {
-            LOGGER.debug("LOS ok (raycast MISS)");
-            return true;
+            if (hit.getType() != HitResult.Type.MISS) {
+                double hitDist = hit.getLocation().distanceTo(start);
+                double targetDist = end.distanceTo(start);
+
+                if (hitDist < targetDist) {
+                    result = RayResult.BLOCKED_BLOCK;
+                }
+            }
         }
 
-        BlockPos hitPos = result.getBlockPos();
-        BlockPos targetPoss = BlockPos.containing(target);
+        // ---------------------------------------------------------------
+        // 3) DEBUG BEAM COLORING
+        // ---------------------------------------------------------------
+        if (RadarConfig.DEBUG_BEAMS && level instanceof ServerLevel server) {
+            debugRay(server, start, end, result);
+        }
 
-        double distToHit = result.getLocation().distanceTo(start);
-        double distToTarget = end.distanceTo(start);
-
-        // If the hit is *farther* than the target → passed clean through → LOS OK
-        boolean ok = distToHit >= distToTarget;
-
-        LOGGER.debug("LOS result → hitPos={} targetPos={} ok={}", hitPos, targetPoss, ok);
-
-        return ok;
+        return result;
     }
+
+
+
+    private boolean checkLineOfSight(Vec3 target) {
+        if (activetrack == null)
+            return false;
+
+        float height = activetrack.getEnityHeight();
+        int blocksHigh = (int) Math.ceil(height);
+
+        Vec3 start = cannonMount.getBlockPos().getCenter().add(0, 2, 0);
+        if(target == null){
+            return false;
+        }
+        for (int h = 0; h < blocksHigh; h++) {
+            // Check center of each block of height
+            Vec3 end = target.add(0, h + 0.5, 0);
+
+
+
+            if (rayClear(start, end).isClear()) {
+                offset = h + 0.5f;   // store which height worked (center of block)
+                return true;
+            }
+        }
+
+        return false; // none of the height steps were clear
+    }
+
+    private void debugRay(ServerLevel server, Vec3 start, Vec3 end, RayResult result) {
+
+        float r, g, b;
+
+        switch (result) {
+            case CLEAR -> {  // GREEN
+                r = 0.0f; g = 1.0f; b = 0.0f;
+            }
+            case BLOCKED_BLOCK -> { // RED
+                r = 1.0f; g = 0.0f; b = 0.0f;
+            }
+            case BLOCKED_SAFEZONE -> { // YELLOW
+                r = 1.0f; g = 1.0f; b = 0.0f;
+            }
+            default -> {
+                r = 1.0f; g = 1.0f; b = 1.0f;
+            }
+        }
+
+        double dist = start.distanceTo(end);
+        Vec3 dir = end.subtract(start).normalize();
+
+        for (double d = 0; d < dist; d += 0.25) {
+            Vec3 p = start.add(dir.scale(d));
+
+            server.sendParticles(
+                    new DustParticleOptions(new Vector3f(r, g, b), 1.0f),
+                    p.x, p.y, p.z,
+                    1, 0, 0, 0, 0
+            );
+        }
+    }
+
+
+
 
 
     public void setSafeZones(List<AABB> safeZones) {
@@ -131,7 +193,9 @@ public class FiringControlBlockEntity {
     /**
      * Called every tick by the pitch controller.
      */
+
     public void tick() {
+        //pitchController.setMount(cannonMount);
         LOGGER.debug("tick() start → target={} lastTargetTick={} safeZones={} autoFire={} firing={}", target, lastTargetTick, safeZones.size(), targetingConfig.autoFire(), firing);
         boolean pulsedThisTick = false;
         // invalidate stale target
@@ -166,14 +230,59 @@ public class FiringControlBlockEntity {
             stopFireCannon();
         }
     }
+    public static Vec3 calculateLead(CannonMountBlockEntity mount, RadarTrack track, Vec3 targetPos) {
+        Vec3 toTarget = track.getPosition().subtract(targetPos);
+        // very bad velocity calc
+        PitchOrientedContraptionEntity projModifier = mount.getContraption();
+        if(projModifier == null){
+            return targetPos;
+        }
+        float projectileSpeed = (projModifier.getBbWidth() -1 ) * 20;
+
+
+        double vx = track.getVelocity().x;
+        double vy = track.getVelocity().y;
+        double vz = track.getVelocity().z;
+
+        double sx = toTarget.x;
+        double sy = toTarget.y;
+        double sz = toTarget.z;
+
+        double v2 = vx*vx + vy*vy + vz*vz;
+        double s2 = sx*sx + sy*sy + sz*sz;
+
+        double A = v2 - projectileSpeed * projectileSpeed;
+        double B = 2 * (sx*vx + sy*vy + sz*vz);
+        double C = s2;
+
+        double discriminant = B*B - 4*A*C;
+
+        if (discriminant < 0) {
+            // No real solution → target too fast or geometry impossible.
+            return targetPos; // fallback: aim directly at the target
+        }
+
+        double sqrtD = Math.sqrt(discriminant);
+        double t1 = (-B - sqrtD) / (2 * A);
+        double t2 = (-B + sqrtD) / (2 * A);
+
+        double t = Math.min(t1, t2);
+        if (t < 0) t = Math.max(t1, t2);
+        if (t < 0) {
+            // Both negative → target moving away faster than projectile
+            return targetPos;
+        }
+
+        return targetPos.add(track.getVelocity().scale(t));
+    }
 
     /**
      * Radar updates the gun’s target through this method.
      */
-    public void setTarget(Vec3 target, TargetingConfig config) {
+    public void setTarget(Vec3 target, TargetingConfig config, RadarTrack track) {
         LOGGER.debug("setTarget() → new target={} config={} atTick={}",
                 target, config, level != null ? level.getGameTime() : -1L);
-
+        activetrack = track;
         if (target == null) {
             LOGGER.debug("  → target null, stopping fire");
             this.target = null;
@@ -181,15 +290,16 @@ public class FiringControlBlockEntity {
             return;
         }
 
-        this.target = target;
+        this.target = target;//.add(0,offset,0);
         this.targetingConfig = config;
         this.lastTargetTick  = level != null ? level.getGameTime() : 0L;
-
+        Vec3 offsettarget = target.add(0,offset,0);
+        Vec3 leadtarget = offsettarget; //calculateLead(cannonMount,track,offsettarget);
 
         // — propagate to pitch controller so it can start adjusting elevation —
         if (this.pitchController != null) {
             LOGGER.debug("  → forwarding target to pitchController");
-            this.pitchController.setTarget(target);
+            this.pitchController.setTarget(leadtarget);
         }
 
         // — also propagate to the yaw controller so it can rotate horizontally —
@@ -201,7 +311,8 @@ public class FiringControlBlockEntity {
 
         if (level.getBlockEntity(yawPos) instanceof AutoYawControllerBlockEntity yawCtrl) {
             LOGGER.debug("  → forwarding target to yawController at {}", yawPos);
-            yawCtrl.setTarget(target);
+            yawCtrl.setTarget(leadtarget);
+
         }
     }
 
@@ -210,7 +321,7 @@ public class FiringControlBlockEntity {
         boolean hasTarget     = target != null;
         boolean correctOrient = hasCorrectYawPitch();
         boolean safeZoneClear = !passesSafeZone();
-        boolean lineOfSight   = checkLineOfSight();
+        boolean lineOfSight   = checkLineOfSight(target);
         LOGGER.debug("isTargetInRange() check → hasTarget={}, yawPitchOK={}, safeZoneClear={}",
                 hasTarget, correctOrient, safeZoneClear);
 

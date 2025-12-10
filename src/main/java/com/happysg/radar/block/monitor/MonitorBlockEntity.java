@@ -6,8 +6,9 @@ import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.RadarTrackUtil;
 import com.happysg.radar.block.radar.track.TrackCategory;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
+import com.happysg.radar.config.RadarConfig;
+import com.mojang.logging.LogUtils;
 import com.simibubi.create.AllSpecialTextures;
-import com.simibubi.create.CreateClient;
 import net.createmod.catnip.outliner.Outliner;
 import com.simibubi.create.api.equipment.goggles.IHaveHoveringInformation;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
@@ -18,8 +19,8 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -28,6 +29,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 
 import javax.annotation.Nullable;
@@ -42,13 +44,16 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
 
     protected BlockPos controller;
     protected int radius = 1;
-    private int ticksSinceLastUpdate = 0;
     protected BlockPos radarPos;
     IRadar radar;
     protected String hoveredEntity;
     protected String selectedEntity;
+    protected RadarTrack activetrack;
+    protected BlockPos mountBlock;
 
 
+
+    private static final Logger LOGGER = LogUtils.getLogger();
     Collection<RadarTrack> cachedTracks = List.of();
     MonitorFilter filter = MonitorFilter.DEFAULT;
     public List<AABB> safeZones = new ArrayList<>();
@@ -92,10 +97,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
             }
         }
 
-        if (ticksSinceLastUpdate > 20)
-            setRadarPos(null);
 
-        ticksSinceLastUpdate++;
     }
 
     public void setControllerPos(BlockPos pPos, int size) {
@@ -116,7 +118,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
                 return;
             }
             monitor.radarPos = pPos;
-            monitor.ticksSinceLastUpdate = 0;
+
             monitor.notifyUpdate();
         }
     }
@@ -234,6 +236,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
 
     public Vec3 getTargetPos(TargetingConfig targetingConfig) {
         AtomicReference<Vec3> targetPos = new AtomicReference<>();
+
         getRadar().ifPresent(
                 radar -> {
                     if (selectedEntity == null)
@@ -242,7 +245,10 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
                         return;
                     for (RadarTrack track : getController().cachedTracks) {
                         if (track.id().equals(selectedEntity))
+
                             targetPos.set(track.position());
+
+
                     }
 
                 }
@@ -274,15 +280,21 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         // dot > 0  => moving *toward* the cannon
         return dot > 0;
     }
+    public void getMount(BlockPos mount){
+        this.mountBlock = mount;
 
-    private boolean hasLineOfSight(TargetingConfig targetingConfig, RadarTrack track) {
+    }
+
+
+
+    private boolean CheckLOS(TargetingConfig targetingConfig, RadarTrack track) {
 
         // If LOS disabled, always pass
         if (!targetingConfig.lineOfSight()) {
             return true;
         }
 
-        Vec3 start = Vec3.atCenterOf(getControllerPos()).add(0, 2, 0);
+        Vec3 start = mountBlock.getCenter().add(0,2,0);
         Vec3 end   = track.position().add(0, 1, 0);
 
         if (!(level instanceof ServerLevel))
@@ -296,9 +308,27 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
             Optional<Vec3> exit  = zone.clip(end, start);
 
             if (entry.isPresent() && exit.isPresent()) {
+                LOGGER.debug("safezone between target");
                 return false; // safe zone is in the path
             }
         }
+        if (level instanceof ServerLevel server && RadarConfig.DEBUG_BEAMS) {
+         Vec3 dir = end.subtract(start).normalize();
+     double dist = start.distanceTo(end);
+
+     for (double d = 0; d < dist; d += 0.5) {
+         Vec3 p = start.add(dir.scale(d));
+
+         server.sendParticles(
+                 net.minecraft.core.particles.DustParticleOptions.REDSTONE, // red dust trail
+                 p.x, p.y, p.z,
+                 1,             // count
+                 0, 0, 0,       // offset
+                 0              // speed
+         );
+     }
+ }
+
 
         var ctx = new ClipContext(
                 start, end,
@@ -320,6 +350,8 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
 
 
 
+
+
     private void tryFindAutoTarget(TargetingConfig targetingConfig) {
         if (!targetingConfig.autoTarget())
             return;
@@ -330,11 +362,16 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
                         if (targetingConfig.test(track.trackCategory()) &&
                                 track.position().distanceTo(Vec3.atCenterOf(getControllerPos())) < distance[0]
                                 && !isInSafeZone(track.position())
+
+
                         ) {
-                            if (hasLineOfSight(targetingConfig, track) && projectileApproaching(track)) {
+                            if (projectileApproaching(track) && CheckLOS(targetingConfig, track)) {
                                 selectedEntity = track.id();
+                                activetrack =track;
                                 distance[0] = track.position().distanceTo(Vec3.atCenterOf(getControllerPos()));
                             }
+
+
                         }
                     }
                 }
@@ -342,7 +379,9 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
         if (selectedEntity != null)
             notifyUpdate();
     }
-
+    public RadarTrack getactivetrack(){
+        return activetrack;
+    }
 
     public void setFilter(MonitorFilter filter) {
         this.getController().filter = filter;

@@ -69,11 +69,17 @@ public class MonitorInputHandler {
             if (level.getBlockEntity(result.getBlockPos()) instanceof MonitorBlockEntity be && level.getBlockEntity(be.getControllerPos()) instanceof MonitorBlockEntity monitor) {
                 hit = PhysicsHandler.getShipVec(hit, be);
                 RadarTrack track = findTrack(level, hit, monitor);
-                if (track != null) {
-                    monitor.hoveredEntity = track.id();
-                } else
-                    monitor.hoveredEntity = null;
-                monitor.notifyUpdate();
+                String oldHovered = monitor.hoveredEntity;
+                String newHovered = (track != null) ? track.id() : null;
+
+                // Only update when the hovered target actually changes
+                if ((oldHovered == null && newHovered != null) ||
+                        (oldHovered != null && !oldHovered.equals(newHovered))) {
+
+                    monitor.hoveredEntity = newHovered;
+                    monitor.notifyUpdate();   // <-- now only fires when needed
+                }
+
             }
         }
 

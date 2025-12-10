@@ -8,10 +8,14 @@ import com.happysg.radar.block.datalink.screens.AbstractDataLinkScreen;
 import com.happysg.radar.block.datalink.screens.AutoTargetScreen;
 import com.happysg.radar.block.datalink.screens.TargetingConfig;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
+import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.config.RadarConfig;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
+import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 
 public class PitchLinkBehavior extends DataPeripheral {
 
@@ -32,10 +36,15 @@ public class PitchLinkBehavior extends DataPeripheral {
         MonitorBlockEntity monitor = context.getMonitorBlockEntity();
         TargetingConfig targetingConfig = TargetingConfig.fromTag(context.sourceConfig());
 
+        BlockPos mountBlock = controller.getMount();
         Vec3 targetPos = monitor.getTargetPos(targetingConfig);
-        //todo better way to handle instead of passing null to stop firing
+        RadarTrack track = monitor.getactivetrack();
+        //todo better way to handle instead of passing nlul to stop firing
+        monitor.getMount(mountBlock);
+        controller.setTrack(track);
         controller.setSafeZones(monitor.safeZones);
         controller.setTarget(targetPos);
         controller.setFiringTarget(targetPos, targetingConfig);
+
     }
 }

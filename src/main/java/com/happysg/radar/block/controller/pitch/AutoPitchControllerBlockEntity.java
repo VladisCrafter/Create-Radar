@@ -2,9 +2,13 @@ package com.happysg.radar.block.controller.pitch;
 
 import com.happysg.radar.block.controller.firing.FiringControlBlockEntity;
 import com.happysg.radar.block.datalink.screens.TargetingConfig;
+import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.CannonTargeting;
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import org.slf4j.Logger;
 import com.happysg.radar.compat.cbc.VS2CannonTargeting;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
@@ -16,6 +20,8 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import rbasamoyai.createbigcannons.CreateBigCannons;
+import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlock;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
@@ -30,9 +36,12 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     private double targetAngle;
     public boolean isRunning;
     private boolean artillery = false;
+    private RadarTrack track;
 
     //abstract class for firing control to avoid cluttering pitch logic
     public FiringControlBlockEntity firingControl;
+    public CannonMountBlockEntity mountBlock;
+
 
     public AutoPitchControllerBlockEntity(BlockEntityType<?> typeIn, BlockPos pos, BlockState state) {
         super(typeIn, pos, state);
@@ -67,6 +76,12 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             }
         }
     }
+    public BlockPos getMount(){
+        BlockPos cannonMountPos = getBlockPos().relative(getBlockState().getValue(AutoPitchControllerBlock.HORIZONTAL_FACING));
+        return cannonMountPos;
+    }
+
+
 
     private void tryRotateCannon() {
         if (level == null || level.isClientSide())
@@ -223,8 +238,10 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             }
         }
     }
-
-    public void setFiringTarget(Vec3 targetPos, TargetingConfig targetingConfig) {
+    public void setTrack(RadarTrack track){
+        this.track = track;
+    }
+    public void setFiringTarget(Vec3 targetPos, TargetingConfig targetingConfig ) {
         LOGGER.debug("PitchController.setFiringTarget: targetPos={}", targetPos);
 
         if (firingControl == null) {
@@ -240,7 +257,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return;
         }
 
-        firingControl.setTarget(targetPos, targetingConfig);
+        firingControl.setTarget(targetPos, targetingConfig, track);
     }
 
     public void setSafeZones(List<AABB> safeZones) {
