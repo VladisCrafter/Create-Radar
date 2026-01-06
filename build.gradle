@@ -133,7 +133,7 @@ dependencies {
 
 
     //Create
-    implementation(fg.deobf("com.simibubi.create:create-${minecraft_version}:${create_version}:slim"))
+    implementation(fg.deobf("com.simibubi.create:create-${minecraft_version}:${create_version}") { transitive = false })
     implementation(fg.deobf("net.createmod.ponder:Ponder-Forge-${minecraft_version}:${ponder_version}"))
     compileOnly(fg.deobf("dev.engine-room.flywheel:flywheel-forge-api-${minecraft_version}:${flywheel_version}"))
     runtimeOnly(fg.deobf("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}"))

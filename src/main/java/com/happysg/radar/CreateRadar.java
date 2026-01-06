@@ -3,8 +3,6 @@ package com.happysg.radar;
 import com.happysg.radar.block.controller.id.IDManager;
 import com.happysg.radar.block.datalink.DataLinkBlockItem;
 import com.happysg.radar.block.monitor.MonitorInputHandler;
-import com.happysg.radar.commands.DebugBeam;
-import com.happysg.radar.commands.ServoTest;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.CBCCompatRegister;
 import com.happysg.radar.compat.cbcmw.CBCMWCompatRegister;
@@ -51,8 +49,7 @@ public class CreateRadar {
     public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(MODID);
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
-        DebugBeam.register(event.getDispatcher());
-        //ServoTest.register(event.getDispatcher());
+        ModCommands.register(event.getDispatcher());
     }
 
     public CreateRadar() {

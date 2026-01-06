@@ -1,7 +1,6 @@
 package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
-import com.happysg.radar.block.Test.TestBlock;
 import com.happysg.radar.block.controller.id.IDBlock;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlock;
 import com.happysg.radar.block.controller.track.TrackControllerBlock;
@@ -176,10 +175,6 @@ public class ModBlocks {
                     .properties(BlockBehaviour.Properties::noOcclusion)
                     .transform(axeOrPickaxe())
                     .blockstate((c, p) -> p.horizontalBlock(c.getEntry(), AssetLookup.standardModel(c, p)))
-                    .simpleItem()
-                    .register();
-    public static final BlockEntry<TestBlock> TEST_BLOCK = REGISTRATE.block("test_block", TestBlock::new)
-                    .initialProperties(SharedProperties::softMetal)
                     .simpleItem()
                     .register();
 

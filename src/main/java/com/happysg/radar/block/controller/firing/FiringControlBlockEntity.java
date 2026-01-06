@@ -123,23 +123,30 @@ public class FiringControlBlockEntity {
 
 
     private boolean checkLineOfSight(Vec3 target) {
-        if (activetrack == null || target == null)
+        if (activetrack == null)
             return false;
+
         float height = activetrack.getEnityHeight();
         int blocksHigh = (int) Math.ceil(height);
+
         Vec3 start = cannonMount.getBlockPos().getCenter().add(0, 2, 0);
-        for (int h = blocksHigh - 1; h >= 0; h--) {
-            // center of each block, top-first
+        if(target == null){
+            return false;
+        }
+        for (int h = 0; h < blocksHigh; h++) {
+            // Check center of each block of height
             Vec3 end = target.add(0, h + 0.5, 0);
+
+
+
             if (rayClear(start, end).isClear()) {
-                offset = h + 0.5f; // highest valid clear point
+                offset = h + 0.5f;   // store which height worked (center of block)
                 return true;
             }
         }
 
-        return false; // nothing was clear
+        return false; // none of the height steps were clear
     }
-
 
     private void debugRay(ServerLevel server, Vec3 start, Vec3 end, RayResult result) {
 

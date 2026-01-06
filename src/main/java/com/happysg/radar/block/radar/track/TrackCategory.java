@@ -8,7 +8,6 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.item.ItemEntity;
-import org.valkyrienskies.core.impl.shadow.M;
 
 public enum TrackCategory {
     PLAYER,
@@ -23,12 +22,23 @@ public enum TrackCategory {
 
 
     public static TrackCategory get(Entity entity) {
-            if (entity instanceof Player) return PLAYER;
-            if (entity instanceof Enemy) return HOSTILE;
-            if (entity instanceof Mob) return ANIMAL;
-            if (entity instanceof Projectile) return PROJECTILE;
-            if (entity instanceof AbstractContraptionEntity) return CONTRAPTION;
-            if (entity instanceof ItemEntity) return ITEM;
-            return MISC;
+        if (entity instanceof Player) {
+            return PLAYER;
+        } else if (entity instanceof Mob) {
+            if (entity instanceof Animal || entity instanceof Mob) {
+                return ANIMAL;
+            }
+            if (entity instanceof Enemy) {
+                return HOSTILE;
+            }
+            return MOB;
+        } else if (entity instanceof ItemEntity){
+            return ITEM;
+        } else if (entity instanceof AbstractContraptionEntity) {
+            return CONTRAPTION;
+        } else if (entity instanceof Projectile) {
+            return PROJECTILE;
         }
+        return MISC;
+    }
 }
