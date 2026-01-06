@@ -148,7 +148,7 @@ dependencies {
 
     //CBCAT
     //replace implementation instead of compileOnly after CBCAT is compatible with 6.0
-    compileOnly fg.deobf("maven.modrinth:create-big-cannons-advanced-technologies:${cbc_at_version}-${minecraft_version}")
+    implementation fg.deobf("maven.modrinth:create-big-cannons-advanced-technologies:${cbc_at_version}-${minecraft_version}")
 
 
     //JEI

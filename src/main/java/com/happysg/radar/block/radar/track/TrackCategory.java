@@ -25,7 +25,7 @@ public enum TrackCategory {
         if (entity instanceof Player) {
             return PLAYER;
         } else if (entity instanceof Mob) {
-            if (entity instanceof Animal) {
+            if (entity instanceof Animal || entity instanceof Mob) {
                 return ANIMAL;
             }
             if (entity instanceof Enemy) {
