@@ -25,9 +25,11 @@ import net.minecraft.world.level.LevelAccessor;
 
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModContainer;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -50,6 +52,10 @@ public class CreateRadar {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(MODID);
+    @SubscribeEvent
+    public void onRegisterCommands(RegisterCommandsEvent event) {
+        ModCommands.register(event.getDispatcher());
+    }
 
     public CreateRadar() {
         getLogger().info("Initializing Create Radar!");
@@ -87,6 +93,7 @@ public class CreateRadar {
             CCCompatRegister.registerPeripherals();
     }
 
+
     private static void clientTick(TickEvent.ClientTickEvent event) {
         DataLinkBlockItem.clientTick();
     }
@@ -99,6 +106,8 @@ public class CreateRadar {
         return new ResourceLocation(MODID, path);
     }
 
+
+
     public static String toHumanReadable(String key) {
         String s = key.replace("_", " ");
         s = Arrays.stream(StringUtils.splitByCharacterTypeCamelCase(s))
@@ -110,11 +119,11 @@ public class CreateRadar {
     public static void clientInit(final FMLClientSetupEvent event) {
         // Ponder registration (optional, currently commented out)
         // PonderSceneRegistrationHelper<ResourceLocation> sceneHelper = PonderSceneRegistrationHelper.forMod(CreateRadar.MODID);
-     //   ModPonderIndex.register(sceneHelper);
+        // ModPonderIndex.register(sceneHelper);
+        //
+        // PonderTagRegistrationHelper<ResourceLocation> tagHelper = PonderTagRegistrationHelper.forMod(CreateRadar.MODID);
+        // ModPonderTags.register(tagHelper);
 
-       //  PonderTagRegistrationHelper<ResourceLocation> tagHelper = PonderTagRegistrationHelper.forMod(CreateRadar.MODID);
-     //   ModPonderTags.register(tagHelper);
-        BlockEntityRenderers.register(ModBlockEntityTypes.NETWORK_FILTER_BLOCK_ENTITY.get(), NetworkFiltererRenderer::new);
     }
 
     public static void onLoadComplete(FMLLoadCompleteEvent event) {
@@ -137,7 +146,6 @@ public class CreateRadar {
         event.enqueueWork(() -> {
             // Must be registered after registries open
             ModContraptionTypes.register();
-
             // Stress values
             BlockStressValues.IMPACTS.register(ModBlocks.RADAR_BEARING_BLOCK.get(), () -> 4d);
             BlockStressValues.IMPACTS.register(ModBlocks.AUTO_YAW_CONTROLLER_BLOCK.get(), () -> 128d);
@@ -154,4 +162,6 @@ public class CreateRadar {
         ModDisplayBehaviors.register();
         AllDataBehaviors.registerDefaults();
     }
+
+
 }
