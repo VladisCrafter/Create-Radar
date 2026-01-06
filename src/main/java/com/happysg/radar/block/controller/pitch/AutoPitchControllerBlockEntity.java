@@ -1,50 +1,64 @@
 package com.happysg.radar.block.controller.pitch;
 
-import com.happysg.radar.block.controller.firing.FiringControlBlockEntity;
-import com.happysg.radar.block.datalink.screens.TargetingConfig;
-import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.block.network.WeaponNetwork;
+import com.happysg.radar.block.network.WeaponNetworkRegistry;
+import com.happysg.radar.block.network.WeaponNetworkUnit;
 import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.cbc.CannonTargeting;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import org.slf4j.Logger;
-import com.happysg.radar.compat.cbc.VS2CannonTargeting;
-import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
-import rbasamoyai.createbigcannons.CreateBigCannons;
-import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlock;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
 
-import java.util.ArrayList;
-import java.util.List;
-
-public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
+public class AutoPitchControllerBlockEntity extends KineticBlockEntity implements WeaponNetworkUnit {
     private static final Logger LOGGER = LogUtils.getLogger();
+    private WeaponNetwork weaponNetwork;
 
     private static final double TOLERANCE = 0.1;
     private double targetAngle;
     public boolean isRunning;
-    private boolean artillery = false;
-    private RadarTrack track;
-
-    //abstract class for firing control to avoid cluttering pitch logic
-    public FiringControlBlockEntity firingControl;
-    public CannonMountBlockEntity mountBlock;
-
+    private boolean artilleryMode = false;
 
     public AutoPitchControllerBlockEntity(BlockEntityType<?> typeIn, BlockPos pos, BlockState state) {
         super(typeIn, pos, state);
+    }
+    public void onPlaced() {
+        if (!(level instanceof ServerLevel serverLevel)) return;
+
+        for (Direction direction : Direction.values()) {
+            BlockEntity neighborBE = level.getBlockEntity(worldPosition.relative(direction));
+            if (neighborBE instanceof CannonMountBlockEntity cannon) {
+                WeaponNetwork weaponNetwork = WeaponNetworkRegistry.networkContains(worldPosition);
+                WeaponNetwork cannonWeaponNetwork = WeaponNetworkRegistry.networkContains(cannon.getBlockPos());
+
+                if (weaponNetwork != null) { // Shouldn't happen normally
+                    setWeaponNetwork(weaponNetwork);
+                } else if (cannonWeaponNetwork != null && cannonWeaponNetwork.getAutoPitchController() == null) {
+                    cannonWeaponNetwork.setController(this);
+                    setWeaponNetwork(cannonWeaponNetwork);
+                } else if (WeaponNetworkRegistry.networkContains(cannon.getBlockPos()) == null) {
+                    WeaponNetwork newNetwork = new WeaponNetwork(level);
+                    newNetwork.setCannonMount(cannon);
+                    newNetwork.setController(this);
+                    setWeaponNetwork(newNetwork);
+                }
+            }
+        }
+    }
+
+    public void onRemoved() {
+        if (weaponNetwork != null && weaponNetwork.getAutoPitchController() == this) {
+            weaponNetwork.setAutoPitchController(null);
+            setWeaponNetwork(null);
+        }
     }
 
     @Override
@@ -55,7 +69,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             BlockPos cannonMountPos = getBlockPos().relative(getBlockState().getValue(AutoPitchControllerBlock.HORIZONTAL_FACING));
             if (level != null && level.getBlockEntity(cannonMountPos) instanceof CannonMountBlockEntity mount) {
                 LOGGER.debug("  → Level not null and cannon pos good");
-                firingControl = new FiringControlBlockEntity(this, mount);
+
             }
         }
     }
@@ -68,10 +82,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
                 LOGGER.debug("pitch.tick() → isRunning={}", isRunning);
                 if (isRunning) {
                     tryRotateCannon();
-                }
-                if (firingControl != null) {
-                    LOGGER.debug("  → firingcontrol is not null");
-                    firingControl.tick();
                 }
             }
         }
@@ -175,93 +185,15 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         compound.putBoolean("IsRunning", isRunning);
     }
 
-    public void setTarget(Vec3 targetPos) {
-        if (level == null || level.isClientSide()) {
-            LOGGER.debug(" • bailing: client side or null target → isRunning=false");
-            return;
-        }
-
-        if (targetPos == null) {
-            isRunning = false;
-            return;
-        }
-
-        LOGGER.debug("→ setTarget called with {}", targetPos);
 
 
-        if (level.getBlockEntity(getBlockPos().relative(getBlockState().getValue(AutoPitchControllerBlock.HORIZONTAL_FACING))) instanceof CannonMountBlockEntity mount) {
-            if(PhysicsHandler.isBlockInShipyard(level, this.getBlockPos())) {
-                List<List<Double>> angles = VS2CannonTargeting.calculatePitchAndYawVS2(mount, targetPos, (ServerLevel) level);
-                if(angles == null) return;
-                if(angles.isEmpty()) return;
-                if(angles.get(0).isEmpty()) return;
-                this.targetAngle = angles.get(0).get(0);
-
-                LOGGER.debug("  Computed targetAngle (CBC) = {} rad {}}", this.targetAngle, Math.toDegrees(this.targetAngle));
-
-                if(firingControl == null) return;
-                LOGGER.debug(" Firing control not null");
-                this.firingControl.cannonMount.setYaw(angles.get(0).get(1).floatValue());
-                isRunning = true;
-            } else{
-                List<Double> angles = CannonTargeting.calculatePitch(mount, targetPos, (ServerLevel) level);
-                if (angles == null) {
-                    LOGGER.debug("   • calculatePitch returned null → aborting, isRunning=false");
-                    isRunning = false;
-                    return;
-                }
-                if (angles.isEmpty()) {
-                    LOGGER.debug("   • calculatePitch returned empty list → aborting, isRunning=false");
-                    isRunning = false;
-                    return;
-                }
-                LOGGER.debug("   • raw angles = {}", angles);
-                List<Double> usableAngles = new ArrayList<>();
-                for (double angle : angles) {
-                    if (mount.getContraption() == null) break;
-                    if (angle < mount.getContraption().maximumElevation() && angle > -mount.getContraption().maximumDepression()) {
-                        usableAngles.add(angle);
-                    }
-                }
-
-                LOGGER.debug("   • usable angles = {}", usableAngles);
-
-                if (artillery && usableAngles.size() == 2) {
-                    targetAngle = angles.get(1);
-                } else if (!usableAngles.isEmpty()) {
-                    targetAngle = usableAngles.get(0);
-                }
-
-                isRunning = true;
-                LOGGER.debug("   • computed targetAngle={}° ({} rad) → isRunning=true", this.targetAngle, Math.toDegrees(this.targetAngle));
-                LOGGER.debug(">>> pitch.setTarget() on SERVER at {} → target={}", this.worldPosition, targetPos);
-            }
-        }
-    }
-    public void setTrack(RadarTrack track){
-        this.track = track;
-    }
-    public void setFiringTarget(Vec3 targetPos, TargetingConfig targetingConfig ) {
-        LOGGER.debug("PitchController.setFiringTarget: targetPos={}", targetPos);
-
-        if (firingControl == null) {
-            BlockPos mountPos = getBlockPos().relative(getBlockState().getValue(AutoPitchControllerBlock.HORIZONTAL_FACING));
-            if (level != null && level.getBlockEntity(mountPos) instanceof CannonMountBlockEntity mount) {
-                LOGGER.debug("   • no mount at {} → isRunning=false", mountPos);
-                firingControl = new FiringControlBlockEntity(this, mount);
-            }
-        }
-
-        if (firingControl == null) {
-            LOGGER.debug("PitchController: No firingControl available, skipping setFiringTarget");
-            return;
-        }
-
-        firingControl.setTarget(targetPos, targetingConfig, track);
+    public WeaponNetwork getWeaponNetwork() {
+        return weaponNetwork;
     }
 
-    public void setSafeZones(List<AABB> safeZones) {
-        if (firingControl == null)
-            return;
-        firingControl.setSafeZones(safeZones);    }
+    public void setWeaponNetwork(WeaponNetwork weaponNetwork) {
+        this.weaponNetwork = weaponNetwork;
+    }
+    public BlockEntity getBlockEntity() {return this;}
+
 }

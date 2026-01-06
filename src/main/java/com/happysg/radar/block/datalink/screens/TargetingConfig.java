@@ -4,10 +4,10 @@ import com.happysg.radar.block.radar.track.TrackCategory;
 import net.minecraft.nbt.CompoundTag;
 
 public record TargetingConfig(boolean player, boolean contraption, boolean mob, boolean animal, boolean projectile,
-                              boolean autoTarget, boolean autoFire, boolean lineOfSight) {
+                              boolean autoTarget, boolean autoFire, boolean lineofSight) {
 
-    public static final TargetingConfig DEFAULT = new TargetingConfig(false, false, true, true, false, false, true, false);
-
+    public static final TargetingConfig DEFAULT = new TargetingConfig(true, true, true, true, true, true, true, true);
+    public  static  boolean    artilleryMode;
     public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         tag.putBoolean("player", player);
@@ -17,7 +17,8 @@ public record TargetingConfig(boolean player, boolean contraption, boolean mob, 
         tag.putBoolean("projectile", projectile);
         tag.putBoolean("autoTarget", autoTarget);
         tag.putBoolean("autoFire", autoFire);
-        tag.putBoolean("lineSight",lineOfSight);
+        tag.putBoolean("lineofSight",lineofSight);
+        tag.putBoolean("artilleryMode",artilleryMode);
         return tag;
     }
 
@@ -33,7 +34,8 @@ public record TargetingConfig(boolean player, boolean contraption, boolean mob, 
                 targeting.getBoolean("projectile"),
                 targeting.getBoolean("autoTarget"),
                 targeting.getBoolean("autoFire"),
-                targeting.getBoolean("lineSight")
+                targeting.getBoolean("lineofSight")
+                //targeting.getBoolean("artillerymode")
         );
     }
 
@@ -47,4 +49,9 @@ public record TargetingConfig(boolean player, boolean contraption, boolean mob, 
             default -> false;
         };
     }
+
+    public boolean artilleryMode() {
+        return false;
+    }
+
 }

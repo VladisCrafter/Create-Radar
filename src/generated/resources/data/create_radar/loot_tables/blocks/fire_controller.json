@@ -11,11 +11,11 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "create_radar:radar_guidance_block"
+          "name": "create_radar:fire_controller"
         }
       ],
       "rolls": 1.0
     }
   ],
-  "random_sequence": "create_radar:blocks/radar_guidance_block"
+  "random_sequence": "create_radar:blocks/fire_controller"
 }

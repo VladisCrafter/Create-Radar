@@ -14,18 +14,18 @@ import com.simibubi.create.api.equipment.goggles.IHaveHoveringInformation;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
@@ -48,10 +48,7 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     IRadar radar;
     protected String hoveredEntity;
     protected String selectedEntity;
-    protected RadarTrack activetrack;
-    protected BlockPos mountBlock;
-
-
+    public long timeOfLastSelect = 0;
 
     private static final Logger LOGGER = LogUtils.getLogger();
     Collection<RadarTrack> cachedTracks = List.of();
@@ -209,7 +206,22 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     public boolean isController() {
         return getBlockPos().equals(controller) || controller == null;
     }
-
+    public AABB getMultiblockBounds() {
+        BlockPos pos = getBlockPos();
+        if (level.getBlockEntity(pos) instanceof MonitorBlockEntity monitor) {
+            if (monitor.getControllerPos() == null)
+                return new AABB(pos);
+            if (!level.getBlockState(monitor.getControllerPos()).hasProperty(MonitorBlock.FACING))
+                return new AABB(pos);
+            Direction facing = level.getBlockState(monitor.getControllerPos())
+                    .getValue(MonitorBlock.FACING).getClockWise();
+            VoxelShape shape = level.getBlockState(monitor.getControllerPos())
+                    .getShape(level, monitor.getControllerPos());
+            return shape.bounds()
+                    .move(monitor.getControllerPos()).expandTowards(facing.getStepX() * (monitor.radius - 1), monitor.radius - 1, facing.getStepZ() * (monitor.radius - 1));
+        }
+        return new AABB(pos);
+    }
     @Override
     protected AABB createRenderBoundingBox() {
         return super.createRenderBoundingBox().inflate(10);
@@ -445,4 +457,8 @@ public class MonitorBlockEntity extends SmartBlockEntity implements IHaveHoverin
     public String getSelectedEntity() {
         return selectedEntity;
     }
+    public void setSelectedEntity(String selectedEntity) {
+        this.selectedEntity = selectedEntity;
+    }
+
 }

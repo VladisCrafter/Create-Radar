@@ -6,7 +6,9 @@ import com.happysg.radar.math3.analysis.solvers.BrentSolver;
 import com.happysg.radar.math3.analysis.solvers.UnivariateSolver;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
-
+import com.happysg.radar.math3.analysis.UnivariateFunction;
+import com.happysg.radar.math3.analysis.solvers.BrentSolver;
+import com.happysg.radar.math3.analysis.solvers.UnivariateSolver;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
@@ -22,6 +24,18 @@ import static java.lang.Math.toRadians;
 
 public class CannonTargeting {
     private static final Logger LOGGER = LogUtils.getLogger();
+    public static Double calculateYaw(CannonMountBlockEntity cannonMountBlockEntity, Vec3 targetPos) {
+        Vec3 cannonCenter = cannonMountBlockEntity.getBlockPos().getCenter();
+        double dx = cannonCenter.x - targetPos.x;
+        double dz = cannonCenter.z - targetPos.z;
+
+        Double targetYaw = Math.toDegrees(Math.atan2(dz, dx)) + 90;
+        // Normalize yaw to 0-360 degrees
+        if (targetYaw < 0) {
+            targetYaw += 360;
+        }
+        return targetYaw;
+    }
 
     public static double calculateProjectileYatX(double speed, double dX, double thetaRad,double drag, double g ) {
         double log = log(1 - (drag * dX) / (speed * Math.cos(thetaRad)));

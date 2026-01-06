@@ -1,7 +1,9 @@
 package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
-import com.happysg.radar.block.Test.TestBlockEntity;
+import com.happysg.radar.block.controller.firing.FireControllerBlockEntity;
+import com.happysg.radar.block.controller.networkfilter.NetworkFiltererBlockEntity;
+import com.happysg.radar.block.controller.networkfilter.NetworkFiltererRenderer;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
 import com.happysg.radar.block.controller.track.TrackControllerBlockEntity;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
@@ -15,10 +17,6 @@ import com.simibubi.create.content.contraptions.bearing.BearingRenderer;
 import com.simibubi.create.content.contraptions.bearing.BearingVisual;
 import com.simibubi.create.content.kinetics.base.ShaftRenderer;
 import com.simibubi.create.content.kinetics.base.ShaftVisual;
-import com.simibubi.create.content.kinetics.gearbox.GearboxVisual;
-import com.simibubi.create.content.kinetics.simpleRelays.encased.EncasedCogRenderer;
-import com.simibubi.create.content.kinetics.simpleRelays.encased.EncasedShaftBlock;
-import com.simibubi.create.content.kinetics.transmission.SplitShaftRenderer;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 
 import static com.happysg.radar.CreateRadar.REGISTRATE;
@@ -66,11 +64,14 @@ public class ModBlockEntityTypes {
             .blockEntity("track_controller", TrackControllerBlockEntity::new)
             .validBlocks(ModBlocks.TRACK_CONTROLLER_BLOCK)
             .register();
-    public static final BlockEntityEntry<TestBlockEntity> TEST_BE = REGISTRATE
-            .blockEntity("test_block_entity", TestBlockEntity::new)
-            .validBlocks(ModBlocks.TEST_BLOCK)
+    public static final BlockEntityEntry<FireControllerBlockEntity> FIRE_CONTROLLER = REGISTRATE
+            .blockEntity("fire_controller", FireControllerBlockEntity::new)
+            .validBlocks(ModBlocks.FIRE_CONTROLLER_BLOCK)
             .register();
-
+    public static final BlockEntityEntry<NetworkFiltererBlockEntity> NETWORK_FILTER_BLOCK_ENTITY = REGISTRATE.blockEntity("network_filterer_block_entity", NetworkFiltererBlockEntity::new)
+            .validBlocks(ModBlocks.NETWORK_FILTERER_BLOCK)
+            .renderer(()-> NetworkFiltererRenderer::new)
+            .register();
     public static void register() {
         CreateRadar.getLogger().info("Registering block entity types!");
     }

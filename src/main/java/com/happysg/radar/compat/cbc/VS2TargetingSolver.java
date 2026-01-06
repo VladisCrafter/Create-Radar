@@ -1,5 +1,6 @@
 package com.happysg.radar.compat.cbc;
 import com.happysg.radar.math3.analysis.MultivariateFunction;
+<<<<<<< HEAD
 import com.happysg.radar.math3.optim.InitialGuess;
 import com.happysg.radar.math3.optim.MaxEval;
 import com.happysg.radar.math3.optim.PointValuePair;
@@ -12,6 +13,14 @@ import com.happysg.radar.math3.random.RandomVectorGenerator;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
+=======
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+import com.happysg.radar.math3.optim.*;
+import com.happysg.radar.math3.optim.nonlinear.scalar.*;
+import com.happysg.radar.math3.optim.nonlinear.scalar.noderiv.*;
+import com.happysg.radar.math3.random.RandomVectorGenerator;
+>>>>>>> master
 import org.joml.Matrix4dc;
 import org.joml.Vector3f;
 import org.valkyrienskies.core.api.ships.Ship;

@@ -2,7 +2,9 @@ package com.happysg.radar.block.monitor;
 
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
+import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.registry.ModRenderTypes;
 import net.createmod.catnip.theme.Color;
@@ -55,19 +57,23 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         if (!blockEntity.isController()) {
             return;
         }
+        ms.pushPose();
+        try{
+            // Set up transformation matrix for the monitor face
+            setupMonitorTransform(ms, blockEntity.getBlockState().getValue(MonitorBlock.FACING));
 
-        // Set up transformation matrix for the monitor face
-        setupMonitorTransform(ms, blockEntity.getBlockState().getValue(MonitorBlock.FACING));
+            // Get radar and render if it's running
+            blockEntity.getRadar().ifPresent(radar -> {
+                if (!radar.isRunning()) {
+                    return;
+                }
 
-        // Get radar and render if it's running
-        blockEntity.getRadar().ifPresent(radar -> {
-            if (!radar.isRunning()) {
-                return;
-            }
-
-            // Render all radar display elements
-            renderRadarDisplay(radar, blockEntity, ms, bufferSource, partialTicks);
-        });
+                // Render all radar display elements
+                renderRadarDisplay(radar, blockEntity, ms, bufferSource, partialTicks);
+            });
+        }finally {
+            ms.popPose();
+        }
     }
 
     /**
@@ -237,11 +243,13 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         // Calculate track position relative to radar
         Vec3 radarPos = PhysicsHandler.getWorldPos(monitor.getLevel(), radar.getWorldPos()).getCenter();
         Vec3 relativePos = track.position().subtract(radarPos);
+        if (Mods.VALKYRIENSKIES.isLoaded()) {
+            relativePos = VS2Utils.getShipVecDirectionTransform(relativePos, monitor);
+        }
         if (radar.renderRelativeToMonitor()) {
             //todo change for plane radar
         }
         // Transform to display coordinates
-        //todo handle direction on vs2 ships
         float xOff = calculateTrackOffset(relativePos, monitorFacing, scale, true);
         float zOff = calculateTrackOffset(relativePos, monitorFacing, scale, false);
 

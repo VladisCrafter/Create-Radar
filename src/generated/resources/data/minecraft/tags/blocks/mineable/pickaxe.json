@@ -10,6 +10,7 @@
     "create_radar:radar_plate_block",
     "create_radar:auto_yaw_controller",
     "create_radar:track_controller",
-    "create_radar:auto_pitch_controller"
+    "create_radar:auto_pitch_controller",
+    "create_radar:fire_controller"
   ]
 }

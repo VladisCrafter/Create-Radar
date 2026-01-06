@@ -19,6 +19,7 @@ public enum TrackCategory {
     PROJECTILE,
     CONTRAPTION,
     ITEM,
+    ITEM,
     MISC;
 
 

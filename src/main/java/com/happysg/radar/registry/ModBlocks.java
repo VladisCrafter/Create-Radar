@@ -1,8 +1,9 @@
 package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
-import com.happysg.radar.block.Test.TestBlock;
+import com.happysg.radar.block.controller.firing.FireControllerBlock;
 import com.happysg.radar.block.controller.id.IDBlock;
+import com.happysg.radar.block.controller.networkfilter.NetworkFiltererBlock;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlock;
 import com.happysg.radar.block.controller.track.TrackControllerBlock;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlock;
@@ -13,12 +14,12 @@ import com.happysg.radar.block.radar.bearing.RadarBearingBlock;
 import com.happysg.radar.block.radar.plane.PlaneRadarBlock;
 import com.happysg.radar.block.radar.receiver.AbstractRadarFrame;
 import com.happysg.radar.block.radar.receiver.RadarReceiverBlock;
-import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.foundation.data.AssetLookup;
 import com.simibubi.create.foundation.data.BuilderTransformers;
 import com.simibubi.create.foundation.data.SharedProperties;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraftforge.client.model.generators.ConfiguredModel;
@@ -178,10 +179,34 @@ public class ModBlocks {
                     .blockstate((c, p) -> p.horizontalBlock(c.getEntry(), AssetLookup.standardModel(c, p)))
                     .simpleItem()
                     .register();
-    public static final BlockEntry<TestBlock> TEST_BLOCK = REGISTRATE.block("test_block", TestBlock::new)
+    public static final BlockEntry<FireControllerBlock> FIRE_CONTROLLER_BLOCK =
+            REGISTRATE.block("fire_controller", FireControllerBlock::new)
                     .initialProperties(SharedProperties::softMetal)
+                    .blockstate((context, provider) -> {
+                        provider.getVariantBuilder(context.get())
+                                .partialState().with(FireControllerBlock.POWERED, false)
+                                .modelForState()
+                                .modelFile(provider.models().cubeAll("off",new ResourceLocation("create_radar","block/fire_controller")))
+                                .addModel()
+                                .partialState().with(FireControllerBlock.POWERED, true)
+                                .modelForState()
+                                .modelFile(provider.models().cubeAll("on",new ResourceLocation("create_radar","block/fire_controller_on")))
+                                .addModel();
+                    })                    .properties(BlockBehaviour.Properties::noOcclusion)
+                    .transform(axeOrPickaxe())
                     .simpleItem()
                     .register();
+    public static final BlockEntry<NetworkFiltererBlock> NETWORK_FILTERER_BLOCK =
+            REGISTRATE.block("network_filterer", NetworkFiltererBlock::new)
+                    .initialProperties(SharedProperties::softMetal)
+                    .properties(BlockBehaviour.Properties::noOcclusion)
+                    .transform(axeOrPickaxe())
+                    .blockstate((ctx, prov) -> prov.directionalBlock(ctx.getEntry(),
+                            prov.models().getExistingFile(ctx.getId()), 0))
+                    .simpleItem()
+                    .register();
+
+
 
 
 

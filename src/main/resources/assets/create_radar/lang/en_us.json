@@ -15,7 +15,11 @@
   "block.create_radar.track_controller": "Track Controller",
   "create_radar.card.remove_entry": "Remove Entry",
   "create_radar.data_link.fail": "Data Link has no valid target, try placing it again",
+<<<<<<< HEAD
   "create_radar.data_link.link_to_monitor": "Link to Monitor Or Cannon Mount",
+=======
+  "create_radar.data_link.link_to_monitor_or_mount": "Link to Monitor Or Cannon Mount",
+>>>>>>> master
   "create_radar.data_link.title": "Data Link",
   "create_radar.detection_filter.title": "Detection Filter",
   "create_radar.display_source.pitch_controller": "Auto Pitch Controller",
@@ -94,8 +98,11 @@
   "create_radar.ship_list.enter_code": "Enter Identification Code",
   "create_radar.ship_list.title": "Ship Filtering",
   "create_radar.target_filter.title": "Targeting Filter",
+<<<<<<< HEAD
   "display_link.success": "Success!",
   "display_link.set":"Target Set",
+=======
+>>>>>>> master
   "item.create_radar.guided_fuze": "Guided Fuze",
   "item.create_radar.ident_filter_item": "Identification Filter",
   "item.create_radar.radar_filter_item": "Detection Filter",
