@@ -4,6 +4,7 @@ import com.happysg.radar.compat.Mods;
 import com.happysg.radar.mixin.AbstractCannonAccessor;
 import com.happysg.radar.mixin.AutoCannonAccessor;
 import com.mojang.logging.LogUtils;
+import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import net.minecraft.core.BlockPos;
 import java.util.function.Predicate;
 import net.minecraft.core.Direction;
@@ -14,6 +15,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
+import org.valkyrienskies.core.impl.shadow.Ab;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.MountedAutocannonContraption;
@@ -101,7 +103,7 @@ public class CannonUtil {
     public static float getRotarySpeed( AbstractMountedCannonContraption contraptionEntity) {
         if(!Mods.CBCMODERNWARFARE.isLoaded()) return 0f;
         if(contraptionEntity == null) return 0f;
-        Map<BlockPos, BlockEntity> presentBlockEntities = contraptionEntity.entity.getContraption().presentBlockEntities;
+        Map<BlockPos, BlockEntity> presentBlockEntities = contraptionEntity.presentBlockEntities;
         LOGGER.debug(" → presentBlockEntities count = {}", presentBlockEntities.size());
         if(presentBlockEntities.isEmpty()) return 0f;
         int barrelCount = 0;
@@ -124,7 +126,7 @@ public class CannonUtil {
     public static float getMediumCannonSpeed(AbstractMountedCannonContraption contraptionEntity) {
         if(!Mods.CBCMODERNWARFARE.isLoaded()) return 0f;
         if(contraptionEntity == null) return 0f;
-        Map<BlockPos, BlockEntity> presentBlockEntities = contraptionEntity.entity.getContraption().presentBlockEntities;
+        Map<BlockPos, BlockEntity> presentBlockEntities = contraptionEntity.presentBlockEntities;
         if(presentBlockEntities.isEmpty()) return 0f;
         int barrelCount = 0;
         MediumcannonMaterial material = null;
@@ -143,9 +145,10 @@ public class CannonUtil {
         return baseSpeed+speedIncrease*material.properties().speedIncreasePerBarrel();
     }
 
-    public static int getBigCannonSpeed(ServerLevel level, PitchOrientedContraptionEntity contraptionEntity) {
+    public static int getBigCannonSpeed(ServerLevel level, AbstractMountedCannonContraption cannon ,PitchOrientedContraptionEntity contraptionEntity) {
         if(contraptionEntity == null) return 0;
-        Map<BlockPos, BlockEntity> presentBlockEntities = contraptionEntity.getContraption().presentBlockEntities;
+
+        Map<BlockPos, BlockEntity> presentBlockEntities = cannon.presentBlockEntities;
         int speeed = 0;
         for (BlockEntity blockEntity : presentBlockEntities.values()) {
             if (!(blockEntity instanceof IBigCannonBlockEntity cannonBlockEntity)) continue;
@@ -171,8 +174,8 @@ public class CannonUtil {
         );
 
         if (isBigCannon(cannon)) {
-            LOGGER.debug("   • BigCannon speed = {}", getBigCannonSpeed(level, (PitchOrientedContraptionEntity)cannon.entity));
-            return getBigCannonSpeed(level, (PitchOrientedContraptionEntity)cannon.entity);
+            LOGGER.debug("   • BigCannon speed = {}", getBigCannonSpeed(level,cannon, (PitchOrientedContraptionEntity)cannon.entity));
+            return getBigCannonSpeed(level, cannon ,(PitchOrientedContraptionEntity)cannon.entity);
         } else if (isAutoCannon(cannon)) {
             LOGGER.debug("   • AutoCannon speed = {}", getAutoCannonSpeed(cannon));
             return getAutoCannonSpeed(cannon);

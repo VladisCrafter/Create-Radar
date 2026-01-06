@@ -1,4 +1,4 @@
-package com.happysg.radar.registry;
+package com.happysg.radar.commands;
 
 import com.happysg.radar.config.RadarConfig;
 import com.mojang.brigadier.CommandDispatcher;
@@ -6,9 +6,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 
-import java.util.function.Supplier;
-
-public class ModCommands {
+public class DebugBeam {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
                 Commands.literal("radardebug")
@@ -31,5 +29,6 @@ public class ModCommands {
 
         return 1;
     }
+
 
 }
