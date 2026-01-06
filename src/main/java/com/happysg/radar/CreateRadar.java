@@ -119,11 +119,11 @@ public class CreateRadar {
     public static void clientInit(final FMLClientSetupEvent event) {
         // Ponder registration (optional, currently commented out)
         // PonderSceneRegistrationHelper<ResourceLocation> sceneHelper = PonderSceneRegistrationHelper.forMod(CreateRadar.MODID);
-        // ModPonderIndex.register(sceneHelper);
-        //
-        // PonderTagRegistrationHelper<ResourceLocation> tagHelper = PonderTagRegistrationHelper.forMod(CreateRadar.MODID);
-        // ModPonderTags.register(tagHelper);
+     //   ModPonderIndex.register(sceneHelper);
 
+       //  PonderTagRegistrationHelper<ResourceLocation> tagHelper = PonderTagRegistrationHelper.forMod(CreateRadar.MODID);
+     //   ModPonderTags.register(tagHelper);
+        BlockEntityRenderers.register(ModBlockEntityTypes.NETWORK_FILTER_BLOCK_ENTITY.get(), NetworkFiltererRenderer::new);
     }
 
     public static void onLoadComplete(FMLLoadCompleteEvent event) {
