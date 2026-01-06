@@ -17,19 +17,22 @@ public class RadarTrack {
     private long scannedTime;
     private final TrackCategory trackCategory;
     private final String entityType;
+    private final float entityheight;
+    private Vec3 vector;
 
-    public RadarTrack(String id, Vec3 position, Vec3 velocity, long scannedTime, TrackCategory trackCategory, String entityType) {
+    public RadarTrack(String id, Vec3 position, Vec3 velocity, long scannedTime, TrackCategory trackCategory, String entityType, float entityheight) {
         this.id = id;
         this.position = position;
         this.velocity = velocity;
         this.scannedTime = scannedTime;
         this.trackCategory = trackCategory;
         this.entityType = entityType;
+        this.entityheight = entityheight;
     }
 
     public RadarTrack(Entity entity) {
         this(entity.getUUID().toString(), entity.position(), entity.getDeltaMovement(), entity.level().getGameTime(),
-                TrackCategory.get(entity), entity.getType().toString());
+                TrackCategory.get(entity), entity.getType().toString(), entity.getBbHeight());
     }
 
     public Color getColor() {
@@ -60,7 +63,8 @@ public class RadarTrack {
                 new Vec3(tag.getDouble("vx"), tag.getDouble("vy"), tag.getDouble("vz")),
                 tag.getLong("scannedTime"),
                 TrackCategory.values()[tag.getInt("Category")],
-                tag.getString("entityType")
+                tag.getString("entityType"),
+                tag.getFloat("eh")
         );
     }
 
@@ -76,6 +80,7 @@ public class RadarTrack {
         tag.putLong("scannedTime", scannedTime);
         tag.putInt("Category", trackCategory.ordinal());
         tag.putString("entityType", entityType);
+        tag.putFloat("eh", entityheight );
         return tag;
     }
 
@@ -118,6 +123,8 @@ public class RadarTrack {
     public void setScannedTime(long scannedTime) {
         this.scannedTime = scannedTime;
     }
+
+    public float getEnityHeight(){return entityheight;}
 
     public TrackCategory getTrackCategory() {
         return trackCategory;

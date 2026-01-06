@@ -27,6 +27,8 @@ public class RadarConfig {
     public static RadarClientConfig client() {
         return client;
     }
+    public static boolean DEBUG_BEAMS = false;
+
 
 
     public static RadarServerConfig server() {
