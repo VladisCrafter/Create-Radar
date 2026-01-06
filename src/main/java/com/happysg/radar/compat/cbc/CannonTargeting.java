@@ -1,6 +1,9 @@
 package com.happysg.radar.compat.cbc;
 
 import com.happysg.radar.compat.vs2.PhysicsHandler;
+import com.happysg.radar.math3.analysis.UnivariateFunction;
+import com.happysg.radar.math3.analysis.solvers.BrentSolver;
+import com.happysg.radar.math3.analysis.solvers.UnivariateSolver;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 import com.happysg.radar.math3.analysis.UnivariateFunction;

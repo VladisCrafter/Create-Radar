@@ -86,6 +86,12 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity implement
             }
         }
     }
+    public BlockPos getMount(){
+        BlockPos cannonMountPos = getBlockPos().relative(getBlockState().getValue(AutoPitchControllerBlock.HORIZONTAL_FACING));
+        return cannonMountPos;
+    }
+
+
 
     private void tryRotateCannon() {
         if (level == null || level.isClientSide())
