@@ -57,6 +57,8 @@
   "create_radar.network_filter.invalid_block":"Not a Network Block",
   "create_radar.network_filter.valid_block": "Bound to Network!",
   "create_radar.no_monitor": "No Monitor Linked",
+  "create_radar.guided_fuze.no_monitor": "No Monitor Linked",
+  "create_radar.guided_fuze.linked_monitor": "Linked to Monitor",
   "create_radar.pitch.powder_charge": "Powder Charge",
   "create_radar.player_list.title": "Player Filtering",
   "create_radar.ponder.controller_linking.header": "Linking a Controller to a Monitor!",
