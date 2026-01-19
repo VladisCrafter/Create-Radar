@@ -12,6 +12,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.resources.ResourceKey;
 
 import java.util.function.Supplier;
 
@@ -31,8 +33,25 @@ public class ModCreativeTabs {
                 .icon(icon)
                 .displayItems(ModCreativeTabs::displayItems)
                 .title(Component.translatable(itemGroupId))
-                .withTabsBefore(AllCreativeModeTabs.PALETTES_CREATIVE_TAB.getKey());
+                .withTabsBefore(getCreateTabOrFallback());
         return CREATIVE_TABS.register(id, tabBuilder::build);
+    }
+
+    private static ResourceKey<CreativeModeTab> getCreateTabOrFallback() {
+        try {
+            Class<?> clazz = Class.forName("com.simibubi.create.AllCreativeModeTabs");
+            var field = clazz.getField("PALETTES_CREATIVE_TAB");
+            Object palettesTab = field.get(null);
+
+            var getKeyMethod = palettesTab.getClass().getMethod("getKey");
+            @SuppressWarnings("unchecked")
+            ResourceKey<CreativeModeTab> key =
+                    (ResourceKey<CreativeModeTab>) getKeyMethod.invoke(palettesTab);
+
+            return key;
+        } catch (Throwable t) {
+            return CreativeModeTabs.REDSTONE_BLOCKS;
+        }
     }
 
     private static void displayItems(CreativeModeTab.ItemDisplayParameters pParameters, CreativeModeTab.Output pOutput) {
