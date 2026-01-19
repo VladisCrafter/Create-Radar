@@ -4,16 +4,15 @@ import com.happysg.radar.CreateRadar;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.CBCCompatRegister;
 import com.happysg.radar.compat.cbcmw.CBCMWCompatRegister;
-import com.simibubi.create.AllCreativeModeTabs;
 import net.minecraft.network.chat.Component;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
-import net.minecraft.world.item.CreativeModeTabs;
-import net.minecraft.resources.ResourceKey;
 
 import java.util.function.Supplier;
 
