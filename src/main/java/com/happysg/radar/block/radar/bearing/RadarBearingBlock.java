@@ -1,10 +1,13 @@
 package com.happysg.radar.block.radar.bearing;
 
+import com.happysg.radar.block.behavior.networks.NetworkData;
 import com.happysg.radar.registry.ModBlockEntityTypes;
 import com.simibubi.create.content.contraptions.bearing.BearingBlock;
 import com.simibubi.create.foundation.block.IBE;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -72,5 +75,23 @@ public class RadarBearingBlock extends BearingBlock implements IBE<RadarBearingB
         }
         return InteractionResult.SUCCESS;
     }
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+        if (state.is(newState.getBlock())) {
+            super.onRemove(state, level, pos, newState, isMoving);
+            return;
+        }
+
+        if (!level.isClientSide && level instanceof ServerLevel sl) {
+            ResourceKey<Level> dim = sl.dimension();
+
+
+            NetworkData.get(sl).onEndpointRemoved(dim, pos);
+
+        }
+
+        super.onRemove(state, level, pos, newState, isMoving);
+    }
+
 
 }

@@ -1,6 +1,8 @@
 package com.happysg.radar.block.radar.bearing;
 
 import com.happysg.radar.CreateRadar;
+import com.happysg.radar.block.behavior.networks.NetworkData;
+import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.behavior.RadarScanningBlockBehavior;
 import com.happysg.radar.block.radar.track.RadarTrack;
@@ -18,10 +20,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +35,9 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
     private boolean creative;
     private Direction receiverFacing = Direction.NORTH;
     private RadarScanningBlockBehavior scanningBehavior;
+    private Collection<RadarTrack> networkFilteredTracks = List.of();
+    private long lastFilterTick = -1;
+
 
     public RadarBearingBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -48,15 +55,25 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
     public BlockPos getWorldPos() {
         return getBlockPos();
     }
-
     @Override
     public void tick() {
         super.tick();
+
         if (running) {
             scanningBehavior.setRange(getRange());
             scanningBehavior.setAngle(getGlobalAngle());
         }
+
+        // Server-only: recompute at scan cadence (lazyTickRate = 5)
+        if (!level.isClientSide) {
+            long gt = level.getGameTime();
+            if (gt % 5 == 0 && gt != lastFilterTick) {
+                lastFilterTick = gt;
+                recomputeNetworkFilteredTracks();
+            }
+        }
     }
+
 
     public float getGlobalAngle() {
         Vec3 receiverVector = new Vec3(receiverFacing.getStepX(), receiverFacing.getStepY(), receiverFacing.getStepZ());
@@ -132,6 +149,7 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
 
         AllSoundEvents.CONTRAPTION_ASSEMBLE.playOnServer(level, getBlockPos());
 
+
         running = true;
         angle = 0;
         return contraption;
@@ -203,4 +221,39 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
     public Collection<RadarTrack> getTracks() {
         return scanningBehavior.getRadarTracks();
     }
+    @Nullable
+    private NetworkData.Group getNetworkGroup() {
+        if (level == null || level.isClientSide) return null;
+        if (!(level instanceof ServerLevel sl)) return null;
+
+        NetworkData data = NetworkData.get(sl);
+        BlockPos filtererPos = data.getFiltererForEndpoint(sl.dimension(), worldPosition);
+        if (filtererPos == null) return null;
+
+        return data.getGroup(sl.dimension(), filtererPos);
+    }
+
+    private DetectionConfig getDetectionFilterFromNetworkOrDefault() {
+        NetworkData.Group g = getNetworkGroup();
+        if (g == null) return DetectionConfig.DEFAULT;
+        return DetectionConfig.fromTag(g.detectionTag);
+    }
+
+    private void recomputeNetworkFilteredTracks() {
+        if (level == null || level.isClientSide) return;
+
+        // Not networked? Expose raw tracks.
+        if (getNetworkGroup() == null) {
+            networkFilteredTracks = scanningBehavior.getRadarTracks();
+            return;
+        }
+
+        DetectionConfig det = getDetectionFilterFromNetworkOrDefault();
+
+        // TODO: add IdentificationConfig filter when implemented
+        networkFilteredTracks = scanningBehavior.getRadarTracks().stream()
+                .filter(det::test)
+                .toList();
+    }
+
 }

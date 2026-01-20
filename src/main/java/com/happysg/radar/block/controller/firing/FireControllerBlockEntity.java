@@ -1,104 +1,81 @@
 package com.happysg.radar.block.controller.firing;
 
-import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
-import com.happysg.radar.block.datalink.screens.TargetingConfig;
-import com.happysg.radar.block.network.WeaponNetwork;
-import com.happysg.radar.block.network.WeaponNetworkRegistry;
-import com.happysg.radar.block.network.WeaponNetworkUnit;
-import com.happysg.radar.compat.cbc.CannonUtil;
+
+import com.happysg.radar.block.behavior.networks.NetworkContext;
+import com.happysg.radar.block.behavior.networks.NetworkData;
+import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
-import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
-import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
-import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
 
 import java.util.List;
-import java.util.Optional;
 
-import static com.happysg.radar.compat.cbc.CannonTargeting.calculateProjectileYatX;
-
-public class FireControllerBlockEntity extends SmartBlockEntity implements WeaponNetworkUnit {
+public class FireControllerBlockEntity extends SmartBlockEntity  {
     private static final Logger LOGGER = LogUtils.getLogger();
+    boolean powered = false;
 
-
-
-    //private TargetingConfig targetingConfig = TargetingConfig.DEFAULT;
-    //private Vec3 target;
-    //public List<AABB> safeZones = new ArrayList<>();
-    public boolean turnedOn = false;
-    private WeaponNetwork weaponNetwork;
-
-      // server-time when we last got a target update
+    // server-time when we last got a target update
 
     public FireControllerBlockEntity(BlockEntityType<?> pType, BlockPos pPos, BlockState pBlockState) {
         super(pType, pPos, pBlockState);
     }
 
-    public void onPlaced() {
-        if (!(level instanceof ServerLevel serverLevel)) return;
-
-        for (Direction direction : Direction.values()) {
-            BlockEntity neighborBE = level.getBlockEntity(worldPosition.relative(direction));
-            if (neighborBE instanceof CannonMountBlockEntity cannon) {
-                WeaponNetwork weaponNetwork = WeaponNetworkRegistry.networkContains(worldPosition);
-                WeaponNetwork cannonWeaponNetwork = WeaponNetworkRegistry.networkContains(cannon.getBlockPos());
-
-                if (weaponNetwork != null) { // Shouldn't happen normally
-                    setWeaponNetwork(weaponNetwork);
-                } else if (cannonWeaponNetwork != null && cannonWeaponNetwork.getFireController() == null) {
-                    cannonWeaponNetwork.setFireController(this);
-                    setWeaponNetwork(cannonWeaponNetwork);
-                } else if (WeaponNetworkRegistry.networkContains(cannon.getBlockPos()) == null) {
-                    WeaponNetwork newNetwork = new WeaponNetwork(level);
-                    newNetwork.setCannonMount(cannon);
-                    newNetwork.setFireController(this);
-                    setWeaponNetwork(newNetwork);
-                }
-            }
-        }
-    }
-
-    public void onRemoved() {
-        if (weaponNetwork != null && weaponNetwork.getFireController() == this) {
-            weaponNetwork.setFireController(null);
-            setWeaponNetwork(null);
-        }
-    }
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
 
     }
+    public boolean isPowered() {
+        return powered;
+    }
 
-    public void turnOff() {
+    public void setPowered(boolean powered) {
+        if (level == null || level.isClientSide)
+            return;
+
         BlockState state = getBlockState();
-        level.setBlockAndUpdate(this.getBlockPos(), state.setValue(BlockStateProperties.POWERED, false));
-        turnedOn = false;
+        if (!(state.getBlock() instanceof FireControllerBlock))
+            return;
+
+        if (state.getValue(FireControllerBlock.POWERED) == powered)
+            return;
+
+
+        level.setBlock(worldPosition, state.setValue(FireControllerBlock.POWERED, powered), 3);
+
+        // make sure redstone dust + comparators around it re-check
+        level.updateNeighborsAt(worldPosition, state.getBlock());
+        for (Direction d : Direction.values())
+            level.updateNeighborsAt(worldPosition.relative(d), state.getBlock());
+
+        level.updateNeighbourForOutputSignal(worldPosition, state.getBlock());
+
+        setChanged();
+        sendData();
     }
 
-    public void turnOn() {
-        BlockState state = getBlockState();
-        level.setBlockAndUpdate(this.getBlockPos(), state.setValue(BlockStateProperties.POWERED, true));
-        turnedOn = true;
+
+
+
+
+    @Override
+    protected void write(CompoundTag tag, boolean clientPacket) {
+        super.write(tag, clientPacket);
+        tag.putBoolean("Powered", powered);
     }
 
-    public WeaponNetwork  getWeaponNetwork() {
-        return weaponNetwork;
+    @Override
+    protected void read(CompoundTag tag, boolean clientPacket) {
+        super.read(tag, clientPacket);
+        powered = tag.getBoolean("Powered");
     }
 
-    public void setWeaponNetwork(WeaponNetwork weaponNetwork) {
-        this.weaponNetwork = weaponNetwork;
-    }
-    public BlockEntity getBlockEntity() {return this;}
+
+
 }
+

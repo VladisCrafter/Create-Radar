@@ -1,16 +1,16 @@
 package com.happysg.radar.block.controller.pitch;
 
 import com.happysg.radar.registry.ModBlockEntityTypes;
+import com.happysg.radar.block.datalink.DataLinkBlock;
 import com.simibubi.create.content.kinetics.base.HorizontalKineticBlock;
 import com.simibubi.create.foundation.block.IBE;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.Level;
 
 public class AutoPitchControllerBlock extends HorizontalKineticBlock implements IBE<AutoPitchControllerBlockEntity> {
 
@@ -29,32 +29,6 @@ public class AutoPitchControllerBlock extends HorizontalKineticBlock implements 
     }
 
     @Override
-    public void onPlace(BlockState state, Level worldIn, BlockPos pos, BlockState oldState, boolean isMoving) {
-        super.onPlace(state, worldIn, pos, oldState, isMoving);
-        for(Direction direction : Direction.values()) {
-            worldIn.updateNeighborsAt(pos.relative(direction), this);
-        }
-        BlockEntity be = worldIn.getBlockEntity(pos);
-        if (be instanceof AutoPitchControllerBlockEntity autoPitchControllerBlockEntity) {
-            autoPitchControllerBlockEntity.onPlaced();
-        }
-    }
-
-    @Override
-    public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
-        if (!pIsMoving) {
-            for(Direction direction : Direction.values()) {
-                pLevel.updateNeighborsAt(pPos.relative(direction), this);
-            }
-        }
-        BlockEntity be = pLevel.getBlockEntity(pPos);
-        if (be instanceof AutoPitchControllerBlockEntity autoPitchControllerBlockEntity) {
-            autoPitchControllerBlockEntity.onRemoved();
-        }
-        super.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
-    }
-
-    @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         boolean crouching = context.getPlayer() != null && context.getPlayer().isCrouching();
         return this.defaultBlockState()
@@ -69,5 +43,35 @@ public class AutoPitchControllerBlock extends HorizontalKineticBlock implements 
     @Override
     public BlockEntityType<? extends AutoPitchControllerBlockEntity> getBlockEntityType() {
         return ModBlockEntityTypes.AUTO_PITCH_CONTROLLER.get();
+    }
+
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+        if (!level.isClientSide && state.getBlock() != newState.getBlock()) {
+            breakAttachedDataLinks(level, pos);
+        }
+        super.onRemove(state, level, pos, newState, isMoving);
+    }
+
+    private static void breakAttachedDataLinks(Level level, BlockPos controllerPos) {
+        for (Direction dir : Direction.values()) {
+            BlockPos linkPos = controllerPos.relative(dir);
+            BlockState linkState = level.getBlockState(linkPos);
+
+            if (!(linkState.getBlock() instanceof DataLinkBlock))
+                continue;
+
+            if (linkState.hasProperty(DataLinkBlock.LINK_STYLE)
+                    && linkState.getValue(DataLinkBlock.LINK_STYLE) != DataLinkBlock.LinkStyle.CONTROLLER)
+                continue;
+
+            if (linkState.hasProperty(DataLinkBlock.FACING)) {
+                Direction facing = linkState.getValue(DataLinkBlock.FACING);
+                if (!linkPos.relative(facing.getOpposite()).equals(controllerPos))
+                    continue;
+            }
+
+            level.destroyBlock(linkPos, true);
+        }
     }
 }

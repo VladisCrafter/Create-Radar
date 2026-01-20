@@ -85,11 +85,13 @@ public class MonitorMultiBlockHelper {
                     continue;
                 if (pLevel.getBlockEntity(pos) instanceof MonitorBlockEntity monitor && monitor.getControllerPos().equals(controllerPos)) {
                     monitor.setControllerPos(pos, 1);
+                    monitor.onDataLinkRemoved();
                     pLevel.setBlockAndUpdate(pos, pState.setValue(SHAPE, MonitorBlock.Shape.SINGLE));
                 }
             }
         }
     }
+
 
 
     public static int getSize(Level pLevel, BlockPos pPos) {

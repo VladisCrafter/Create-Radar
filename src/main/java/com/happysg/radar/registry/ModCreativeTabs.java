@@ -14,6 +14,7 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
 
+
 import java.util.function.Supplier;
 
 import static com.happysg.radar.CreateRadar.REGISTRATE;
@@ -28,11 +29,13 @@ public class ModCreativeTabs {
     public static RegistryObject<CreativeModeTab> addTab(String id, String name, Supplier<ItemStack> icon) {
         String itemGroupId = "itemGroup." + CreateRadar.MODID + "." + id;
         REGISTRATE.addRawLang(itemGroupId, name);
+
         CreativeModeTab.Builder tabBuilder = CreativeModeTab.builder()
                 .icon(icon)
                 .displayItems(ModCreativeTabs::displayItems)
                 .title(Component.translatable(itemGroupId))
                 .withTabsBefore(getCreateTabOrFallback());
+        
         return CREATIVE_TABS.register(id, tabBuilder::build);
     }
 
@@ -64,13 +67,13 @@ public class ModCreativeTabs {
         pOutput.accept(ModBlocks.CREATIVE_RADAR_PLATE_BLOCK);
         pOutput.accept(ModBlocks.AUTO_YAW_CONTROLLER_BLOCK);
         pOutput.accept(ModBlocks.AUTO_PITCH_CONTROLLER_BLOCK);
-        pOutput.accept(ModItems.RADAR_FILTER_ITEM);
-        pOutput.accept(ModItems.IDENT_FILTER_ITEM);
-        pOutput.accept(ModItems.TARGET_FILTER_ITEM);
-        pOutput.accept(ModBlocks.ID_BLOCK);
-        pOutput.accept(ModBlocks.FIRE_CONTROLLER_BLOCK);
+        pOutput.accept(ModBlocks.STATIONARY_RADAR);
         pOutput.accept(ModBlocks.NETWORK_FILTERER_BLOCK);
-        //pOutput.accept(ModBlocks.);
+        pOutput.accept(ModBlocks.FIRE_CONTROLLER_BLOCK);
+        pOutput.accept(ModItems.IDENT_FILTER_ITEM);
+        pOutput.accept(ModItems.RADAR_FILTER_ITEM);
+        pOutput.accept(ModItems.TARGET_FILTER_ITEM);
+        pOutput.accept(ModItems.BINOCULARS);
         if (Mods.CREATEBIGCANNONS.isLoaded()) {
             pOutput.accept(CBCCompatRegister.GUIDED_FUZE);
         }
@@ -78,6 +81,7 @@ public class ModCreativeTabs {
             pOutput.accept(CBCMWCompatRegister.RADAR_GUIDANCE_BLOCK);
         }
         if (Mods.TRACKWORK.isLoaded()) {
+
         }
         if (Mods.VALKYRIENSKIES.isLoaded()) {
             pOutput.accept(ModBlocks.ID_BLOCK);
@@ -89,4 +93,5 @@ public class ModCreativeTabs {
         CreateRadar.getLogger().info("Registering CreativeTabs!");
         CREATIVE_TABS.register(eventBus);
     }
+
 }

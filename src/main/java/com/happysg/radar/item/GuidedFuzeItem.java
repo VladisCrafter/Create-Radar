@@ -1,7 +1,7 @@
 package com.happysg.radar.item;
 
 import com.happysg.radar.CreateRadar;
-import com.happysg.radar.block.datalink.screens.TargetingConfig;
+import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -71,9 +71,9 @@ public class GuidedFuzeItem extends FuzeItem {
         super.appendHoverText(pStack, pLevel, pTooltipComponents, pIsAdvanced);
         if (pStack.getOrCreateTag().contains("monitorPos")) {
             BlockPos monitorPos = NbtUtils.readBlockPos(pStack.getOrCreateTag().getCompound("monitorPos"));
-            pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".linked_monitor", Component.translatable(CreateRadar.MODID + ".monitor_coords", monitorPos.getX(), monitorPos.getY(), monitorPos.getZ())));
+            pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".guided_fuze.linked_monitor", monitorPos));
         } else
-            pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".no_monitor"));
+            pTooltipComponents.add(Component.translatable(CreateRadar.MODID + ".guided_fuze.no_monitor"));
     }
 
 

@@ -2,8 +2,8 @@ package com.happysg.radar.networking.packets;
 
 import com.happysg.radar.networking.networkhandlers.ListNBTHandler;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.Collections;

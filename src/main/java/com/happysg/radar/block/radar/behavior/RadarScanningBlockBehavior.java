@@ -1,9 +1,10 @@
 package com.happysg.radar.block.radar.behavior;
 
 import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
-import com.happysg.radar.block.radar.plane.PlaneRadarBlockEntity;
+
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.RadarTrackUtil;
+import com.happysg.radar.block.radar.track.TrackCategory;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.compat.vs2.VS2Utils;
@@ -11,11 +12,13 @@ import com.happysg.radar.config.RadarConfig;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BehaviourType;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
+import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.valkyrienskies.core.api.ships.Ship;
@@ -29,10 +32,11 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     private int trackExpiration = 100;
     private int fov = RadarConfig.server().radarFOV.get();
     private int yRange = 20;
-    private double range = RadarConfig.server().radarBaseRange.get();  // Default fallback range
+    private double range = RadarConfig.server().radarBaseRange.get();
     private double angle;
     private boolean running = false;
     private SmartBlockEntity bearingEntity;
+    private RadarBearingBlockEntity radarBearing;
     Vec3 scanPos = Vec3.ZERO;
 
     private final Set<Entity> scannedEntities = new HashSet<>();
@@ -43,7 +47,64 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     public RadarScanningBlockBehavior(SmartBlockEntity be) {
         super(be);
         this.bearingEntity = be;
-        setLazyTickRate(5);
+        setLazyTickRate(1);
+    }
+
+    public void applyDetectionConfig(DetectionConfig cfg) {
+        if (cfg == null) cfg = DetectionConfig.DEFAULT;
+        setScanFlags(
+                cfg.player(),
+                cfg.vs2(),
+                cfg.contraption(),
+                cfg.mob(),
+                cfg.animal(),
+                cfg.projectile(),
+                cfg.item()
+        );
+    }
+
+
+    private boolean scanPlayers = true;
+    private boolean scanVS2 = true;
+    private boolean scanContraptions = true;
+    private boolean scanMobs = true;
+    private boolean scanAnimals = true;
+    private boolean scanProjectiles = true;
+    private boolean scanItems = true;
+
+    private boolean allowCategory(TrackCategory c) {
+        return switch (c) {
+            case PLAYER -> scanPlayers;
+            case VS2 -> scanVS2;
+            case CONTRAPTION -> scanContraptions;
+            case PROJECTILE -> scanProjectiles;
+            case ITEM -> scanItems;
+
+            case ANIMAL -> scanAnimals;
+            case HOSTILE, MOB -> scanMobs;
+
+            default -> true;
+        };
+    }
+
+    private void pruneDisabledTracksNow() {
+        radarTracks.entrySet().removeIf(e -> !allowCategory(e.getValue().trackCategory()));
+    }
+
+    public void setScanFlags(boolean players, boolean vs2, boolean contraptions, boolean mobs, boolean animals, boolean projectiles, boolean items) {
+        boolean changed = players != scanPlayers || vs2 != scanVS2 || contraptions != scanContraptions || mobs != scanMobs || animals != scanAnimals || projectiles != scanProjectiles || items != scanItems;
+
+        this.scanPlayers = players;
+        this.scanVS2 = vs2;
+        this.scanContraptions = contraptions;
+        this.scanMobs = mobs;
+        this.scanAnimals = animals;
+        this.scanProjectiles = projectiles;
+        this.scanItems = items;
+
+        if (changed) {
+            pruneDisabledTracksNow();
+        }
     }
 
     @Override
@@ -57,10 +118,13 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
             updateRadarTracks();
     }
 
+
     private void updateRadarTracks() {
         scanPos = PhysicsHandler.getWorldPos(bearingEntity).getCenter();
+
         Level level = blockEntity.getLevel();
-        if (level == null) return;
+        if (level == null )return;
+
 
         for (Entity entity : scannedEntities) {
             if (entity.isAlive() && isInFovAndRange(entity.position())) {
@@ -89,6 +153,10 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
 
     private boolean isInFovAndRange(Vec3 target) {
         double distance = scanPos.distanceTo(target);
+        if(radarBearing != null && radarBearing.getSpeed() >=225){
+            return true;
+        }
+
         if (distance < 2)
             return true;
 
@@ -107,6 +175,7 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         }
 
         List<String> toRemove = new ArrayList<>();
+        assert blockEntity.getLevel() != null;
         long currentTime = blockEntity.getLevel().getGameTime();
         for (RadarTrack track : radarTracks.values()) {
             if (currentTime - track.scannedTime() > trackExpiration)
@@ -130,16 +199,45 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
             scannedProjectiles.clear();
 
             scanForEntityTracks();
-            if (Mods.VALKYRIENSKIES.isLoaded())
+            if (Mods.VALKYRIENSKIES.isLoaded() && scanVS2)
                 scanForVSTracks();
         }
         super.lazyTick();
     }
 
     private void scanForEntityTracks() {
-        if (blockEntity.getLevel() == null) return;
-        splitAABB(getRadarAABB(), 999).forEach(aabb ->
-                scannedEntities.addAll(blockEntity.getLevel().getEntities(null, aabb)));
+        Level level = blockEntity.getLevel();
+        if (level == null) return;
+
+        boolean scanAll =
+                scanPlayers && scanContraptions && scanMobs && scanAnimals && scanProjectiles && scanItems;
+
+        for (AABB aabb : splitAABB(getRadarAABB(), 999)) {
+            if (scanAll) {
+                scannedEntities.addAll(level.getEntities(null, aabb));
+                continue;
+            }
+
+            if (scanPlayers)
+                scannedEntities.addAll(level.getEntitiesOfClass(net.minecraft.world.entity.player.Player.class, aabb));
+
+            if (scanProjectiles)
+                scannedEntities.addAll(level.getEntitiesOfClass(Projectile.class, aabb));
+
+            if (scanItems)
+                scannedEntities.addAll(level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, aabb));
+
+            if (scanContraptions)
+                scannedEntities.addAll(level.getEntitiesOfClass(com.simibubi.create.content.contraptions.AbstractContraptionEntity.class, aabb));
+
+            if (scanAnimals)
+                scannedEntities.addAll(level.getEntitiesOfClass(net.minecraft.world.entity.animal.Animal.class, aabb));
+
+            if (scanMobs) {
+                scannedEntities.addAll(level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, aabb,
+                        e -> !(e instanceof net.minecraft.world.entity.animal.Animal)));
+            }
+        }
     }
 
     private void scanForVSTracks() {

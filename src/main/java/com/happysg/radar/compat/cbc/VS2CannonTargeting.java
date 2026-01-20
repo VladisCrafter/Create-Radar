@@ -37,7 +37,7 @@ public class VS2CannonTargeting {
 
 
     public static List<List<Double>> calculatePitchAndYawVS2(Level level, double speed, Vec3 targetPos, Vec3 mountPos, int barrelLength, Direction initialDirection, double drag, double gravity) {
-        LoadedShip ship = VSGameUtilsKt.getShipObjectManagingPos(level, mountPos.x, mountPos.y, mountPos.z);
+        LoadedShip ship = VSGameUtilsKt.getShipObjectManagingPos(level,mountPos.x,mountPos.y,mountPos.z);
         if (ship == null) {
             System.out.println("null");
             return null;

@@ -2,7 +2,7 @@ package com.happysg.radar.block.datalink.screens;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.datalink.DataLinkBlockEntity;
-import com.happysg.radar.block.monitor.MonitorFilter;
+import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import com.happysg.radar.registry.ModGuiTextures;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.gui.widget.IconButton;
@@ -47,20 +47,18 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
     public RadarFilterScreen(DataLinkBlockEntity be) {
         super(be);
         this.background = ModGuiTextures.DETECTION_FILTER;
-        MonitorFilter monitorFilter = MonitorFilter.DEFAULT;
+        DetectionConfig detectionConfig = DetectionConfig.DEFAULT;
         if (be.getSourceConfig().contains("filter")) {
-            monitorFilter = MonitorFilter.fromTag(be.getSourceConfig().getCompound("filter"));
+            detectionConfig = DetectionConfig.fromTag(be.getSourceConfig().getCompound("filter"));
         }
-        player = monitorFilter.player();
-        vs2 = monitorFilter.vs2();
-        contraption = monitorFilter.contraption();
-        mob = monitorFilter.mob();
-        projectile = monitorFilter.projectile();
-        playerBlacklist = monitorFilter.blacklistPlayers();
-        playerWhitelist = monitorFilter.whitelistPlayers();
-        vs2Whitelist = monitorFilter.whitelistVS();
-        animal = monitorFilter.animal();
-        item = monitorFilter.item();
+        player = detectionConfig.player();
+        vs2 = detectionConfig.vs2();
+        contraption = detectionConfig.contraption();
+        mob = detectionConfig.mob();
+        projectile = detectionConfig.projectile();
+
+        animal = detectionConfig.animal();
+        item = detectionConfig.item();
     }
 
 
@@ -174,7 +172,7 @@ public class RadarFilterScreen extends AbstractDataLinkScreen {
     @Override
     public void onClose(CompoundTag tag) {
         super.onClose(tag);
-        MonitorFilter monitorFilter = new MonitorFilter(player, vs2, contraption, mob, projectile, animal, item, playerBlacklist, playerWhitelist, List.of(), vs2Whitelist);
-        tag.put("filter", monitorFilter.toTag());
+        DetectionConfig detectionConfig = new DetectionConfig(player, vs2, contraption, mob, projectile, animal, item);
+        tag.put("filter", detectionConfig.toTag());
     }
 }

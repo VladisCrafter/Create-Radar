@@ -3,9 +3,6 @@ package com.happysg.radar.networking.networkhandlers;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.BitSet;
-import java.util.List;
-
 public final class BoolNBThelper {
     private BoolNBThelper() {}
     // Save flags as a byte[] under `key`

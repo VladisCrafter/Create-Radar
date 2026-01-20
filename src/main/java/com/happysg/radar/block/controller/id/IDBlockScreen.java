@@ -15,7 +15,7 @@ import org.valkyrienskies.core.api.ships.Ship;
 
 //only open on VsShip
 public class IDBlockScreen extends AbstractSimiScreen {
-    private static final ModGuiTextures BACKGROUND = ModGuiTextures.VS2_BUTTON;
+    private static final ModGuiTextures BACKGROUND = ModGuiTextures.ID_SCREEN;
 
     Ship ship;
     String id = "";

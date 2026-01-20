@@ -1,9 +1,10 @@
 package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
+import com.happysg.radar.block.Test.TestBlock;
+import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlock;
 import com.happysg.radar.block.controller.firing.FireControllerBlock;
 import com.happysg.radar.block.controller.id.IDBlock;
-import com.happysg.radar.block.controller.networkfilter.NetworkFiltererBlock;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlock;
 import com.happysg.radar.block.controller.track.TrackControllerBlock;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlock;
@@ -11,7 +12,7 @@ import com.happysg.radar.block.datalink.DataLinkBlock;
 import com.happysg.radar.block.datalink.DataLinkBlockItem;
 import com.happysg.radar.block.monitor.MonitorBlock;
 import com.happysg.radar.block.radar.bearing.RadarBearingBlock;
-import com.happysg.radar.block.radar.plane.PlaneRadarBlock;
+import com.happysg.radar.block.radar.plane.StationaryRadarBlock;
 import com.happysg.radar.block.radar.receiver.AbstractRadarFrame;
 import com.happysg.radar.block.radar.receiver.RadarReceiverBlock;
 import com.simibubi.create.foundation.data.AssetLookup;
@@ -75,8 +76,8 @@ public class ModBlocks {
                     .build()
                     .register();
 
-    public static final BlockEntry<PlaneRadarBlock> PLANE_RADAR =
-            REGISTRATE.block("plane_radar", PlaneRadarBlock::new)
+    public static final BlockEntry<StationaryRadarBlock> STATIONARY_RADAR  =
+            REGISTRATE.block("plane_radar", StationaryRadarBlock::new)
                     .initialProperties(SharedProperties::softMetal)
                     .addLayer(() -> RenderType::cutout)
                     .properties(BlockBehaviour.Properties::noOcclusion)
@@ -179,6 +180,10 @@ public class ModBlocks {
                     .blockstate((c, p) -> p.horizontalBlock(c.getEntry(), AssetLookup.standardModel(c, p)))
                     .simpleItem()
                     .register();
+    public static final BlockEntry<TestBlock> TEST_BLOCK = REGISTRATE.block("test_block", TestBlock::new)
+                    .initialProperties(SharedProperties::softMetal)
+                    .simpleItem()
+                    .register();
     public static final BlockEntry<FireControllerBlock> FIRE_CONTROLLER_BLOCK =
             REGISTRATE.block("fire_controller", FireControllerBlock::new)
                     .initialProperties(SharedProperties::softMetal)
@@ -186,11 +191,11 @@ public class ModBlocks {
                         provider.getVariantBuilder(context.get())
                                 .partialState().with(FireControllerBlock.POWERED, false)
                                 .modelForState()
-                                .modelFile(provider.models().cubeAll("off",new ResourceLocation("create_radar","block/fire_controller")))
+                                .modelFile(provider.models().cubeAll("off",new ResourceLocation("create_radar","block/off")))
                                 .addModel()
                                 .partialState().with(FireControllerBlock.POWERED, true)
                                 .modelForState()
-                                .modelFile(provider.models().cubeAll("on",new ResourceLocation("create_radar","block/fire_controller_on")))
+                                .modelFile(provider.models().cubeAll("on",new ResourceLocation("create_radar","block/on")))
                                 .addModel();
                     })                    .properties(BlockBehaviour.Properties::noOcclusion)
                     .transform(axeOrPickaxe())
@@ -205,8 +210,6 @@ public class ModBlocks {
                             prov.models().getExistingFile(ctx.getId()), 0))
                     .simpleItem()
                     .register();
-
-
 
 
 

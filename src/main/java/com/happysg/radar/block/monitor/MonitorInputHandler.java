@@ -60,6 +60,7 @@ public class MonitorInputHandler {
     }
 
     public static void monitorPlayerHovering(TickEvent.PlayerTickEvent event) {
+
         Player player = event.player;
         Level level = event.player.level();
         if (level.isClientSide())
@@ -86,15 +87,20 @@ public class MonitorInputHandler {
     }
 
     public static InteractionResult onUse(MonitorBlockEntity be, Player pPlayer, InteractionHand pHand, BlockHitResult pHit, Direction facing) {
+        if (!be.getController().isLinked())
+            return InteractionResult.FAIL;
+
+
         if (pPlayer.isShiftKeyDown()) {
-            be.selectedEntity = null;
+            be.setSelectedTargetServer(null);
             be.notifyUpdate();
         } else {
             RadarTrack track = findTrack(be.getLevel(), pHit.getLocation(), be.getController());
             if (track != null) {
                 be.selectedEntity = track.id();
-                be.timeOfLastSelect = System.currentTimeMillis();
+                be.setSelectedTargetServer(track);
                 be.notifyUpdate();
+
             }
         }
         return InteractionResult.SUCCESS;

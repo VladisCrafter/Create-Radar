@@ -1,15 +1,15 @@
 package com.happysg.radar.block.controller.yaw;
 
 import com.happysg.radar.registry.ModBlockEntityTypes;
+import com.happysg.radar.block.datalink.DataLinkBlock;
 import com.simibubi.create.content.kinetics.base.HorizontalKineticBlock;
 import com.simibubi.create.foundation.block.IBE;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.Level;
 
 public class AutoYawControllerBlock extends HorizontalKineticBlock implements IBE<AutoYawControllerBlockEntity> {
 
@@ -26,30 +26,6 @@ public class AutoYawControllerBlock extends HorizontalKineticBlock implements IB
     public boolean hasShaftTowards(LevelReader world, BlockPos pos, BlockState state, Direction face) {
         return face == Direction.DOWN;
     }
-    @Override
-    public void onPlace(BlockState pState, Level pLevel, BlockPos pPos, BlockState pOldState, boolean pIsMoving) {
-        for(Direction direction : Direction.values()) {
-            pLevel.updateNeighborsAt(pPos.relative(direction), this);
-        }
-        BlockEntity be = pLevel.getBlockEntity(pPos);
-        if (be instanceof AutoYawControllerBlockEntity AutoyawControllerBlockEntity) {
-            AutoyawControllerBlockEntity.onPlaced();
-        }
-    }
-
-    @Override
-    public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
-        if (!pIsMoving) {
-            for(Direction direction : Direction.values()) {
-                pLevel.updateNeighborsAt(pPos.relative(direction), this);
-            }
-        }
-        BlockEntity be = pLevel.getBlockEntity(pPos);
-        if (be instanceof AutoYawControllerBlockEntity AutoyawControllerBlockEntity) {
-            AutoyawControllerBlockEntity.onRemoved();
-        }
-        super.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
-    }
 
     @Override
     public Class<AutoYawControllerBlockEntity> getBlockEntityClass() {
@@ -59,5 +35,35 @@ public class AutoYawControllerBlock extends HorizontalKineticBlock implements IB
     @Override
     public BlockEntityType<? extends AutoYawControllerBlockEntity> getBlockEntityType() {
         return ModBlockEntityTypes.AUTO_YAW_CONTROLLER.get();
+    }
+
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+        if (!level.isClientSide && state.getBlock() != newState.getBlock()) {
+            breakAttachedDataLinks(level, pos);
+        }
+        super.onRemove(state, level, pos, newState, isMoving);
+    }
+
+    private static void breakAttachedDataLinks(Level level, BlockPos controllerPos) {
+        for (Direction dir : Direction.values()) {
+            BlockPos linkPos = controllerPos.relative(dir);
+            BlockState linkState = level.getBlockState(linkPos);
+
+            if (!(linkState.getBlock() instanceof DataLinkBlock))
+                continue;
+
+            if (linkState.hasProperty(DataLinkBlock.LINK_STYLE)
+                    && linkState.getValue(DataLinkBlock.LINK_STYLE) != DataLinkBlock.LinkStyle.CONTROLLER)
+                continue;
+
+            if (linkState.hasProperty(DataLinkBlock.FACING)) {
+                Direction facing = linkState.getValue(DataLinkBlock.FACING);
+                if (!linkPos.relative(facing.getOpposite()).equals(controllerPos))
+                    continue;
+            }
+
+            level.destroyBlock(linkPos, true);
+        }
     }
 }

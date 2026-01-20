@@ -8,7 +8,8 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.item.ItemEntity;
-import org.valkyrienskies.core.impl.shadow.M;
+import org.valkyrienskies.core.api.ships.Ship;
+
 
 public enum TrackCategory {
     PLAYER,
@@ -19,17 +20,18 @@ public enum TrackCategory {
     PROJECTILE,
     CONTRAPTION,
     ITEM,
-    ITEM,
     MISC;
 
 
     public static TrackCategory get(Entity entity) {
             if (entity instanceof Player) return PLAYER;
+            //if (entity instanceof Ship) return VS2;
             if (entity instanceof Enemy) return HOSTILE;
-            if (entity instanceof Mob) return ANIMAL;
+            if (entity instanceof Animal) return ANIMAL;
+            if (entity instanceof Mob) return MOB;
             if (entity instanceof Projectile) return PROJECTILE;
             if (entity instanceof AbstractContraptionEntity) return CONTRAPTION;
             if (entity instanceof ItemEntity) return ITEM;
             return MISC;
-        }
+    }
 }

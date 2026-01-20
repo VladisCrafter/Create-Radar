@@ -1,10 +1,13 @@
 package com.happysg.radar.block.monitor;
 
+import com.happysg.radar.block.behavior.networks.NetworkData;
 import com.happysg.radar.registry.ModBlockEntityTypes;
 import com.simibubi.create.foundation.block.IBE;
 import net.createmod.catnip.lang.Lang;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -48,6 +51,10 @@ public class MonitorBlock extends HorizontalDirectionalBlock implements IBE<Moni
     @Override
     public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
         MonitorMultiBlockHelper.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
+        if(pLevel instanceof ServerLevel sl) {
+            ResourceKey<Level> dim = sl.dimension();
+            NetworkData.get(sl).onEndpointRemoved(dim, pPos);
+        }
         super.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
     }
 

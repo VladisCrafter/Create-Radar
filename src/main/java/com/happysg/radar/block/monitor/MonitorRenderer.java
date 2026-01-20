@@ -1,10 +1,9 @@
 package com.happysg.radar.block.monitor;
 
+import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
-import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
-import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.registry.ModRenderTypes;
 import net.createmod.catnip.theme.Color;
@@ -51,29 +50,27 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
 
     @Override
     protected void renderSafe(MonitorBlockEntity blockEntity, float partialTicks, PoseStack ms, MultiBufferSource bufferSource, int light, int overlay) {
-        super.renderSafe(blockEntity, partialTicks, ms, bufferSource, light, overlay);
-
         // Skip rendering if this isn't the controller block
-        if (!blockEntity.isController()) {
+        if (!blockEntity.isLinked()||!blockEntity.isController() ) {
             return;
         }
-        ms.pushPose();
-        try{
-            // Set up transformation matrix for the monitor face
-            setupMonitorTransform(ms, blockEntity.getBlockState().getValue(MonitorBlock.FACING));
 
-            // Get radar and render if it's running
-            blockEntity.getRadar().ifPresent(radar -> {
-                if (!radar.isRunning()) {
-                    return;
-                }
+        super.renderSafe(blockEntity, partialTicks, ms, bufferSource, light, overlay);
 
-                // Render all radar display elements
-                renderRadarDisplay(radar, blockEntity, ms, bufferSource, partialTicks);
-            });
-        }finally {
-            ms.popPose();
-        }
+
+
+        // Set up transformation matrix for the monitor face
+        setupMonitorTransform(ms, blockEntity.getBlockState().getValue(MonitorBlock.FACING));
+
+        // Get radar and render if it's running
+        blockEntity.getRadar().ifPresent(radar -> {
+            if (!radar.isRunning()) {
+                return;
+            }
+
+            // Render all radar display elements
+            renderRadarDisplay(radar, blockEntity, ms, bufferSource, partialTicks);
+        });
     }
 
     /**
@@ -95,6 +92,7 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
     private void renderRadarDisplay(IRadar radar, MonitorBlockEntity blockEntity, PoseStack ms,
                                     MultiBufferSource bufferSource, float partialTicks) {
         // Render in order from back to front to prevent z-fighting
+
         renderGrid(radar, blockEntity, ms, bufferSource);
         renderSafeZones(radar, blockEntity, ms, bufferSource);
         renderBG(blockEntity, ms, bufferSource, MonitorSprite.RADAR_BG_FILLER);
@@ -243,13 +241,11 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         // Calculate track position relative to radar
         Vec3 radarPos = PhysicsHandler.getWorldPos(monitor.getLevel(), radar.getWorldPos()).getCenter();
         Vec3 relativePos = track.position().subtract(radarPos);
-        if (Mods.VALKYRIENSKIES.isLoaded()) {
-            relativePos = VS2Utils.getShipVecDirectionTransform(relativePos, monitor);
-        }
         if (radar.renderRelativeToMonitor()) {
             //todo change for plane radar
         }
         // Transform to display coordinates
+        //todo handle direction on vs2 ships
         float xOff = calculateTrackOffset(relativePos, monitorFacing, scale, true);
         float zOff = calculateTrackOffset(relativePos, monitorFacing, scale, false);
 
@@ -279,7 +275,7 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         float alpha = 1.0f - fade;
 
         // Get track color from filter
-        MonitorFilter filter = monitor.filter;
+        DetectionConfig filter = monitor.filter;
         Color color = filter.getColor(track);
 
         // Render base track

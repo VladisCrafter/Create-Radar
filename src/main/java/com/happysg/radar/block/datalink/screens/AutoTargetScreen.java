@@ -1,6 +1,7 @@
 package com.happysg.radar.block.datalink.screens;
 
 import com.happysg.radar.CreateRadar;
+import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.datalink.DataLinkBlockEntity;
 import com.happysg.radar.registry.ModGuiTextures;
 import com.mojang.blaze3d.vertex.PoseStack;

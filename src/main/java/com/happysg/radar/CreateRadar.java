@@ -1,14 +1,14 @@
 package com.happysg.radar;
 
 import com.happysg.radar.block.controller.id.IDManager;
-import com.happysg.radar.block.controller.networkfilter.NetworkFiltererBlockEntity;
-import com.happysg.radar.block.controller.networkfilter.NetworkFiltererRenderer;
 import com.happysg.radar.block.datalink.DataLinkBlockItem;
 import com.happysg.radar.block.monitor.MonitorInputHandler;
+import com.happysg.radar.commands.DebugBeam;
+import com.happysg.radar.commands.RadarDebugCommands;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.CBCCompatRegister;
 import com.happysg.radar.compat.cbcmw.CBCMWCompatRegister;
-import com.happysg.radar.compat.computercraft.CCCompatRegister;
+
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.networking.ModMessages;
 import com.happysg.radar.networking.NetworkHandler;
@@ -18,8 +18,6 @@ import com.mojang.logging.LogUtils;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.simibubi.create.api.stress.BlockStressValues;
 
-import net.createmod.ponder.api.registration.PonderTagRegistrationHelper;
-import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.LevelAccessor;
 
@@ -54,7 +52,8 @@ public class CreateRadar {
     public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(MODID);
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
-        ModCommands.register(event.getDispatcher());
+        DebugBeam.register(event.getDispatcher());
+        RadarDebugCommands.register(event.getDispatcher());
     }
 
     public CreateRadar() {
@@ -78,19 +77,16 @@ public class CreateRadar {
         modEventBus.addListener(CreateRadar::clientInit);
         modEventBus.addListener(CreateRadar::onLoadComplete);
 
-
         MinecraftForge.EVENT_BUS.addListener(MonitorInputHandler::monitorPlayerHovering);
         MinecraftForge.EVENT_BUS.addListener(CreateRadar::clientTick);
         MinecraftForge.EVENT_BUS.addListener(CreateRadar::onLoadWorld);
-
 
         // Compat modules
         if (Mods.CREATEBIGCANNONS.isLoaded())
             CBCCompatRegister.registerCBC();
         if (Mods.CBCMODERNWARFARE.isLoaded())
             CBCMWCompatRegister.registerCBCMW();
-        if (Mods.COMPUTERCRAFT.isLoaded())
-            CCCompatRegister.registerPeripherals();
+
     }
 
 
@@ -119,11 +115,11 @@ public class CreateRadar {
     public static void clientInit(final FMLClientSetupEvent event) {
         // Ponder registration (optional, currently commented out)
         // PonderSceneRegistrationHelper<ResourceLocation> sceneHelper = PonderSceneRegistrationHelper.forMod(CreateRadar.MODID);
-     //   ModPonderIndex.register(sceneHelper);
+        // ModPonderIndex.register(sceneHelper);
+        //
+        // PonderTagRegistrationHelper<ResourceLocation> tagHelper = PonderTagRegistrationHelper.forMod(CreateRadar.MODID);
+        // ModPonderTags.register(tagHelper);
 
-       //  PonderTagRegistrationHelper<ResourceLocation> tagHelper = PonderTagRegistrationHelper.forMod(CreateRadar.MODID);
-     //   ModPonderTags.register(tagHelper);
-        BlockEntityRenderers.register(ModBlockEntityTypes.NETWORK_FILTER_BLOCK_ENTITY.get(), NetworkFiltererRenderer::new);
     }
 
     public static void onLoadComplete(FMLLoadCompleteEvent event) {

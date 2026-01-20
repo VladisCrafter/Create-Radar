@@ -1,84 +1,116 @@
 package com.happysg.radar.networking.networkhandlers;
 
+import com.happysg.radar.block.behavior.networks.config.IdentificationConfig;
 import net.minecraft.nbt.*;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import org.valkyrienskies.core.impl.shadow.S;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ListNBTHandler {
 
+    // Legacy keys (old format)
     private static final String ENTRIES_KEY = "EntriesList";
     private static final String FRIEND_OR_FOE_KEY = "FriendOrFoeList";
     private static final String SINGLE_KEY = "IDSTRING";
 
+    // New format root
+    private static final String FILTERS_ROOT = "Filters";
+    private static final String IDENT_KEY = "identification";
+
+    /** New write: saves the username list + friend/foe list into Filters.identification */
     public static void saveToHeldItem(Player player, List<String> entries, List<Boolean> friendOrFoe) {
         ItemStack stack = player.getMainHandItem();
         if (stack.isEmpty()) return;
 
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag root = stack.getOrCreateTag();
+        CompoundTag filters = root.contains(FILTERS_ROOT, Tag.TAG_COMPOUND) ? root.getCompound(FILTERS_ROOT) : new CompoundTag();
 
+        // preserve existing label if present
+        IdentificationConfig existing = filters.contains(IDENT_KEY, Tag.TAG_COMPOUND)
+                ? IdentificationConfig.fromTag(filters.getCompound(IDENT_KEY))
+                : IdentificationConfig.DEFAULT;
 
-        ListTag entriesTag = new ListTag();
-        for (String s : entries) {
-            entriesTag.add(StringTag.valueOf(s));
-        }
-        tag.put(ENTRIES_KEY, entriesTag);
+        IdentificationConfig cfg = new IdentificationConfig(entries, friendOrFoe, existing.label());
+        filters.put(IDENT_KEY, cfg.toTag());
+        root.put(FILTERS_ROOT, filters);
 
+        // Optional: keep legacy keys in sync for a version or two (remove later)
+        // writeLegacy(root, entries, friendOrFoe);
 
-        ListTag foeTag = new ListTag();
-        for (Boolean b : friendOrFoe) {
-            foeTag.add(ByteTag.valueOf(b ? (byte) 1 : (byte) 0));
-        }
-        tag.put(FRIEND_OR_FOE_KEY, foeTag);
-
-        stack.setTag(tag);
+        stack.setTag(root);
     }
 
+    /** New write: saves the string into Filters.identification.label */
+    public static void saveStringToHeldItem(Player player, String value) {
+        ItemStack stack = player.getMainHandItem();
+        if (stack.isEmpty()) return;
 
+        CompoundTag root = stack.getOrCreateTag();
+        CompoundTag filters = root.contains(FILTERS_ROOT, Tag.TAG_COMPOUND) ? root.getCompound(FILTERS_ROOT) : new CompoundTag();
+
+        IdentificationConfig existing = filters.contains(IDENT_KEY, Tag.TAG_COMPOUND)
+                ? IdentificationConfig.fromTag(filters.getCompound(IDENT_KEY))
+                : IdentificationConfig.DEFAULT;
+
+        IdentificationConfig cfg = new IdentificationConfig(existing.usernames(), existing.friendly(), value);
+        filters.put(IDENT_KEY, cfg.toTag());
+        root.put(FILTERS_ROOT, filters);
+
+        stack.setTag(root);
+    }
+
+    /** Loads list data for your screen. Reads new format first, falls back to legacy keys. */
     public static LoadedLists loadFromHeldItem(Player player) {
         ItemStack stack = player.getMainHandItem();
-        if (stack.isEmpty() || !stack.hasTag()) return new LoadedLists();
-
-        CompoundTag tag = stack.getTag();
         LoadedLists loaded = new LoadedLists();
+        if (stack.isEmpty() || !stack.hasTag()) return loaded;
 
+        CompoundTag root = stack.getTag();
+        if (root == null) return loaded;
 
-        ListTag entriesTag = tag.getList(ENTRIES_KEY, Tag.TAG_STRING);
-        for (int i = 0; i < entriesTag.size(); i++) {
-            loaded.entries.add(entriesTag.getString(i));
+        // New format first
+        if (root.contains(FILTERS_ROOT, Tag.TAG_COMPOUND)) {
+            CompoundTag filters = root.getCompound(FILTERS_ROOT);
+            if (filters.contains(IDENT_KEY, Tag.TAG_COMPOUND)) {
+                IdentificationConfig cfg = IdentificationConfig.fromTag(filters.getCompound(IDENT_KEY));
+                loaded.entries.addAll(cfg.usernames());
+                loaded.friendOrFoe.addAll(cfg.friendly());
+                return loaded;
+            }
         }
 
+        // Legacy fallback
+        ListTag entriesTag = root.getList(ENTRIES_KEY, Tag.TAG_STRING);
+        for (int i = 0; i < entriesTag.size(); i++) loaded.entries.add(entriesTag.getString(i));
 
-        ListTag foeTag = tag.getList(FRIEND_OR_FOE_KEY, Tag.TAG_BYTE);
-        for (int i = 0; i < foeTag.size(); i++) {
-            byte b = foeTag.get(i).getId();
-            loaded.friendOrFoe.add(b != 0);
-        }
+        ListTag foeTag = root.getList(FRIEND_OR_FOE_KEY, Tag.TAG_BYTE);
+        for (int i = 0; i < foeTag.size(); i++) loaded.friendOrFoe.add(foeTag.getInt(i) != 0);
 
         return loaded;
     }
 
-    public static void saveStringToHeldItem(Player player, String value) {
-        ItemStack stack = player.getMainHandItem();
-        if (stack.isEmpty()) return;
-        CompoundTag tag = stack.getOrCreateTag();
-        tag.putString(SINGLE_KEY, value);
-
-    }
-
+    /** Loads the ID string for your other UI (new format first, legacy fallback). */
     public static String loadStringFromHeldItem(Player player) {
         ItemStack stack = player.getMainHandItem();
-        if (stack.isEmpty()) return "";
-        CompoundTag tag = stack.getTag();
-        if (tag == null) return "";
-        return tag.getString(SINGLE_KEY);
+        if (stack.isEmpty() || !stack.hasTag()) return "";
+
+        CompoundTag root = stack.getTag();
+        if (root == null) return "";
+
+        // New format first
+        if (root.contains(FILTERS_ROOT, Tag.TAG_COMPOUND)) {
+            CompoundTag filters = root.getCompound(FILTERS_ROOT);
+            if (filters.contains(IDENT_KEY, Tag.TAG_COMPOUND)) {
+                return IdentificationConfig.fromTag(filters.getCompound(IDENT_KEY)).label();
+            }
+        }
+
+        // Legacy fallback
+        return root.getString(SINGLE_KEY);
     }
-    public static class LoadedId {
-        public static String storedID = new String();
-    }
+
     public static class LoadedLists {
         public final List<String> entries = new ArrayList<>();
         public final List<Boolean> friendOrFoe = new ArrayList<>();

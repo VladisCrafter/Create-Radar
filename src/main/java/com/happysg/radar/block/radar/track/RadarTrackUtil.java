@@ -4,7 +4,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+
 import org.joml.Vector3d;
 import org.valkyrienskies.core.api.ships.Ship;
 
@@ -16,7 +18,7 @@ public class RadarTrackUtil {
 
     public static RadarTrack getRadarTrack(Ship ship, Level level) {
         return new RadarTrack(ship.getSlug(), getPosition(ship), getVelocity(ship), level.getGameTime(),
-                TrackCategory.VS2, "VS2:ship", ship.getShipAABB().maxY());
+                TrackCategory.VS2, "VS2:ship", ship.getShipAABB().maxY(), null);
     }
 
     public static Vec3 getVelocity(Ship ship) {

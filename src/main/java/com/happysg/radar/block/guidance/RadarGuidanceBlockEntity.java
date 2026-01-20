@@ -1,6 +1,6 @@
 package com.happysg.radar.block.guidance;
 
-import com.happysg.radar.block.datalink.screens.TargetingConfig;
+import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.monitor.MonitorBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;

@@ -60,28 +60,10 @@ public class VS2Utils {
         return vec3;
     }
 
-    public static Vec3 getShipVecDirectionTransform(Vec3 vec3, Ship ship) {
-        if (!Mods.VALKYRIENSKIES.isLoaded())
-            return vec3;
-        if (ship != null) {
-            ship.getShipToWorld();
-            final Vector3d vec = ship.getWorldToShip().transformDirection(new Vector3d(vec3.x, vec3.y, vec3.z));
-            VectorConversionsMCKt.toMinecraft(vec);
-            return new Vec3(vec.x(), vec.y(), vec.z());
-        }
-        return vec3;
-    }
-
     public static Vec3 getWorldVecDirectionTransform(Vec3 vec3, BlockEntity be) {
         if (!Mods.VALKYRIENSKIES.isLoaded())
             return vec3;
         return getWorldVecDirectionTransform(vec3, getShipManagingPos(be));
-    }
-
-    public static Vec3 getShipVecDirectionTransform(Vec3 vec3, BlockEntity be) {
-        if (!Mods.VALKYRIENSKIES.isLoaded())
-            return vec3;
-        return getShipVecDirectionTransform(vec3, getShipManagingPos(be));
     }
 
     public static BlockPos getWorldPos(BlockEntity blockEntity) {
