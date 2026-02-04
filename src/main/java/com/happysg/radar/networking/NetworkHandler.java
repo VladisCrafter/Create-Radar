@@ -1,5 +1,8 @@
 package com.happysg.radar.networking;
 
+import com.happysg.radar.block.monitor.MonitorSelectionPacket;
+import com.happysg.radar.networking.packets.FirePacket;
+import com.happysg.radar.networking.packets.RaycastPacket;
 import com.happysg.radar.networking.packets.BoolListPacket;
 import com.happysg.radar.networking.packets.SaveListsPacket;
 import net.minecraftforge.network.NetworkRegistry;
@@ -34,6 +37,22 @@ public class NetworkHandler {
                 BoolListPacket::encode,
                 BoolListPacket::decode,
                 BoolListPacket::handle
+
+        );
+        CHANNEL.registerMessage(packetId++, RaycastPacket.class,
+                RaycastPacket::encode,
+                RaycastPacket::decode,
+                RaycastPacket::handle
+        );
+        CHANNEL.registerMessage(packetId++, FirePacket.class,
+                FirePacket::encode,
+                FirePacket::decode,
+                FirePacket::handle
+        );
+        CHANNEL.registerMessage(packetId++, MonitorSelectionPacket.class,
+                MonitorSelectionPacket::encode,
+                MonitorSelectionPacket::decode,
+                MonitorSelectionPacket::handle
         );
     }
 

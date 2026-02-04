@@ -10,6 +10,8 @@ import com.simibubi.create.foundation.gui.widget.IconButton;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
 import org.valkyrienskies.core.api.ships.Ship;
 
 
@@ -26,8 +28,9 @@ public class IDBlockScreen extends AbstractSimiScreen {
         IDManager.IDRecord record = IDManager.getIDRecordByShip(ship);
         if (record != null) {
             this.id = record.secretID();
-            this.name = record.name();
+            this.name = record.name();// this will now be the slug
         }
+
     }
 
     @Override
@@ -67,6 +70,8 @@ public class IDBlockScreen extends AbstractSimiScreen {
     @Override
     public void onClose() {
         super.onClose();
-        ModMessages.sendToServer(new IDRecordPacket(ship.getSlug(), id, name));
+        ModMessages.sendToServer(new IDRecordPacket(ship.getId(), ship.getSlug(), id,name));
     }
+
+
 }

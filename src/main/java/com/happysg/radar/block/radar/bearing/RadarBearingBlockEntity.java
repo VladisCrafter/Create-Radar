@@ -1,12 +1,15 @@
 package com.happysg.radar.block.radar.bearing;
 
 import com.happysg.radar.CreateRadar;
+import com.happysg.radar.block.arad.aradnetworks.JamRegistry;
+import com.happysg.radar.block.arad.jammer.FakeRadarTrackFactory;
 import com.happysg.radar.block.behavior.networks.NetworkData;
 import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.behavior.RadarScanningBlockBehavior;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
+import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.contraptions.AssemblyException;
@@ -20,17 +23,21 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
+import java.security.PublicKey;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implements IRadar {
+    private BlockPos lastKnownPos = BlockPos.ZERO;
     private int dishCount;
     private boolean creative;
     private Direction receiverFacing = Direction.NORTH;
@@ -70,6 +77,29 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
             if (gt % 5 == 0 && gt != lastFilterTick) {
                 lastFilterTick = gt;
                 recomputeNetworkFilteredTracks();
+            }
+        }
+        if (!level.isClientSide && level.getGameTime() % 40 == 0) {
+            if (level instanceof ServerLevel serverLevel) {
+
+                // nothing to do if we didnt move
+                if (lastKnownPos.equals(worldPosition))
+                    return;
+
+                ResourceKey<Level> dim = serverLevel.dimension();
+                NetworkData data = NetworkData.get(serverLevel);
+
+                boolean updated = data.updateRadarPosition(
+                        dim,
+                        lastKnownPos,
+                        worldPosition
+                );
+
+                // only commit the new position if the network accepted it
+                if (updated) {
+                    lastKnownPos = worldPosition;
+                    setChanged();
+                }
             }
         }
     }
@@ -219,7 +249,13 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
     }
 
     public Collection<RadarTrack> getTracks() {
-        return scanningBehavior.getRadarTracks();
+        Collection<RadarTrack> real = scanningBehavior.getRadarTracks();
+
+            if (level instanceof ServerLevel sl &&
+                    JamRegistry.isRadarSpoofed(sl, worldPosition)) {
+                return FakeRadarTrackFactory.generate(sl, worldPosition, 8);
+            }
+            return real;
     }
     @Nullable
     private NetworkData.Group getNetworkGroup() {
@@ -254,6 +290,18 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
         networkFilteredTracks = scanningBehavior.getRadarTracks().stream()
                 .filter(det::test)
                 .toList();
+    }
+    @Override
+    public String getRadarType(){
+        return "spinning";
+    }
+    @Override
+    public boolean renderRelativeToMonitor(){
+        return (VS2Utils.isBlockInShipyard(level,getBlockPos()));
+    }
+    @Override
+    public Direction getradarDirection() {
+        return this.receiverFacing;
     }
 
 }

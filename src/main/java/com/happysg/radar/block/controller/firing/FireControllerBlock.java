@@ -2,6 +2,8 @@ package com.happysg.radar.block.controller.firing;
 
 
 import com.happysg.radar.block.behavior.networks.WeaponNetwork;
+import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
+import com.happysg.radar.block.datalink.DataLinkBlock;
 import com.happysg.radar.registry.ModBlockEntityTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -16,13 +18,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 
 public class FireControllerBlock extends Block implements EntityBlock {
 
-    public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
+    public static BooleanProperty POWERED = BlockStateProperties.POWERED;
     public WeaponNetwork weaponNetwork;
 
     public FireControllerBlock(Properties properties) {
@@ -51,6 +51,42 @@ public class FireControllerBlock extends Block implements EntityBlock {
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(POWERED);
     }
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+        if (level instanceof ServerLevel sl && state.getBlock() != newState.getBlock() ) {
+            breakAttachedDataLinks(level, pos);
+            WeaponNetworkData data = WeaponNetworkData.get(sl);
+            var view = data.getWeaponGroupViewFromEndpoint(sl.dimension(),pos);
+            if(view != null){
+                data.removeController(level.dimension(), pos);
+
+            }
+        }
+        super.onRemove(state, level, pos, newState, isMoving);
+
+    }
+    private static void breakAttachedDataLinks(Level level, BlockPos controllerPos) {
+        for (Direction dir : Direction.values()) {
+            BlockPos linkPos = controllerPos.relative(dir);
+            BlockState linkState = level.getBlockState(linkPos);
+
+            if (!(linkState.getBlock() instanceof DataLinkBlock))
+                continue;
+
+            if (linkState.hasProperty(DataLinkBlock.LINK_STYLE)
+                    && linkState.getValue(DataLinkBlock.LINK_STYLE) != DataLinkBlock.LinkStyle.CONTROLLER)
+                continue;
+
+            if (linkState.hasProperty(DataLinkBlock.FACING)) {
+                Direction facing = linkState.getValue(DataLinkBlock.FACING);
+                if (!linkPos.relative(facing.getOpposite()).equals(controllerPos))
+                    continue;
+            }
+
+            level.destroyBlock(linkPos, true);
+        }
+    }
+
 
 
 }

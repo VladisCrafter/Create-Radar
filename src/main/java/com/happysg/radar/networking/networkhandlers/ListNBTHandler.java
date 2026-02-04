@@ -12,56 +12,67 @@ public class ListNBTHandler {
 
     // Legacy keys (old format)
     private static final String ENTRIES_KEY = "EntriesList";
-    private static final String FRIEND_OR_FOE_KEY = "FriendOrFoeList";
     private static final String SINGLE_KEY = "IDSTRING";
 
     // New format root
     private static final String FILTERS_ROOT = "Filters";
     private static final String IDENT_KEY = "identification";
 
-    /** New write: saves the username list + friend/foe list into Filters.identification */
-    public static void saveToHeldItem(Player player, List<String> entries, List<Boolean> friendOrFoe) {
+    public static void saveToHeldItem(Player player, List<String> entries) {
         ItemStack stack = player.getMainHandItem();
         if (stack.isEmpty()) return;
 
         CompoundTag root = stack.getOrCreateTag();
-        CompoundTag filters = root.contains(FILTERS_ROOT, Tag.TAG_COMPOUND) ? root.getCompound(FILTERS_ROOT) : new CompoundTag();
+        CompoundTag filters = root.contains(FILTERS_ROOT, Tag.TAG_COMPOUND)
+                ? root.getCompound(FILTERS_ROOT)
+                : new CompoundTag();
 
-        // preserve existing label if present
         IdentificationConfig existing = filters.contains(IDENT_KEY, Tag.TAG_COMPOUND)
                 ? IdentificationConfig.fromTag(filters.getCompound(IDENT_KEY))
                 : IdentificationConfig.DEFAULT;
 
-        IdentificationConfig cfg = new IdentificationConfig(entries, friendOrFoe, existing.label());
+        IdentificationConfig cfg = new IdentificationConfig(entries, existing.label());
+
         filters.put(IDENT_KEY, cfg.toTag());
         root.put(FILTERS_ROOT, filters);
 
-        // Optional: keep legacy keys in sync for a version or two (remove later)
-        // writeLegacy(root, entries, friendOrFoe);
+        // i remove legacy keys so i dont accidentally load stale data from old fields
+        root.remove(ENTRIES_KEY);
+        root.remove(SINGLE_KEY);
+        root.remove("FriendOrFoeList");
 
         stack.setTag(root);
+        player.getInventory().setChanged();
+        player.containerMenu.broadcastChanges();
     }
 
-    /** New write: saves the string into Filters.identification.label */
     public static void saveStringToHeldItem(Player player, String value) {
         ItemStack stack = player.getMainHandItem();
         if (stack.isEmpty()) return;
 
         CompoundTag root = stack.getOrCreateTag();
-        CompoundTag filters = root.contains(FILTERS_ROOT, Tag.TAG_COMPOUND) ? root.getCompound(FILTERS_ROOT) : new CompoundTag();
+        CompoundTag filters = root.contains(FILTERS_ROOT, Tag.TAG_COMPOUND)
+                ? root.getCompound(FILTERS_ROOT)
+                : new CompoundTag();
 
         IdentificationConfig existing = filters.contains(IDENT_KEY, Tag.TAG_COMPOUND)
                 ? IdentificationConfig.fromTag(filters.getCompound(IDENT_KEY))
                 : IdentificationConfig.DEFAULT;
 
-        IdentificationConfig cfg = new IdentificationConfig(existing.usernames(), existing.friendly(), value);
+        IdentificationConfig cfg = new IdentificationConfig(existing.entries(), value);
+
         filters.put(IDENT_KEY, cfg.toTag());
         root.put(FILTERS_ROOT, filters);
 
+        root.remove(ENTRIES_KEY);
+        root.remove(SINGLE_KEY);
+        root.remove("FriendOrFoeList");
+
         stack.setTag(root);
+        player.getInventory().setChanged();
+        player.containerMenu.broadcastChanges();
     }
 
-    /** Loads list data for your screen. Reads new format first, falls back to legacy keys. */
     public static LoadedLists loadFromHeldItem(Player player) {
         ItemStack stack = player.getMainHandItem();
         LoadedLists loaded = new LoadedLists();
@@ -75,8 +86,7 @@ public class ListNBTHandler {
             CompoundTag filters = root.getCompound(FILTERS_ROOT);
             if (filters.contains(IDENT_KEY, Tag.TAG_COMPOUND)) {
                 IdentificationConfig cfg = IdentificationConfig.fromTag(filters.getCompound(IDENT_KEY));
-                loaded.entries.addAll(cfg.usernames());
-                loaded.friendOrFoe.addAll(cfg.friendly());
+                loaded.entries.addAll(cfg.entries());
                 return loaded;
             }
         }
@@ -85,13 +95,9 @@ public class ListNBTHandler {
         ListTag entriesTag = root.getList(ENTRIES_KEY, Tag.TAG_STRING);
         for (int i = 0; i < entriesTag.size(); i++) loaded.entries.add(entriesTag.getString(i));
 
-        ListTag foeTag = root.getList(FRIEND_OR_FOE_KEY, Tag.TAG_BYTE);
-        for (int i = 0; i < foeTag.size(); i++) loaded.friendOrFoe.add(foeTag.getInt(i) != 0);
-
         return loaded;
     }
 
-    /** Loads the ID string for your other UI (new format first, legacy fallback). */
     public static String loadStringFromHeldItem(Player player) {
         ItemStack stack = player.getMainHandItem();
         if (stack.isEmpty() || !stack.hasTag()) return "";
@@ -107,12 +113,10 @@ public class ListNBTHandler {
             }
         }
 
-        // Legacy fallback
         return root.getString(SINGLE_KEY);
     }
 
     public static class LoadedLists {
         public final List<String> entries = new ArrayList<>();
-        public final List<Boolean> friendOrFoe = new ArrayList<>();
     }
 }

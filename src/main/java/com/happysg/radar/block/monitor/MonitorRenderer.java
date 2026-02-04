@@ -1,27 +1,39 @@
 package com.happysg.radar.block.monitor;
 
 import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
+import com.happysg.radar.block.controller.id.IDManager;
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.block.radar.track.TrackCategory;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.config.RadarConfig;
 import com.happysg.radar.registry.ModRenderTypes;
+import com.mojang.logging.LogUtils;
 import net.createmod.catnip.theme.Color;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.simibubi.create.foundation.blockEntity.renderer.SmartBlockEntityRenderer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+import org.joml.Quaterniond;
+import org.joml.Vector3d;
+import org.slf4j.Logger;
+import org.valkyrienskies.core.api.ships.Ship;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -35,12 +47,14 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
     private static final float DEPTH_SWEEP = 0.947f;
     private static final float DEPTH_TRACK_BASE = 0.95f;
     private static final float DEPTH_TRACK_INCREMENT = 0.0001f;
-
+    private static final float LABEL_SCALE = 0.003f;
+    private static final float LABEL_Z_OFFSET = 0.03f;
+    private static final float LABEL_DEPTH_NUDGE = 0.00025f;
     // Alpha values for different elements
     private static final float ALPHA_BACKGROUND = 0.6f;
     private static final float ALPHA_GRID = 0.5f;
     private static final float ALPHA_SWEEP = 0.8f;
-
+    private static final Logger LOGGER = LogUtils.getLogger();
     // Track scaling factors
     private static final float TRACK_POSITION_SCALE = 0.75f;
 
@@ -228,9 +242,6 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         }
     }
 
-    /**
-     * Renders a single radar track
-     */
     private void renderTrack(RadarTrack track, MonitorBlockEntity monitor, IRadar radar,
                              PoseStack ms, MultiBufferSource bufferSource,
                              int depthMultiplier) {
@@ -238,14 +249,22 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         float scale = radar.getRange();
         int size = monitor.getSize();
 
-        // Calculate track position relative to radar
+        // i treat both positions as world positions here
         Vec3 radarPos = PhysicsHandler.getWorldPos(monitor.getLevel(), radar.getWorldPos()).getCenter();
         Vec3 relativePos = track.position().subtract(radarPos);
+
+        // if we're rendering relative to the monitor, and the monitor is on a ship,
+        // rotate the relative vector into ship-local axes so the screen rotates with the ship
         if (radar.renderRelativeToMonitor()) {
-            //todo change for plane radar
+            Ship ship = monitor.getShip();
+            if (ship != null) {
+                // i keep the cone "north-up" by counter-rotating track vectors by the ship yaw
+                double shipYawRad = getShipYawRad(ship);
+                relativePos = rotateAroundY(relativePos, -(shipYawRad + Math.PI));
+
+            }
         }
         // Transform to display coordinates
-        //todo handle direction on vs2 ships
         float xOff = calculateTrackOffset(relativePos, monitorFacing, scale, true);
         float zOff = calculateTrackOffset(relativePos, monitorFacing, scale, false);
 
@@ -290,13 +309,74 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
                     m, n, new Color(255, 255, 0), alpha, depth - 0.0001f,
                     xmin, zmin, xmax, zmax);
         }
-
         if (track.id().equals(monitor.selectedEntity)) {
             renderVertices(getBuffer(bufferSource, MonitorSprite.TARGET_SELECTED),
                     m, n, new Color(255, 0, 0), alpha, depth - 0.0002f,
                     xmin, zmin, xmax, zmax);
         }
+
+        String slug = getSlugForTrack(track, monitor);
+        if (slug != null) {
+            // i anchor the label to the center of the track quad
+            float xCenter = (xmin + xmax) * 0.5f;
+            float zCenter = (zmin + zmax) * 0.5f;
+
+            // i nudge it "down" the screen ( +Z on your monitor plane )
+            float zBelow = zCenter + LABEL_Z_OFFSET;
+
+            // i clamp so it stays visible
+            zBelow = Mth.clamp(zBelow, (1f - size) + 0.04f, 1f - 0.04f);
+
+            renderTrackLabel(ms, bufferSource, slug, xCenter, zBelow, depth, alpha);
+        }
     }
+    private static Vec3 rotateAroundY(Vec3 v, double angleRad) {
+        double cos = Math.cos(angleRad);
+        double sin = Math.sin(angleRad);
+
+        // i rotate around world up (Y). this makes tracks orbit when the ship turns
+        double x = v.x * cos - v.z * sin;
+        double z = v.x * sin + v.z * cos;
+
+        return new Vec3(x, v.y, z);
+    }
+
+    /**
+     * i compute ship yaw only (around world Y) relative to world NORTH (-Z).
+     * result is radians, where 0 means ship forward points toward north ( -Z ).
+     */
+    private static double getShipYawRad(Ship ship) {
+        var transform = ship.getTransform();
+
+        Quaterniond shipToWorld = new Quaterniond();
+        try {
+            shipToWorld.set(transform.getShipToWorldRotation());
+        } catch (Throwable ignored) {
+            // if mappings differ, fall back to the inverse of worldToShip
+            shipToWorld.set(transform.getRotation()).invert();
+        }
+
+        // i ask: "where does the ship's local +Z (forward) point in the world?"
+        Vector3d fwd = new Vector3d(0, 0, 1);
+        shipToWorld.transform(fwd);
+
+        // yaw relative to north (-Z):
+        // when fwd is (0,0,-1) => atan2(0, 1) = 0 rad  (north)
+        // when fwd is (1,0,0)  => atan2(1, 0) = +pi/2 (east)
+        return Math.atan2(fwd.x, -fwd.z);
+    }
+    private static Vec3 rotateWorldVecIntoShipFrame(Ship ship, Vec3 worldVec) {
+        var transform = ship.getTransform();
+
+        Quaterniond worldToShip = new Quaterniond();
+        worldToShip.set(transform.getRotation());
+
+        Vector3d v = new Vector3d(worldVec.x, worldVec.y, worldVec.z);
+        worldToShip.transform(v);
+
+        return new Vec3(v.x, v.y, v.z);
+    }
+
 
     /**
      * Calculates the offset for a track on the display
@@ -441,7 +521,7 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         Color color = new Color(RadarConfig.client().groundRadarColor.get());
 
         float monitorAngle = 0;
-        if (radar.renderRelativeToMonitor()) {
+        if (!radar.renderRelativeToMonitor()) {
             // Calculate the current angle
             Direction monitorFacing = controller.getBlockState().getValue(MonitorBlock.FACING);
             Vec3 facingVec = new Vec3(monitorFacing.getStepX(), monitorFacing.getStepY(), monitorFacing.getStepZ());
@@ -449,19 +529,35 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
             monitorAngle = (float) Math.toDegrees(Math.atan2(angleVec.x, angleVec.z));
 
             if (monitorFacing == Direction.NORTH || monitorFacing == Direction.SOUTH) {
-                monitorAngle = (monitorAngle + 180) % 360; //fixme not sure why this is needed, but off by 180
+                monitorAngle = (monitorAngle + 180) % 360;
             }
 
             // Normalize to positive angles
             monitorAngle = (monitorAngle + 360) % 360;
         }
+        float currentAngle;
+        if(radar.renderRelativeToMonitor() && controller.getShip() != null){
+            Direction monitorFacing = controller.getBlockState().getValue(MonitorBlock.FACING);
+            Direction radarFacing   = radar.getradarDirection();
+            if(radarFacing == null)return;// or however you store it
 
-        float currentAngle = radar.getGlobalAngle();
+            ConeDir2D cone = getConeDirectionOnMonitor(monitorFacing, radarFacing);
+            switch (cone){
+                case NORTH -> currentAngle = 0;
+                case DOWN -> currentAngle = 180;
+                case LEFT -> currentAngle =90;
+                case RIGHT -> currentAngle =270;
+                default -> currentAngle =30;
+            }
+
+        }else {
+             currentAngle = radar.getGlobalAngle()+180;
+        }
+
         // Make sure we're working with normalized angles
         currentAngle = (currentAngle + 360) % 360;
 
-        // Calculate the relative angle between monitor and radar
-        // This is the key fix - ensure we're getting the shortest angle difference
+
         float angleDiff = monitorAngle + currentAngle;
         // Normalize to -180 to 180 for rotation calculation
         if (angleDiff > 180) angleDiff -= 360;
@@ -520,4 +616,126 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
                 .normal(n, 0, 1, 0)
                 .endVertex();
     }
+
+
+    public enum ConeDir2D { UP, RIGHT, DOWN, LEFT,NORTH }
+
+    public static ConeDir2D getConeDirectionOnMonitor(Direction monitorFacing, Direction radarFacing) {
+        // i only handle horizontals; if something weird comes in i just treat it as up
+
+        int m = monitorFacing.get2DDataValue(); // 0..3
+        int r = radarFacing.get2DDataValue();   // 0..3
+        // i compute clockwise steps from monitor -> radar
+        int steps = (r - m) & 3; // fast mod 4
+
+        return switch (steps) {
+            case 0 -> ConeDir2D.NORTH;
+            case 1 -> ConeDir2D.RIGHT;
+            case 2 -> ConeDir2D.DOWN;
+            case 3 -> ConeDir2D.LEFT;
+            default -> ConeDir2D.UP;
+        };
+    }
+
+
+    private  int cwStepsBetween(Direction from, Direction to) {
+        // i map NESW into 0..3 so i can do modular math
+        int a = dirIndex(from);
+        int b = dirIndex(to);
+
+        // i take (b - a) mod 4 to get clockwise steps
+        int steps = b - a;
+        steps %= 4;
+        if (steps < 0) steps += 4;
+        return steps;
+    }
+
+    private int dirIndex(Direction d) {
+        // i define indices in clockwise order: N=0, E=1, S=2, W=3
+        return switch (d) {
+            case NORTH -> 0;
+            case EAST  -> 1;
+            case SOUTH -> 2;
+            case WEST  -> 3;
+            default -> 0;
+        };
+    }
+
+    private String getSlugForTrack(RadarTrack track, MonitorBlockEntity mon) {
+        if (mon.getLevel() == null) return null;
+
+        if ("VS2:ship".equals(track.entityType())) {
+            long shipId;
+            try {
+                shipId = Long.parseLong(track.id());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+
+            IDManager.IDRecord rec = IDManager.getIDRecordByShipId(shipId);
+            if (rec != null) {
+                String storedName = rec.name();
+                if (storedName != null && !storedName.isBlank())
+                    return storedName;
+            }
+
+
+        }
+
+        // Players: null-safe
+        if (track.trackCategory() == TrackCategory.PLAYER) {
+            UUID uuid;
+            try {
+                uuid = UUID.fromString(track.getId());
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
+
+            Player sp = mon.getLevel().getPlayerByUUID(uuid);
+
+             return sp != null ? sp.getName().getString() : null;
+        }
+
+        return null;
+    }
+
+
+    private void renderTrackLabel(PoseStack ms, MultiBufferSource bufferSource,
+                                  String text, float xCenter, float zBelow, float depth,
+                                  float alpha) {
+
+        if (alpha <= 0.02f) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        Font font = mc.font;
+
+        ms.pushPose();
+
+        ms.translate(xCenter, depth + LABEL_DEPTH_NUDGE, zBelow);
+        ms.mulPose(Axis.XP.rotationDegrees(90));
+        ms.scale(LABEL_SCALE, LABEL_SCALE, LABEL_SCALE);
+
+        int width = font.width(text);
+        float x = -width / 2.0f;
+
+        int a = Mth.clamp((int) (alpha * 255f), 0, 255);
+        int argb = (a << 24) | 0xFFFFFF;
+
+        int packedLight = 0xF000F0;
+
+        font.drawInBatch(
+                text,
+                x, 0,
+                argb,
+                false,
+                ms.last().pose(),
+                bufferSource,
+                Font.DisplayMode.SEE_THROUGH,
+                0,
+                packedLight
+        );
+
+        ms.popPose();
+    }
+
 }

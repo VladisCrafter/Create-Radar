@@ -1,51 +1,58 @@
 package com.happysg.radar.block.behavior.networks;
 
+import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.controller.firing.FireControllerBlockEntity;
-import com.happysg.radar.block.radar.track.RadarTrack;
-import com.happysg.radar.config.RadarConfig;
-import com.mojang.logging.LogUtils;
-import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.phys.HitResult;
-import org.joml.Vector3f;
-import org.slf4j.ILoggerFactory;
-import org.slf4j.Logger;
-
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
-import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
-import com.happysg.radar.compat.cbc.CannonUtil;
+import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.block.radar.track.RadarTrackUtil;
+import com.happysg.radar.compat.Mods;
+import com.happysg.radar.compat.cbc.AccelerationTracker;
+import com.happysg.radar.compat.cbc.CannonLead;
+import com.happysg.radar.compat.cbc.VelocityTracker;
+import com.happysg.radar.compat.vs2.VS2ShipVelocityTracker;
+import com.happysg.radar.compat.vs2.VS2Utils;
+import com.happysg.radar.config.RadarConfig;
+import com.happysg.radar.compat.cbc.CBCMuzzleUtil;
+import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import org.valkyrienskies.core.impl.shadow.En;
+import org.joml.Vector3f;
+import org.slf4j.Logger;
+import org.valkyrienskies.core.api.ships.Ship;
+import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
-import rbasamoyai.createbigcannons.cannon_control.cannon_mount.YawControllerBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
-
-import static com.happysg.radar.compat.cbc.CannonTargeting.calculateProjectileYatX;
 
 public class WeaponFiringControl {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final int TARGET_TIMEOUT_TICKS = 20;   // 1s at 20 TPS
+    private static final int TARGET_TIMEOUT_TICKS = 20;
 
     private TargetingConfig targetingConfig = TargetingConfig.DEFAULT;
     private Vec3 target;
     private boolean firing;
     private float offset;
 
-    private boolean prevAssemblyPowered = false;
-    private boolean prevFirePowered     = false;
+    private Vec3 lastOffsetAim = null;
+    private int aimStableTicks = 0;
+    private static final int AIM_STABLE_REQUIRED = 1;
+    private static final double AIM_STABLE_EPS = 0.5; // blocks
+
 
     public final CannonMountBlockEntity cannonMount;
     public AutoPitchControllerBlockEntity pitchController;
@@ -55,6 +62,23 @@ public class WeaponFiringControl {
     public final Level level;
     private RadarTrack activetrack;
     private Entity targetEntity;
+    private Ship targetShip;
+    private BlockPos binoTargetPos;
+    private boolean binoMode;
+    private long targetShipId = -1;
+    @Nullable private Vec3 lastAimPoint = null;
+
+    private static final int VIS_REFRESH_TICKS = 3; // recompute every N ticks per entity
+    private static final int MAX_POINTS_PER_REFRESH = 10; // ray budget per refresh
+    private static final double ENTITY_INFLATE = 0.0; // grow AABB a bit for modded hitboxes
+    private static final double FACE_EPS = 0.01; // tiny offset outside faces
+    private final java.util.Map<Integer, VisCache> visCache = new java.util.HashMap<>();
+
+
+    private static final class VisCache {
+        Vec3 visiblePointOnTarget; // point we can see on the entity
+        long lastTick;
+    }
 
     public List<AABB> safeZones = new ArrayList<>();
     private long lastTargetTick = -1;   // server-time when we last got a target update
@@ -84,13 +108,8 @@ public class WeaponFiringControl {
         if (!safeZones.isEmpty()) {
             for (AABB zone : safeZones) {
                 if (zone == null) continue;
-
-                Optional<Vec3> entry = zone.clip(start, end);
-                Optional<Vec3> exit  = zone.clip(end, start);
-
-                if (entry.isPresent() && exit.isPresent()) {
-                    result = RayResult.BLOCKED_SAFEZONE;
-                    break;
+                if (zone.contains(start) || zone.contains(end) || zone.clip(start, end).isPresent()) {
+                    return RayResult.BLOCKED_SAFEZONE;
                 }
             }
         }
@@ -124,19 +143,235 @@ public class WeaponFiringControl {
         return result;
     }
 
+    public Vec3 getCannonMuzzlePos() {
+        PitchOrientedContraptionEntity ce = cannonMount.getContraption();
+        if (ce == null) {
+            return cannonMount.getBlockPos().getCenter().add(0, 2.0, 0);
+        }
 
+        if (!(ce.getContraption() instanceof AbstractMountedCannonContraption)) {
+            return ce.position().add(0, 0.1, 0);
+        }
+
+        Vec3 muzzle = CBCMuzzleUtil.getCBCSpawnAnchorWorld(ce);
+        if (muzzle != null && muzzle != Vec3.ZERO) return muzzle;
+
+        return ce.position().add(0, 0.1, 0);
+    }
+
+    /** Raycasts should start slightly forward to avoid self-hit on contraption blocks. */
+    public Vec3 getCannonRayStart() {
+        PitchOrientedContraptionEntity ce = cannonMount.getContraption();
+        Vec3 muzzle = getCannonMuzzlePos();
+
+        if (ce == null) return muzzle;
+
+        Vec3 fwd = CBCMuzzleUtil.getForwardWorld(ce);
+        if (fwd == null || fwd == Vec3.ZERO) return muzzle;
+
+        return muzzle.add(fwd.scale(0.35));
+    }
+
+
+    private static BlockPos findMuzzleAirLocal(AbstractMountedCannonContraption cc) {
+        BlockPos p = cc.getStartPos().immutable();
+
+        for (int i = 0; i < 512; i++) { // hard cap safety
+            if (!cc.presentBlockEntities.containsKey(p)) {
+                return p;
+            }
+            p = p.relative(cc.initialOrientation());
+        }
+
+        return cc.getStartPos();
+    }
+
+
+    private AABB inflatedAabb(Entity e) {
+        AABB bb = e.getBoundingBox();
+        return bb.inflate(ENTITY_INFLATE);
+    }
+
+
+    /**
+     * Find a visible point on an entity by raycasting to points on its AABB "surface".
+     * This does NOT depend on vertical probing points; it tries to shoot whatever part is visible.
+     *
+     * Returns null if no visible point found within budget.
+     */
+    @Nullable
+    private Vec3 findVisiblePointOnEntity(Entity e, Vec3 start, int budget) {
+        AABB bb = inflatedAabb(e);
+
+
+        Vec3 center = bb.getCenter();
+        Vec3 toCannon = start.subtract(center);
+
+
+        double ax = Math.abs(toCannon.x);
+        double ay = Math.abs(toCannon.y);
+        double az = Math.abs(toCannon.z);
+
+
+        ArrayList<Vec3> candidates = new ArrayList<>(24);
+
+
+        double xMin = bb.minX, xMax = bb.maxX;
+        double yMin = bb.minY, yMax = bb.maxY;
+        double zMin = bb.minZ, zMax = bb.maxZ;
+
+
+        double yMid = (yMin + yMax) * 0.5;
+        double yChest = yMin + (yMax - yMin) * 0.45;
+
+
+        candidates.add(new Vec3(center.x, yChest, center.z));
+        candidates.add(new Vec3(center.x, yMid, center.z));
+
+
+        // Choose dominant face
+        boolean useX = ax >= ay && ax >= az;
+        boolean useY = ay > ax && ay >= az;
+        boolean useZ = !useX && !useY;
+
+
+        if (useX) {
+            boolean maxFace = (toCannon.x >= 0);
+            double x = maxFace ? xMax : xMin;
+            addFaceCandidates(candidates, x, yMin, yMax, zMin, zMax, 'x', maxFace);
+        } else if (useY) {
+            boolean maxFace = (toCannon.y >= 0);
+            double y = maxFace ? yMax : yMin;
+            addFaceCandidates(candidates, y, xMin, xMax, zMin, zMax, 'y', maxFace);
+        } else { // useZ
+            boolean maxFace = (toCannon.z >= 0);
+            double z = maxFace ? zMax : zMin;
+            addFaceCandidates(candidates, z, xMin, xMax, yMin, yMax, 'z', maxFace);
+        }
+
+        if (ax >= az) {
+            boolean maxFace = (toCannon.x >= 0);
+            double x = maxFace ? xMax : xMin;
+            addFaceCandidates(candidates, x, yMin, yMax, zMin, zMax, 'x', maxFace);
+        } else {
+            boolean maxFace = (toCannon.z >= 0);
+            double z = maxFace ? zMax : zMin;
+            addFaceCandidates(candidates, z, xMin, xMax, yMin, yMax, 'z', maxFace);
+        }
+
+        candidates.add(center);
+
+        int tries = 0;
+        for (Vec3 end : candidates) {
+            if (tries++ >= budget) break;
+
+            if (!isPointInShootableRange(end)) continue;
+            if (isOutOfKnownRange(end)) continue;
+            if (rayClear(start, end).isClear()) return end;
+        }
+
+        return null;
+    }
+
+
+    /**
+     * Adds a set of points on a face of the AABB.
+     * axis 'x' => plane at x=planeVal, varying y/z.
+     * axis 'y' => plane at y=planeVal, varying x/z.
+     * axis 'z' => plane at z=planeVal, varying x/y.
+     */
+    private void addFaceCandidates(List<Vec3> out,
+                                   double planeVal,
+                                   double uMin, double uMax,
+                                   double vMin, double vMax,
+                                   char axis,
+                                   boolean maxFace) {
+
+
+        double uMid = (uMin + uMax) * 0.5;
+        double vMid = (vMin + vMax) * 0.5;
+
+
+        // Face center
+        out.add(facePoint(axis, planeVal, uMid, vMid, maxFace));
+
+
+        // 4 corners
+        out.add(facePoint(axis, planeVal, uMin, vMin, maxFace));
+        out.add(facePoint(axis, planeVal, uMin, vMax, maxFace));
+        out.add(facePoint(axis, planeVal, uMax, vMin, maxFace));
+        out.add(facePoint(axis, planeVal, uMax, vMax, maxFace));
+
+
+        // 4 edge midpoints
+        out.add(facePoint(axis, planeVal, uMin, vMid, maxFace));
+        out.add(facePoint(axis, planeVal, uMax, vMid, maxFace));
+        out.add(facePoint(axis, planeVal, uMid, vMin, maxFace));
+        out.add(facePoint(axis, planeVal, uMid, vMax, maxFace));
+    }
+
+
+    private Vec3 facePoint(char axis, double planeVal, double u, double v, boolean maxFace) {
+        double eps = maxFace ? -FACE_EPS : +FACE_EPS;
+
+
+        return switch (axis) {
+            case 'x' -> new Vec3(planeVal + eps, u, v);
+            case 'y' -> new Vec3(u, planeVal + eps, v);
+            default -> new Vec3(u, v, planeVal + eps); // 'z'
+        };
+    }
+
+
+    /**
+     * Cached visible point query for entities.
+     * Returns null if we couldn't find a visible point within budget.
+     */
+    @Nullable
+    private Vec3 getCachedVisiblePoint(Entity f) {
+        int id = f.getId();
+        long now = level.getGameTime();
+
+
+        VisCache c = visCache.get(id);
+        if (c != null && (now - c.lastTick) < VIS_REFRESH_TICKS) {
+            return c.visiblePointOnTarget;
+        }
+
+
+        Vec3 start = getCannonRayStart();
+        Vec3 vis = findVisiblePointOnEntity(f, start, MAX_POINTS_PER_REFRESH);
+
+
+        if (c == null) c = new VisCache();
+        c.visiblePointOnTarget = vis;
+        c.lastTick = now;
+        visCache.put(id, c);
+
+
+        return vis;
+    }
 
     private boolean checkLineOfSight(Vec3 target) {
-        if (activetrack == null || target == null) {
-
+        if (!binoMode && (activetrack == null || target == null)) {
             return false;
         }
-        if(!targetingConfig.lineOfSight()){
-            return true;
+
+        float height;
+
+        if (!binoMode) {
+            height = (targetEntity != null) ? targetEntity.getBbHeight()
+                    : (activetrack != null ? activetrack.getEnityHeight() : 1f);
+        } else {
+            height = 1f;
         }
-        float height = activetrack.getEnityHeight();
+
         int blocksHigh = (int) Math.ceil(height);
-        Vec3 start = cannonMount.getBlockPos().getCenter().add(0, 2, 0);
+        Vec3 start = getCannonRayStart();
+        if (isOutOfKnownRange(target)) return false;
+        if (!isPointInShootableRange(target)) return false;
+
+        LOGGER.debug("LOS DBG: trackCat={} entityType={} height={} blocksHigh={} target={}", activetrack != null ? activetrack.trackCategory() : "null", activetrack != null ? activetrack.entityType() : "null", height, blocksHigh, target);
         for (int h = blocksHigh - 1; h >= 0; h--) {
             // center of each block, top-first
             Vec3 end = target.add(0, h + 0.5, 0);
@@ -146,9 +381,58 @@ public class WeaponFiringControl {
             }
         }
 
-        return false; // nothing was clear
+        return false;
     }
 
+    private boolean isPointInShootableRange(@Nullable Vec3 point) {
+        if (point == null) return false;
+
+        double max = pitchController != null ? pitchController.getMaxEngagementRangeBlocks() : 0.0;
+
+
+        if (max <= 0.0) return true;
+
+        Vec3 start = getCannonMuzzlePos();
+        double dx = point.x - start.x;
+        double dz = point.z - start.z;
+        double horiz2 = dx * dx + dz * dz;
+
+        return horiz2 <= (max * max);
+    }
+
+    // LOS query for network controller
+    public boolean hasLineOfSightTo(@Nullable RadarTrack track) {
+        if (!isMountStateOk()) return false;
+        if (!targetingConfig.lineOfSight()) return true;
+
+        if (track == null) return false;
+        Vec3 p = track.position();
+        if (p == null) return false;
+
+        // Don’t waste rays on out-of-range
+        if (!isPointInShootableRange(p)) return false;
+
+        Vec3 start = getCannonRayStart();
+
+        // If we can resolve an entity, use multi-point visible-surface probing
+        if (level instanceof ServerLevel sl) {
+            try {
+                UUID uuid = UUID.fromString(track.getId());
+                Entity e = sl.getEntity(uuid);
+                if (e != null && e.isAlive()) {
+                    return getCachedVisiblePoint(e) != null;
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        for (int i = 0; i < 4; i++) {
+            Vec3 end = p.add(0, 0.25 + i * 0.5, 0);
+            if (!isPointInShootableRange(end)) continue;
+            if (rayClear(start, end).isClear()) return true;
+        }
+
+        return false;
+    }
 
     private void debugRay(ServerLevel server, Vec3 start, Vec3 end, RayResult result) {
 
@@ -184,94 +468,292 @@ public class WeaponFiringControl {
     }
 
 
+    public void clearBinoTarget() {
+        visCache.clear();
+        this.binoMode = false;
+        this.binoTargetPos = null;
+        this.target = null;
+        this.activetrack = null;
 
+        lastAimPoint = null;
+        lastOffsetAim = null;
+        aimStableTicks = 0;
 
+        stopFireCannon();
+    }
 
     public void setSafeZones(List<AABB> safeZones) {
         LOGGER.debug("setSafeZones() → {} zones", safeZones.size());
         this.safeZones = safeZones;
     }
-    public static Entity getEntityByUUID(ServerLevel level, UUID uuid) {
-        return level.getEntity(uuid); // returns Entity or null
+    public  Entity getEntityByUUID(ServerLevel level, UUID uuid) {
+        return level.getEntity(uuid);
+    }
+    public Ship getShipByUUID(ServerLevel level, String uuid){
+        return VSGameUtilsKt.getShipObjectWorld(level).getLoadedShips().getById(Long.parseLong(uuid));
     }
 
     /**
      * Called every tick by the pitch controller.
      */
-    public void refreshControllers(){
-        if(!(level instanceof ServerLevel serverLevel)) return;
-        if(view.yawPos() != null && level.getBlockEntity(view.yawPos()) instanceof AutoYawControllerBlockEntity autoyaw){
+    public void refreshControllers() {
+
+        if (!(level instanceof ServerLevel serverLevel)) return;
+        this.view = WeaponNetworkData.get(serverLevel).getWeaponGroupViewFromEndpoint(level.dimension(), pitchController.getBlockPos());
+        if (view.yawPos() != null && level.getBlockEntity(view.yawPos()) instanceof AutoYawControllerBlockEntity autoyaw) {
             this.yawController = autoyaw;
+        } else {
+            this.yawController = null;
         }
-        if(view.pitchPos() != null && level.getBlockEntity(view.pitchPos()) instanceof AutoPitchControllerBlockEntity autopitch){
+        if (view.pitchPos() != null && level.getBlockEntity(view.pitchPos()) instanceof AutoPitchControllerBlockEntity autopitch) {
             this.pitchController = autopitch;
+        } else {
+            this.pitchController = null;
         }
-        if(view.firingPos() != null && level.getBlockEntity(view.firingPos()) instanceof FireControllerBlockEntity firecont){
+        if (view.firingPos() != null && level.getBlockEntity(view.firingPos()) instanceof FireControllerBlockEntity firecont) {
             this.fireController = firecont;
+        } else {
+            this.fireController = null;
         }
     }
+
+    private boolean isOutOfKnownRange(@Nullable Vec3 point) {
+        if (point == null) return true; // no point to test
+
+        double max = pitchController != null ? pitchController.getMaxEngagementRangeBlocks() : 0.0;
+
+        if (max <= 0.0) return false;
+
+        Vec3 start = getCannonRayStart();
+        return point.distanceToSqr(start) > (max * max);
+    }
+
     public void tick() {
+        if (!isMountStateOk()) {
+            stopFireCannon();
+            return;
+        }
+
+        if (binoMode || activetrack != null) {
+            lastTargetTick = level.getGameTime();
+        }
+
+        if (!binoMode && activetrack == null && target != null
+                && level.getGameTime() - lastTargetTick > TARGET_TIMEOUT_TICKS) {
+            LOGGER.debug("TARGET TIMEOUT: now={} last={} age={} target={} track={}",
+                    level.getGameTime(), lastTargetTick, (level.getGameTime()-lastTargetTick),
+                    target, activetrack != null ? activetrack.getId() : "null");
+            resetTarget();
+            stopFireCannon();
+            return;
+        }
+
         LOGGER.debug("tick() start → target={} lastTargetTick={} safeZones={} autoFire={} firing={}", target, lastTargetTick, safeZones.size(), targetingConfig.autoFire(), firing);
-        if (level.getGameTime() % 10 == 0) {
-            refreshControllers();
-        }
-        boolean pulsedThisTick = false;
-        //LOGGER.warn("rotating");
-        // invalidate stale target
-        if (target != null && level != null && level.getGameTime() - lastTargetTick > TARGET_TIMEOUT_TICKS) {
-            LOGGER.debug("  → target stale ({} ticks old), clearing",
-                    level.getGameTime() - lastTargetTick);
-            target = null;
-        }
-        if(targetEntity == null && level instanceof ServerLevel sl){
-            targetEntity = getEntityByUUID(sl, activetrack.getUuid());
-        }
-        target = targetEntity.position();
-        boolean inRange  = isTargetInRange();
-        boolean autoFire = targetingConfig.autoFire();
-        LOGGER.debug("  → inRange={} autoFire={}", inRange, autoFire);
 
-        boolean shouldFire = isTargetInRange();
-        if(fireController != null){
-            LOGGER.warn("check");
-            if (inRange && autoFire) {
-                LOGGER.warn("  → firing condition met");
-                tryFireCannon();
+
+        if (!binoMode && activetrack != null && level instanceof ServerLevel sl) {
+
+            boolean isVsShip = Mods.VALKYRIENSKIES.isLoaded() && "VS2:ship".equals(activetrack.entityType());
+
+            if (isVsShip) {
+                long id;
+                try {
+                    id = Long.parseLong(activetrack.id());
+                } catch (NumberFormatException ignored) {
+                    resetTarget();
+                    return;
+                }
+                if (targetShip == null || targetShipId != id) {
+                    targetShip = getShipByUUID(sl, activetrack.id());
+                    targetShipId = id;
+                    if (targetShip == null) {
+                        resetTarget();
+                        targetEntity = null;
+                        return;
+                    }
+                }
+                targetEntity = null;
             } else {
-                LOGGER.debug("  → firing condition not met");
-                stopFireCannon();
+                if (targetEntity == null) {
+                    targetEntity = getEntityByUUID(sl, UUID.fromString(activetrack.id()));
+                    if (targetEntity == null || !targetEntity.isAlive()) {
+                        resetTarget();
+                        targetShip = null;
+                        return;
+                    }
+                }
+                targetShip = null;
+            }
+        }
+
+
+
+        if (!binoMode) {
+            if (targetShip != null) {
+                target = RadarTrackUtil.getPosition(targetShip);
+            } else if (targetEntity != null) {
+                target = targetEntity.position();
+            }
+        }else {
+            target = binoTargetPos.getCenter();
+        }
+
+        Vec3 entitySolvePos = null;
+
+
+        if (!binoMode && targetEntity != null) {
+            Vec3 vis = getCachedVisiblePoint(targetEntity);
+            if (vis != null) {
+                entitySolvePos = vis;
+            } else {
+                entitySolvePos = targetEntity.position().add(0.0, targetEntity.getBbHeight() * 0.5, 0.0);
+            }
+        }
+
+
+        AbstractMountedCannonContraption cannonContraption;
+        if (cannonMount.getContraption() == null) return;
+        if (cannonMount.getContraption().getContraption() instanceof AbstractMountedCannonContraption cannon) {
+            cannonContraption = cannon;
+        } else return;
+        if (!(level instanceof ServerLevel serverLevel)) return;
+
+        if (targetEntity != null) {
+            if (!targetEntity.isAlive()) {
+                resetTarget();
+                return;
+            }
+        }
+        if (targetShip != null) {
+            long id;
+            try {
+                id = Long.parseLong(activetrack.id());
+            } catch (NumberFormatException ignored) {
+                resetTarget();
+                return;
             }
 
-            if (shouldFire) {
-                tryFireCannon();
-            } else {
-                stopFireCannon();
+            Ship live = VSGameUtilsKt.getShipObjectWorld(serverLevel).getLoadedShips().getById(id);
+            if (live == null) {
+                resetTarget();
+                return;
             }
+
+            targetShip = live;
         }
-        // — propagate to pitch controller so it can start adjusting elevation —
-        Vec3 offsettarget = target.add(0,offset,0);
+
+
+
+        Vec3 shooterVel;
+        Vec3 shooterAccel;
+        Vec3 targetVel;
+        Vec3 targetAccel;
+        if(VS2Utils.isBlockInShipyard(level,cannonMount.getBlockPos())){
+            Ship mountship = VSGameUtilsKt.getShipManagingPos(level,cannonMount.getBlockPos());
+            if(mountship ==null){
+                shooterVel = Vec3.ZERO;
+                shooterAccel = Vec3.ZERO;
+            } else{
+                shooterVel = VS2ShipVelocityTracker.getShipVelocityPerTick(mountship);
+                shooterAccel = AccelerationTracker.getAccelerationPerTick2(mountship.getId(),shooterVel);
+            }
+        }else{
+            shooterVel =Vec3.ZERO;
+            shooterAccel = Vec3.ZERO;
+        }
+        if(targetShip != null){
+            target = RadarTrackUtil.getPosition(targetShip);
+            targetVel = VS2ShipVelocityTracker.getShipVelocityPerTick(targetShip);
+            targetAccel =AccelerationTracker.getAccelerationPerTick2(targetShip.getId(),targetVel);
+        }else if(!binoMode && targetEntity != null){
+            target = targetEntity.position();
+            targetVel = VelocityTracker.getEstimatedVelocityPerTick(targetEntity);
+            targetAccel = AccelerationTracker.getAccelerationPerTick2(targetEntity.getUUID(),targetVel);
+        }else if(binoMode && binoTargetPos != null){
+            target = binoTargetPos.getCenter();
+            targetVel = Vec3.ZERO;
+            targetAccel = Vec3.ZERO;
+        }else{
+            return;
+        }
+
+        CannonLead.LeadSolution lead = CannonLead.solveLeadPerTickWithAcceleration(
+                cannonMount, cannonContraption, serverLevel,
+                shooterVel,
+                shooterAccel,
+                target,
+                targetVel,
+                targetAccel,
+                RadarConfig.server().leadFiringDelay.get());
+
+        boolean hasLeadSolution = (lead != null && lead.aimPoint != null);
+
+        Vec3 offsetAim = hasLeadSolution ? lead.aimPoint : target;
+        lastAimPoint = offsetAim;
+
+        if (lastOffsetAim == null || lastOffsetAim.distanceTo(offsetAim) > AIM_STABLE_EPS) {
+            aimStableTicks = 0;
+            lastOffsetAim = offsetAim;
+        } else {
+            aimStableTicks++;
+        }
+
+        // drive controllers using offsetAim
         if (this.pitchController != null) {
-            LOGGER.debug("  → forwarding target to pitchController");
-            this.pitchController.setTarget(offsettarget);
+
+            this.pitchController.setTarget(offsetAim);
         }
 
-        // — also propagate to the yaw controller so it can rotate horizontally —
-        if(view.yawPos() !=null) {
-            if (level.getBlockEntity(view.yawPos()) instanceof AutoYawControllerBlockEntity yawCtrl) {
-                LOGGER.debug("  → forwarding target to yawController at {}", view.yawPos());
-                yawCtrl.setTarget(offsettarget);
+        if (view != null && view.yawPos() != null) {
+            BlockEntity be = level.getBlockEntity(view.yawPos());
+            if (be instanceof AutoYawControllerBlockEntity yawCtrl) {
+                yawCtrl.setTarget(offsetAim);
             }
         }
+
+        // Debug
+        boolean auto = targetingConfig.autoFire();
+        boolean yawPitchOk = hasCorrectYawPitch();
+        boolean safeOk = !passesSafeZone();
+
+        if (level.getGameTime() % 20 == 0) {
+            LOGGER.debug("WFC FIREGATES: auto={} lead={} yawPitchOk={} safeOk={} firingBE={} target={} aim={} offset={} stable={}/{}", auto, hasLeadSolution, yawPitchOk, safeOk, fireController != null, target, offsetAim, offset, aimStableTicks, AIM_STABLE_REQUIRED);
+            if (!yawPitchOk) {
+                LOGGER.debug("WFC AIMCHK: yawCtrl={} pitchCtrl={} atYaw={} atPitch={} targYaw={} targPitch={}", yawController != null ? yawController.getBlockPos() : null, pitchController != null ? pitchController.getBlockPos() : null, yawController != null && yawController.atTargetYaw(), pitchController != null && pitchController.atTargetPitch(), yawController != null ? yawController.getTargetAngle() : null, pitchController != null ? pitchController.getTargetAngle() : null);
+            }
+        }
+        // Debug End
+
+        boolean shouldFire =
+                targetingConfig.autoFire()
+                        && hasLeadSolution
+                        && hasCorrectYawPitch()
+                        && !passesSafeZone()
+                        && aimStableTicks == AIM_STABLE_REQUIRED;
+
+        if (fireController != null) {
+            if (shouldFire) tryFireCannon();
+            else stopFireCannon();
+        }
     }
 
-    /**
-     * Radar updates the gun’s target through this method.
-     */
     public void resetTarget(){
+        visCache.clear();
         this.target =null;
+        this.activetrack =null;
         this.targetEntity = null;
+        this.targetShip   = null;
+        this.targetShipId = -1;
+
+        lastAimPoint = null;
+        lastOffsetAim = null;
+        aimStableTicks = 0;
+
+        pitchController.setTrack(null);
+        stopFireCannon();
     }
-    public void setTarget(Vec3 target, TargetingConfig config, RadarTrack track, WeaponNetworkData.WeaponGroupView view, Entity targetEntity)     {
+
+    public void setTarget(Vec3 target, TargetingConfig config, RadarTrack track, WeaponNetworkData.WeaponGroupView view){
         LOGGER.debug("setTarget() → new target={} config={} atTick={}",
                 target, config, level != null ? level.getGameTime() : -1L);
         if (target == null) {
@@ -280,119 +762,86 @@ public class WeaponFiringControl {
             stopFireCannon();
             pitchController.setTargetAngle(0);
             yawController.setTargetAngle(0);
+
             return;
         }
-//        if(!(level instanceof ServerLevel serverLevel)){
-//            return;
-//        }
-//        if(view.yawPos() != null && serverLevel.getBlockEntity(view.yawPos()) instanceof AutoYawControllerBlockEntity yCtrl) {
-//            this.yawController = yCtrl;
-//        }
-//        if(view.firingPos() != null && serverLevel.getBlockEntity(view.firingPos()) instanceof FireControllerBlockEntity fCtrl){
-//            this.fireController = fCtrl;
-//        }
+        this.binoMode =false;
         this.target = target;//.add(0,offset,0);
+
+        lastOffsetAim = null;
+        aimStableTicks = 0;
+
         this.targetingConfig = config;
-        this.targetEntity = targetEntity;
-        this.lastTargetTick  = level.getGameTime();
+        if (level != null) this.lastTargetTick  = level.getGameTime();
         this.view = view;
         this.activetrack = track;
-
-
-
-
+        this.targetEntity = null;
+        this.targetShip = null;
     }
 
+    public void setBinoTarget(@Nullable BlockPos binoTarget, TargetingConfig config,
+                              WeaponNetworkData.WeaponGroupView view, boolean reset) {
+
+        this.view = view;
+        this.targetingConfig = config;
+        this.activetrack = null;
+
+        if (reset || binoTarget == null) {
+            this.binoMode = false;
+            this.binoTargetPos = null;
+            this.target = null;
+            stopFireCannon();
+            return;
+        }
+
+        this.binoMode = true;
+        this.binoTargetPos = binoTarget.immutable();
+        if (level != null) this.lastTargetTick = level.getGameTime();
+    }
 
     private boolean isTargetInRange() {
+        if (binoMode) {
+            target = binoTargetPos.getCenter();
+        }
 
         boolean hasTarget     = target != null;
         boolean correctOrient = hasCorrectYawPitch();
         boolean safeZoneClear = !passesSafeZone();
-        boolean lineOfSight   = checkLineOfSight(target);
-        LOGGER.debug("isTargetInRange() check → hasTarget={}, yawPitchOK={}, safeZoneClear={}, LOS = {}",
-                hasTarget, correctOrient, safeZoneClear, lineOfSight);
 
-        return hasTarget && correctOrient && safeZoneClear && lineOfSight;
+        LOGGER.debug("isTargetInRange() check → hasTarget={}, yawPitchOK={}, safeZoneClear={}",
+                hasTarget, correctOrient, safeZoneClear);
+
+        return hasTarget && correctOrient && safeZoneClear;
     }
 
     private boolean passesSafeZone() {
-        LOGGER.debug("passesSafeZone() → checking {} safe zones", safeZones.size());
-        if(safeZones.isEmpty()){
-            return false;
-        }
-        if (!(level instanceof ServerLevel serverLevel)) {
-            LOGGER.debug("  → not server level, skip safe-zone check");
-            return false;
-        }
+        if (safeZones == null || safeZones.isEmpty()) return false;
 
-        if (target == null) {
-            LOGGER.debug("  → target is null, skipping safe zone check");
-            return false;
-        }
+        Vec3 aim = (lastAimPoint != null) ? lastAimPoint : target;
+        if (aim == null) return false;
 
-        Vec3 cannonPos = cannonMount.getBlockPos().getCenter();
-
+        Vec3 start = getCannonRayStart();
         for (AABB zone : safeZones) {
             if (zone == null) continue;
 
-            if (zone.contains(target)) {
-                LOGGER.debug("  → target {} inside zone {}", target, zone);
+            if (zone.contains(start) || zone.contains(aim)) {
                 return true;
             }
 
-            Vec3 baseCannon = new Vec3(cannonPos.x, zone.minY, cannonPos.z);
-            Vec3 baseTarget = new Vec3(target.x, zone.minY, target.z);
-            Optional<Vec3> oMin = zone.clip(baseCannon, baseTarget);
-            Optional<Vec3> oMax = zone.clip(baseTarget, baseCannon);
-
-            if (oMin.isEmpty() || oMax.isEmpty()) {
-                LOGGER.debug("  → no intersection segment for zone {}", zone);
-                continue;
-            }
-
-            Vec3 minX = oMin.get();
-            Vec3 maxX = oMax.get();
-
-            double yMin = zone.minY - cannonMount.getBlockPos().getY();
-            double yMax = zone.maxY - cannonMount.getBlockPos().getY();
-
-            LOGGER.debug("  yMin: {}, yMax: {}", yMin, yMax);
-
-            PitchOrientedContraptionEntity contraption = cannonMount.getContraption();
-            if (contraption == null || !(contraption.getContraption() instanceof AbstractMountedCannonContraption cc)) {
-                LOGGER.warn("  → cannon contraption missing or invalid, skipping");
-                continue;
-            }
-
-            float speed = CannonUtil.getInitialVelocity(cc, serverLevel);
-            double drag = CannonUtil.getProjectileDrag(cc, serverLevel);
-            double grav = CannonUtil.getProjectileGravity(cc, serverLevel);
-            int length  = CannonUtil.getBarrelLength(cc);
-
-            LOGGER.debug("  Speed: {}, Drag: {}, Grav: {}, Length: {}", speed, drag, grav, length);
-
-            double theta = Math.toRadians(cannonMount.getDisplayPitch());
-            double distMin = cannonPos.distanceTo(minX) - length * Math.cos(theta);
-            double distMax = cannonPos.distanceTo(maxX) - length * Math.cos(theta);
-            double yAtMin  = calculateProjectileYatX(speed, distMin, theta, drag, grav);
-            double yAtMax  = calculateProjectileYatX(speed, distMax, theta, drag, grav);
-
-            LOGGER.debug("  → zone {}: yAtMin={}, yAtMax={} vs yMin={}, yMax={}",
-                    zone, yAtMin, yAtMax, yMin, yMax);
-
-            if ((yAtMin >= yMin && yAtMax <= yMax) || (yAtMin <= yMin && yAtMax >= yMin)) {
-                LOGGER.debug("  → trajectory passes through zone {}", zone);
+            if (zone.clip(start, aim).isPresent()) {
                 return true;
             }
         }
 
-        LOGGER.debug("passesSafeZone() → false");
         return false;
     }
 
     private boolean hasCorrectYawPitch() {
-        boolean yaw = yawController.atTargetYaw();
+        if(yawController == null && pitchController == null)return false;
+        boolean yaw =true;
+        if(yawController !=null) {
+            yaw = yawController.atTargetYaw();
+        }
         boolean pitch = pitchController.atTargetPitch();
 
         return yaw && pitch;
@@ -406,7 +855,52 @@ public class WeaponFiringControl {
     private void tryFireCannon() {
         if(this.fireController == null) return;
         fireController.setPowered(true);
-        LOGGER.warn("firing!");
+        LOGGER.debug("firing!");
 
+    }
+
+    public boolean canEngageTrack(@Nullable RadarTrack track, boolean requireLos) {
+        if (!isMountStateOk()) return false;
+        if (track == null) return false;
+        Vec3 p = track.position();
+        if (p == null) return false;
+        if (!(level instanceof ServerLevel sl)) return false;
+
+        if (passesSafeZoneForPoint(p)) return false;
+
+        // 2) Range gate (PER CANNON)
+        if (!isPointInShootableRange(p)) return false;
+
+        // 3) LOS (PER CANNON, only if required by config)
+        if (requireLos) return hasLineOfSightTo(track);
+
+        return true;
+    }
+
+    private boolean passesSafeZoneForPoint(Vec3 aim) {
+        if (safeZones == null || safeZones.isEmpty()) return false;
+        if (aim == null) return false;
+
+        Vec3 start = getCannonRayStart();
+        for (AABB zone : safeZones) {
+            if (zone == null) continue;
+            if (zone.contains(start) || zone.contains(aim)) return true;
+            if (zone.clip(start, aim).isPresent()) return true;
+        }
+        return false;
+    }
+
+
+    private boolean isMountStateOk() {
+        if (level == null || cannonMount == null) return false;
+        if (cannonMount.isRemoved()) return false;
+
+        PitchOrientedContraptionEntity ce = cannonMount.getContraption();
+        if (ce == null) return false;
+        if (!ce.isAlive()) return false;
+
+        if (!(ce.getContraption() instanceof AbstractMountedCannonContraption)) return false;
+
+        return true;
     }
 }

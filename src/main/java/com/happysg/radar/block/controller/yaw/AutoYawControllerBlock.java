@@ -1,11 +1,13 @@
 package com.happysg.radar.block.controller.yaw;
 
+import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
 import com.happysg.radar.registry.ModBlockEntityTypes;
 import com.happysg.radar.block.datalink.DataLinkBlock;
 import com.simibubi.create.content.kinetics.base.HorizontalKineticBlock;
 import com.simibubi.create.foundation.block.IBE;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -39,12 +41,18 @@ public class AutoYawControllerBlock extends HorizontalKineticBlock implements IB
 
     @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
-        if (!level.isClientSide && state.getBlock() != newState.getBlock()) {
+        if (level instanceof ServerLevel sl && state.getBlock() != newState.getBlock() ) {
             breakAttachedDataLinks(level, pos);
+            WeaponNetworkData data = WeaponNetworkData.get(sl);
+            var view = data.getWeaponGroupViewFromEndpoint(sl.dimension(),pos);
+            if(view != null){
+                data.removeController(level.dimension(), pos);
+
+            }
         }
         super.onRemove(state, level, pos, newState, isMoving);
-    }
 
+    }
     private static void breakAttachedDataLinks(Level level, BlockPos controllerPos) {
         for (Direction dir : Direction.values()) {
             BlockPos linkPos = controllerPos.relative(dir);

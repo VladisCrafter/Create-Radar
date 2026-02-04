@@ -5,7 +5,7 @@ import net.minecraft.world.item.ItemStack;
 
 public final class BoolNBThelper {
     private BoolNBThelper() {}
-    // Save flags as a byte[] under `key`
+
     public static void saveBooleansAsBytes(ItemStack stack, boolean[] flags, String key) {
         if (stack == null || flags == null || key == null) return;
         CompoundTag tag = stack.getOrCreateTag();
@@ -14,7 +14,6 @@ public final class BoolNBThelper {
         tag.putByteArray(key, arr);
     }
 
-    // Load flags (returns array of length expectedLength)
     public static boolean[] loadBooleansFromBytes(ItemStack stack, String key, int expectedLength) {
         boolean[] res = new boolean[Math.max(0, expectedLength)];
         if (stack == null || key == null || expectedLength <= 0) return res;
@@ -28,7 +27,6 @@ public final class BoolNBThelper {
         return res;
     }
 
-    // Copy into an existing dest array (keeps remaining values unchanged if tag shorter)
     public static void loadBooleansInto(ItemStack stack, String key, boolean[] dest) {
         if (dest == null) return;
         boolean[] tmp = loadBooleansFromBytes(stack, key, dest.length);

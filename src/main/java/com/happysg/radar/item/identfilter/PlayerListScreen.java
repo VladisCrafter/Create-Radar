@@ -30,7 +30,6 @@ public class PlayerListScreen extends AbstractSimiScreen {
 
 
     protected ModGuiTextures background;
-    protected DynamicIconButton friendfoe;
     protected DynamicIconButton remove;
     protected DynamicIconButton playeradd;
     protected DynamicIconButton add;
@@ -38,9 +37,7 @@ public class PlayerListScreen extends AbstractSimiScreen {
     protected IconButton confirmButton;
     protected ScrollInputPage scrollbar;
     protected List<String> entries = new ArrayList<>();
-    protected List<Boolean> friendorfoe =new ArrayList<>();
     private final List<DynamicIconButton> deleteButtons = new ArrayList<>();
-    private final List<TooltipIcon> factionIndicators = new ArrayList<>();
     private static final int MAX_VISIBLE = 3;
     private int startIndex = 0;
     private boolean isAddingNewSlot = false;
@@ -85,12 +82,10 @@ public class PlayerListScreen extends AbstractSimiScreen {
 
         ListNBTHandler.LoadedLists loaded = ListNBTHandler.loadFromHeldItem(minecraft.player);
         this.entries      = loaded.entries;
-        this.friendorfoe  = loaded.friendOrFoe;
 
         confirmButton = new IconButton(guiLeft + 192, guiTop + 101, AllIcons.I_CONFIRM);
         confirmButton.withCallback(this::onClose);
         addRenderableWidget(confirmButton);
-        minecraft.player.getMainHandItem().setTag(null);
 
         scrollbar = new ScrollInputPage(guiLeft+209,guiTop+16,guiTop+16,guiTop+93-20,ModGuiTextures.SCROLL);
         scrollbar.withCallback(this::handleScroll);
@@ -126,29 +121,13 @@ public class PlayerListScreen extends AbstractSimiScreen {
         }
 
         deleteButtons.forEach(this::removeWidget);
-        factionIndicators.forEach(this::removeWidget);
         deleteButtons.clear();
-        factionIndicators.clear();
+
 
         int endIndex = Math.min(entries.size(), startIndex + MAX_VISIBLE);
         for (int idx = startIndex; idx < endIndex; idx++) {
             int displayPos = idx - startIndex;            // 0,1,2
             int y = guiTop + 17 + displayPos * 23;
-
-            TooltipIcon factionIndicator = new TooltipIcon(
-                    guiLeft + 172, y + 4,
-                    friendorfoe.get(idx) ? ModGuiTextures.ID_SMILE : ModGuiTextures.ID_FROWN,
-                    Component.translatable(MODID +
-                            (friendorfoe.get(idx) ? ".faction.friendly" : ".faction.enemy"))
-            );
-            if(friendorfoe.get(idx) == true){
-                factionIndicator.setTooltip(Tooltip.create(Component.translatable(MODID + ".faction.friendly")));
-            }else{
-                factionIndicator.setTooltip(Tooltip.create(Component.translatable(MODID + ".faction.friendly")));
-
-            }
-            addRenderableWidget(factionIndicator);
-            factionIndicators.add(factionIndicator);
 
             // delete button
             DynamicIconButton del = new DynamicIconButton(
@@ -204,11 +183,7 @@ public class PlayerListScreen extends AbstractSimiScreen {
 
         addRenderableWidget(playerentry);
 
-        friendfoe = new DynamicIconButton(guiLeft + 159, y + 4, ModGuiTextures.ID_SMILE, ModGuiTextures.ID_FROWN,
-                Component.translatable(MODID + ".filter_isfriend"),
-                Component.translatable(MODID + ".filter_isfoe"),
-                11, 11);
-        addRenderableWidget(friendfoe);
+
     }
 
 
@@ -216,7 +191,7 @@ public class PlayerListScreen extends AbstractSimiScreen {
         if (!isAddingNewSlot)
             return;
 
-        if (playerentry == null || friendfoe == null || playeradd == null) {
+        if (playerentry == null || playeradd == null) {
             cleanupAddWidgets();
             return;
         }
@@ -227,16 +202,14 @@ public class PlayerListScreen extends AbstractSimiScreen {
 
         if (input.isEmpty()) {
             cleanupAddWidgets();
+            rebuildList();
             return;
         }
 
-        boolean faction = friendfoe.getState();
 
         cleanupAddWidgets();
 
         entries.add(input);
-        friendorfoe.add(faction);
-
         rebuildList();
     }
 
@@ -248,10 +221,6 @@ public class PlayerListScreen extends AbstractSimiScreen {
         if (playeradd != null) {
             removeWidget(playeradd);
             playeradd = null;
-        }
-        if (friendfoe != null) {
-            removeWidget(friendfoe);
-            friendfoe = null;
         }
 
         isAddingNewSlot = false;
@@ -302,17 +271,15 @@ public class PlayerListScreen extends AbstractSimiScreen {
         rebuildList();
     }
 
-
     protected void removeEntry(int entry){
         DynamicIconButton removeMe =  deleteButtons.remove(entry);
         removeWidget(removeMe);
-        TooltipIcon removeicon = factionIndicators.remove(entry);
-        removeWidget(removeicon);
+
         entries.remove(entry);
-        friendorfoe.remove(entry);
         rebuildList();
 
     }
+
     @Override
     public void removed() {
         super.removed();
@@ -323,7 +290,7 @@ public class PlayerListScreen extends AbstractSimiScreen {
 
         if (minecraft.player != null && minecraft.level != null && minecraft.level.isClientSide) {
             NetworkHandler.CHANNEL.sendToServer(
-                    new SaveListsPacket(this.entries, this.friendorfoe)
+                    new SaveListsPacket(this.entries)
             );
         }
     }

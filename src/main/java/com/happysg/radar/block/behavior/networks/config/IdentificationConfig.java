@@ -1,32 +1,32 @@
 package com.happysg.radar.block.behavior.networks.config;
 
 import net.minecraft.nbt.*;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public record IdentificationConfig(List<String> usernames, List<Boolean> friendly, String label) {
+public record IdentificationConfig(List<String> entries, String label) {
 
-    public static final IdentificationConfig DEFAULT = new IdentificationConfig(List.of(), List.of(), "");
+    public static final IdentificationConfig DEFAULT = new IdentificationConfig(List.of(), "");
 
     public IdentificationConfig {
-        if (usernames == null) usernames = List.of();
-        if (friendly == null) friendly = List.of();
+        if (entries == null) entries = List.of();
         if (label == null) label = "";
-
-        int n = Math.min(usernames.size(), friendly.size());
-        if (usernames.size() != n) usernames = usernames.subList(0, n);
-        if (friendly.size() != n) friendly = friendly.subList(0, n);
     }
 
     public CompoundTag toTag() {
         CompoundTag t = new CompoundTag();
 
         ListTag names = new ListTag();
-        ListTag flags = new ListTag();
+        for (String s : entries) {
+            names.add(StringTag.valueOf(s == null ? "" : s));
+        }
 
-        for (int i = 0; i < usernames.size(); i++) {
-            names.add(StringTag.valueOf(usernames.get(i)));
-            flags.add(ByteTag.valueOf((byte) (friendly.get(i) ? 1 : 0)));
+        // i keep writing a flags list (all zeros) so older readers dont choke,
+        // but gameplay should ignore it completely
+        ListTag flags = new ListTag();
+        for (int i = 0; i < entries.size(); i++) {
+            flags.add(ByteTag.valueOf((byte) 0));
         }
 
         t.put("names", names);
@@ -39,17 +39,18 @@ public record IdentificationConfig(List<String> usernames, List<Boolean> friendl
         if (t == null || t.isEmpty()) return DEFAULT;
 
         ListTag names = t.getList("names", Tag.TAG_STRING);
-        ListTag flags = t.getList("flags", Tag.TAG_BYTE);
-        int n = Math.min(names.size(), flags.size());
+        int n = names.size();
 
         List<String> outNames = new ArrayList<>(n);
-        List<Boolean> outFlags = new ArrayList<>(n);
-
         for (int i = 0; i < n; i++) {
             outNames.add(names.getString(i));
-            outFlags.add(flags.getInt(i) != 0);
         }
 
-        return new IdentificationConfig(outNames, outFlags, t.getString("label"));
+        return new IdentificationConfig(outNames, t.getString("label"));
+    }
+
+    // i keep these so old call sites compile without you refactoring everything at once
+    public List<String> usernames() {
+        return entries();
     }
 }

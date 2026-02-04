@@ -89,9 +89,6 @@ public class DataLinkBlockItem extends BlockItem {
             return InteractionResult.SUCCESS;
         }
 
-        // We never allow "free placement" — only placement via valid linking clicks
-        // so we handle selection on both sides, but only place/commit server-side.
-
         CompoundTag tag = stack.getOrCreateTag();
         var be = level.getBlockEntity(clickedPos);
 
@@ -135,13 +132,11 @@ public class DataLinkBlockItem extends BlockItem {
         }
 
 
-        // WEAPON LINK: click controller to place/link
-        // Requires: mount selected, controller NOT already in a weapon group
 
         ControllerType controllerType = getControllerType(be, clickedState);
         if (controllerType != null && tag.contains("SelectedMountPos")) {
 
-            // Client: don't place here, just say "OK" so it feels responsive
+
             if (level.isClientSide)
                 return InteractionResult.SUCCESS;
 
@@ -150,7 +145,6 @@ public class DataLinkBlockItem extends BlockItem {
 
             BlockPos mountPos = NbtUtils.readBlockPos(tag.getCompound("SelectedMountPos"));
 
-            // Reject if controller already has a mount (already belongs to ANY weapon group)
             WeaponNetworkData weaponData = WeaponNetworkData.get(serverLevel);
             BlockPos existingMount = weaponData.getMountForController(serverLevel.dimension(), clickedPos);
             if (existingMount != null) {

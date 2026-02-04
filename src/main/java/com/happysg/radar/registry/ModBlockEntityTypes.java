@@ -1,7 +1,8 @@
 package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
-import com.happysg.radar.block.Test.TestBlockEntity;
+
+import com.happysg.radar.block.arad.rwr.RadarWarningReceiverBlockEntity;
 import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererBlockEntity;
 import com.happysg.radar.block.controller.networkcontroller.NetworkFiltererRenderer;
 import com.happysg.radar.block.controller.firing.FireControllerBlockEntity;
@@ -18,6 +19,7 @@ import com.simibubi.create.content.contraptions.bearing.BearingVisual;
 import com.simibubi.create.content.kinetics.base.ShaftRenderer;
 import com.simibubi.create.content.kinetics.base.ShaftVisual;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
+import kotlin.reflect.jvm.internal.impl.descriptors.Visibilities;
 
 import static com.happysg.radar.CreateRadar.REGISTRATE;
 
@@ -60,21 +62,19 @@ public class ModBlockEntityTypes {
             .validBlocks(ModBlocks.AUTO_PITCH_CONTROLLER_BLOCK)
             .register();
 
-    public static final BlockEntityEntry<TrackControllerBlockEntity> TRACK_CONTROLLER = REGISTRATE
-            .blockEntity("track_controller", TrackControllerBlockEntity::new)
-            .validBlocks(ModBlocks.TRACK_CONTROLLER_BLOCK)
-            .register();
-    public static final BlockEntityEntry<TestBlockEntity> TEST_BE = REGISTRATE
-            .blockEntity("test_block_entity", TestBlockEntity::new)
-            .validBlocks(ModBlocks.TEST_BLOCK)
-            .register();
+
     public static final BlockEntityEntry<FireControllerBlockEntity> FIRE_CONTROLLER = REGISTRATE
             .blockEntity("fire_controller", FireControllerBlockEntity::new)
             .validBlocks(ModBlocks.FIRE_CONTROLLER_BLOCK)
             .register();
-    public static final BlockEntityEntry<NetworkFiltererBlockEntity> NETWORK_FILTER_BLOCK_ENTITY = REGISTRATE.blockEntity("network_filterer_block_entity", NetworkFiltererBlockEntity::new)
+    public static final BlockEntityEntry<NetworkFiltererBlockEntity> NETWORK_FILTER_BLOCK_ENTITY = REGISTRATE
+            .blockEntity("network_filterer_block_entity", NetworkFiltererBlockEntity::new)
             .validBlocks(ModBlocks.NETWORK_FILTERER_BLOCK)
             .renderer(()-> NetworkFiltererRenderer::new)
+            .register();
+    public static final BlockEntityEntry<RadarWarningReceiverBlockEntity> RWR_BE = REGISTRATE
+            .blockEntity("rwr_be", RadarWarningReceiverBlockEntity::new)
+            .validBlocks(ModBlocks.RWR_BLOCK)
             .register();
 
     public static void register() {

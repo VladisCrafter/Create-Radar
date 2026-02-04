@@ -25,7 +25,7 @@ public class VS2CannonTargeting {
         }
         float chargePower = CannonUtil.getInitialVelocity(cannonContraption, level);
 
-        Vec3 mountPos = mount.getBlockPos().getCenter();
+        Vec3 mountPos = mount.getBlockPos().above(3).getCenter();
         int barrelLength = CannonUtil.getBarrelLength(cannonContraption);
         Direction initialDirection = cannonContraption.initialOrientation();
 

@@ -12,20 +12,15 @@ import java.util.function.Supplier;
 
 public class SaveListsPacket {
     private final List<String> entries;
-    private final List<Boolean> friendOrFoe;
-    private final String idString;
+     final String idString;
     private final boolean isIdString;
 
     /** Constructor for list mode **/
-    public SaveListsPacket(List<String> entries, List<Boolean> friendOrFoe) {
-        if (entries == null || friendOrFoe == null) {
+    public SaveListsPacket(List<String> entries) {
+        if (entries == null ) {
             throw new IllegalArgumentException("entries and friendOrFoe cannot be null");
         }
-        if (entries.size() != friendOrFoe.size()) {
-            throw new IllegalArgumentException("entries and friendOrFoe must be the same length");
-        }
         this.entries      = new ArrayList<>(entries);
-        this.friendOrFoe  = new ArrayList<>(friendOrFoe);
         this.idString     = null;
         this.isIdString   = false;
     }
@@ -36,48 +31,52 @@ public class SaveListsPacket {
             throw new IllegalArgumentException("idString cannot be null");
         }
         this.entries      = Collections.emptyList();
-        this.friendOrFoe  = Collections.emptyList();
         this.idString     = idString;
         this.isIdString   = true;
     }
 
-    /** Encode either the string or the two lists, prefixed by a mode‐flag **/
     public static void encode(SaveListsPacket pkt, FriendlyByteBuf buf) {
+        buf.writeByte(2);
         buf.writeBoolean(pkt.isIdString);
+
         if (pkt.isIdString) {
             buf.writeUtf(pkt.idString, 32767);
-        } else {
-            buf.writeInt(pkt.entries.size());
-            for (String s : pkt.entries) {
-                buf.writeUtf(s, 32767);
-            }
-            buf.writeInt(pkt.friendOrFoe.size());
-            for (boolean b : pkt.friendOrFoe) {
-                buf.writeBoolean(b);
-            }
+            return;
+        }
+
+        buf.writeVarInt(pkt.entries.size());
+        for (String s : pkt.entries) {
+            buf.writeUtf(s == null ? "" : s, 32767);
         }
     }
 
-    /** Decode in the same order: read flag, then either string or lists **/
     public static SaveListsPacket decode(FriendlyByteBuf buf) {
+        int version = buf.readByte();
+
+        if (version == 1) {
+            // i can add your old decode here if needed
+            boolean isId = buf.readBoolean();
+            if (isId) return new SaveListsPacket(buf.readUtf(32767));
+            int es = buf.readVarInt();
+            List<String> entries = new ArrayList<>(es);
+            for (int i = 0; i < es; i++) entries.add(buf.readUtf(32767));
+            return new SaveListsPacket(entries);
+        }
+
+        // version 2 (current)
         boolean isId = buf.readBoolean();
         if (isId) {
-            String s = buf.readUtf(32767);
-            return new SaveListsPacket(s);
-        } else {
-            int es = buf.readInt();
-            List<String> entries = new ArrayList<>(es);
-            for (int i = 0; i < es; i++) {
-                entries.add(buf.readUtf(32767));
-            }
-            int fs = buf.readInt();
-            List<Boolean> foes = new ArrayList<>(fs);
-            for (int i = 0; i < fs; i++) {
-                foes.add(buf.readBoolean());
-            }
-            return new SaveListsPacket(entries, foes);
+            return new SaveListsPacket(buf.readUtf(32767));
         }
+
+        int es = buf.readVarInt();
+        List<String> entries = new ArrayList<>(es);
+        for (int i = 0; i < es; i++) {
+            entries.add(buf.readUtf(32767));
+        }
+        return new SaveListsPacket(entries);
     }
+
 
     /** Handle on the server: call the appropriate ListNBTHandler method **/
     public static void handle(SaveListsPacket pkt, Supplier<NetworkEvent.Context> ctxSupplier) {
@@ -89,7 +88,7 @@ public class SaveListsPacket {
             if (pkt.isIdString) {
                 ListNBTHandler.saveStringToHeldItem(player, pkt.idString);
             } else {
-                ListNBTHandler.saveToHeldItem(player, pkt.entries, pkt.friendOrFoe);
+                ListNBTHandler.saveToHeldItem(player, pkt.entries);
             }
             player.getInventory().setChanged(); // force sync
         });

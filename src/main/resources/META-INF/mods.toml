@@ -36,3 +36,9 @@ mandatory = false
 versionRange = "[5.10.1,)"
 ordering = "BEFORE"
 side = "BOTH"
+[[dependencies.create_radar]]
+modId = "valkyrienskies"
+mandatory = false
+versionRange = "[2.4.7,)"
+ordering = "BEFORE"
+side = "BOTH"

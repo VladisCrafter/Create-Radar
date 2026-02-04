@@ -75,11 +75,25 @@ public class BoolListPacket {
                     root.put("Filters", filters);
 
                     stack.setTag(root);
-                } else {
+                } else if ("TargetBools".equals(pkt.key)) {
                     CompoundTag root = stack.getOrCreateTag();
+                    CompoundTag filters = root.contains("Filters", Tag.TAG_COMPOUND) ? root.getCompound("Filters") : new CompoundTag();
+
+                    CompoundTag tgt = new CompoundTag();
+                    tgt.putBoolean("player", pkt.flags[0]);
+                    tgt.putBoolean("contraption", pkt.flags[1]);
+                    tgt.putBoolean("mob", pkt.flags[2]);
+                    tgt.putBoolean("animal", pkt.flags[3]);
+                    tgt.putBoolean("projectile", pkt.flags[4]);
+                    tgt.putBoolean("lineSight", pkt.flags[5]);
+                    tgt.putBoolean("autoTarget", pkt.flags[6]);
+
                     byte[] arr = new byte[pkt.flags.length];
                     for (int i = 0; i < pkt.flags.length; i++) arr[i] = (byte) (pkt.flags[i] ? 1 : 0);
                     root.putByteArray(pkt.key, arr);
+
+                    filters.put("targeting", tgt);
+                    root.put("Filters", filters);
                     stack.setTag(root);
                 }
 

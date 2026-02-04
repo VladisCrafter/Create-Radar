@@ -1,37 +1,60 @@
 package com.happysg.radar.block.controller.yaw;
 
+import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
 import com.happysg.radar.compat.Mods;
+import com.happysg.radar.compat.cbc.VS2CannonTargeting;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollOptionBehaviour;
+import kotlin.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.fml.ModList;
+import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3d;
+import org.joml.Vector3dc;
 import org.valkyrienskies.clockwork.content.contraptions.phys.bearing.PhysBearingBlockEntity;
 import org.valkyrienskies.clockwork.platform.api.ContraptionController;
+import org.valkyrienskies.core.api.ships.ServerShip;
 import org.valkyrienskies.core.api.ships.Ship;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
+import org.valkyrienskies.mod.common.assembly.ICopyableBlock;
+import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlock;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
 
 import javax.annotation.Nullable;
+import java.util.List;
+import java.util.Map;
 
-public class AutoYawControllerBlockEntity extends KineticBlockEntity {
+public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements ICopyableBlock {
 
     private static final double TOLERANCE_DEG = 0.1;
 
     private double targetAngle; // degrees [0,360)
+
+    private double prevTargetAngle = 0.0;
+    private boolean hasPrevTarget = false;
+
+    private double lastCbcYawWritten = 0.0;
+    private boolean hasLastCbcYawWritten = false;
+
     private boolean isRunning;
 
     private final double MIN_MOVE_PER_TICK = 0.02;
     private static final double MAX_MOVE_PER_TICK = 2.0;
     private static final double SNAP_DISTANCE = 32.0;
     private static final double DEADBAND_DEG = 0.75;
+    private BlockPos lastKnownPos = BlockPos.ZERO;
 
     private MountKind currentmount;
 
@@ -67,6 +90,28 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity {
             currentmount = MountKind.PHYS;
             rotatePhysBearing(mount.phys);
         }
+        if (!level.isClientSide && level.getGameTime() % 40 == 0) {
+            if (level instanceof ServerLevel serverLevel) {
+                if (lastKnownPos.equals(worldPosition))
+                    return;
+
+                ResourceKey<Level> dim = serverLevel.dimension();
+                WeaponNetworkData data = WeaponNetworkData.get(serverLevel);
+
+                boolean updated = data.updateWeaponEndpointPosition(
+                        dim,
+                        lastKnownPos,
+                        worldPosition
+                );
+
+                // only commit the new position if the network accepted it
+                if (updated) {
+                    lastKnownPos = worldPosition;
+                    setChanged();
+                }
+            }
+        }
+
     }
 
     // ===== Public API =====
@@ -92,16 +137,36 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity {
             setChanged();
             return;
         }
+        BlockPos abovepos = worldPosition.above();
+        Vec3 mountpos = Vec3.ZERO;
+        if(level.getBlockEntity(abovepos) instanceof CannonMountBlockEntity mountBlock) {
+            if (PhysicsHandler.isBlockInShipyard(level, this.getBlockPos())) {
+                List<List<Double>> angles = VS2CannonTargeting.calculatePitchAndYawVS2(mountBlock, targetPos, (ServerLevel) level);
+                if (angles == null || angles.isEmpty() || angles.get(0).isEmpty())
+                    return;
+
+                // yaw
+                this.targetAngle =  wrap360(angles.get(0).get(1).floatValue());
+
+                isRunning = true;
+                notifyUpdate();
+                setChanged();
+                return;
+            }
+        }
 
         isRunning = true;
 
-        Vec3 cannonCenterWorld = worldPosition.above(3).getCenter();
-
+        Vec3 cannonCenter = worldPosition.above(3).getCenter();
         // i'm computing yaw in ship-space when we're on a VS2 ship
-        double angle = computeYawToTargetDeg(cannonCenterWorld, targetPos);
+        double angle = computeYawToTargetDeg(cannonCenter, targetPos);
+        double newAngle = wrap360(angle)+180;
 
-        // keeping your original CBC offset behavior
-        this.targetAngle = wrap360(angle) + 180.0;
+        // store previous setpoint for 1-tick lag compensation
+        prevTargetAngle = this.targetAngle;
+        hasPrevTarget = true;
+
+        this.targetAngle = newAngle;
 
         notifyUpdate();
         setChanged();
@@ -117,7 +182,13 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity {
         if (mount.kind == MountKind.CBC && Mods.CREATEBIGCANNONS.isLoaded()) {
             PitchOrientedContraptionEntity contraption = mount.cbc.getContraption();
             if (contraption == null) return false;
-            return Math.abs(shortestDelta(wrap360(contraption.yaw), targetAngle)) < TOLERANCE_DEG;
+
+            double desired = hasPrevTarget ? wrap360(prevTargetAngle) : wrap360(targetAngle);
+
+            // Prefer what we actually commanded (contraption.yaw can lag behind)
+            double current = hasLastCbcYawWritten ? wrap360(lastCbcYawWritten) : wrap360(contraption.yaw);
+
+            return Math.abs(shortestDelta(current, desired)) < TOLERANCE_DEG;
         }
 
         if (mount.kind == MountKind.PHYS && Mods.VS_CLOCKWORK.isLoaded()) {
@@ -144,8 +215,13 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity {
         double yawDiff = shortestDelta(currentYaw, desiredYaw);
         if (Math.abs(yawDiff) <= TOLERANCE_DEG) {
             mount.setYaw((float) desiredYaw);
+
+            lastCbcYawWritten = wrap360(desiredYaw);
+            hasLastCbcYawWritten = true;
+
             mount.notifyUpdate();
-            isRunning = false;
+
+            // isRunning = false;
             return;
         }
 
@@ -160,6 +236,10 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity {
         }
 
         mount.setYaw((float) nextYaw);
+
+        lastCbcYawWritten = wrap360(nextYaw);
+        hasLastCbcYawWritten = true;
+
         mount.notifyUpdate();
     }
 
@@ -292,6 +372,11 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity {
         super.read(compound, clientPacket);
         targetAngle = wrap360(compound.getDouble("TargetAngle"));
         isRunning = compound.getBoolean("IsRunning");
+        if (compound.contains("LastKnownPos", Tag.TAG_LONG)) {
+            lastKnownPos = BlockPos.of(compound.getLong("LastKnownPos"));
+        } else {
+            lastKnownPos = worldPosition;
+        }
     }
 
     @Override
@@ -299,11 +384,23 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity {
         super.write(compound, clientPacket);
         compound.putDouble("TargetAngle", wrap360(targetAngle));
         compound.putBoolean("IsRunning", isRunning);
+        compound.putLong("LastKnownPos", lastKnownPos.asLong());
     }
 
     @Override
     protected void copySequenceContextFrom(KineticBlockEntity sourceBE) {
         // i'm keeping this empty like the original controller
+    }
+
+
+    @Override
+    public @org.jetbrains.annotations.Nullable CompoundTag onCopy(@NotNull ServerLevel serverLevel, @NotNull BlockPos blockPos, @NotNull BlockState blockState, @org.jetbrains.annotations.Nullable BlockEntity blockEntity, @NotNull List<? extends ServerShip> list, @NotNull Map<Long, ? extends Vector3d> map) {
+        return null;
+    }
+
+    @Override
+    public @org.jetbrains.annotations.Nullable CompoundTag onPaste(@NotNull ServerLevel serverLevel, @NotNull BlockPos blockPos, @NotNull BlockState blockState, @NotNull Map<Long, Long> map, @NotNull Map<Long, ? extends Pair<? extends Vector3d, ? extends Vector3d>> map1, @org.jetbrains.annotations.Nullable CompoundTag compoundTag) {
+        return null;
     }
 
     // ===== Mount resolution =====
@@ -345,6 +442,10 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity {
     @Nullable
     private Ship getShipIfPresent() {
         if (level == null) return null;
+
+        if (!(Mods.VALKYRIENSKIES.isLoaded()))
+            return null;
+
         return VSGameUtilsKt.getShipManagingPos(level, worldPosition);
     }
 

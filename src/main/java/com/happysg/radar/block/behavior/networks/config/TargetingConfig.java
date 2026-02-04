@@ -1,6 +1,7 @@
 package com.happysg.radar.block.behavior.networks.config;
 
 import com.happysg.radar.block.radar.track.TrackCategory;
+import com.happysg.radar.compat.Mods;
 import net.minecraft.nbt.CompoundTag;
 
 public record TargetingConfig(boolean player, boolean contraption, boolean mob, boolean animal, boolean projectile,
@@ -22,9 +23,20 @@ public record TargetingConfig(boolean player, boolean contraption, boolean mob, 
     }
 
     public static TargetingConfig fromTag(CompoundTag tag) {
-        if (!tag.contains("targeting"))
-            return DEFAULT;
-        CompoundTag targeting = tag.getCompound("targeting");
+        if (tag == null) return DEFAULT;
+
+        CompoundTag targeting = null;
+
+        if (tag.contains("targeting", CompoundTag.TAG_COMPOUND)) {
+            targeting = tag.getCompound("targeting");
+        } else if (tag.contains("Filters", CompoundTag.TAG_COMPOUND)) {
+            CompoundTag filters = tag.getCompound("Filters");
+            if (filters.contains("targeting", CompoundTag.TAG_COMPOUND))
+                targeting = filters.getCompound("targeting");
+        }
+
+        if (targeting == null) return DEFAULT;
+
         return new TargetingConfig(
                 targeting.getBoolean("player"),
                 targeting.getBoolean("contraption"),
@@ -38,13 +50,25 @@ public record TargetingConfig(boolean player, boolean contraption, boolean mob, 
     }
 
     public boolean test(TrackCategory trackCategory) {
-        return switch (trackCategory) {
-            case PLAYER -> player;
-            case CONTRAPTION -> contraption;
-            case HOSTILE -> mob;
-            case ANIMAL -> animal;
-            case PROJECTILE -> projectile;
-            default -> false;
-        };
+        if(Mods.VALKYRIENSKIES.isLoaded()){
+            return switch (trackCategory) {
+                case PLAYER -> player;
+                case VS2 -> contraption;
+                case CONTRAPTION -> contraption;
+                case HOSTILE -> mob;
+                case ANIMAL -> animal;
+                case PROJECTILE -> projectile;
+                default -> false;
+            };
+        }else {
+            return switch (trackCategory) {
+                case PLAYER -> player;
+                case CONTRAPTION -> contraption;
+                case HOSTILE -> mob;
+                case ANIMAL -> animal;
+                case PROJECTILE -> projectile;
+                default -> false;
+            };
+        }
     }
 }

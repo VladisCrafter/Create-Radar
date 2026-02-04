@@ -5,6 +5,7 @@ import com.happysg.radar.block.radar.behavior.RadarScanningBlockBehavior;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
+import com.happysg.radar.compat.vs2.VS2Utils;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import net.minecraft.core.BlockPos;
@@ -12,6 +13,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import org.valkyrienskies.core.api.ships.Ship;
+import org.valkyrienskies.mod.common.VSGameUtilsKt;
 
 import java.util.Collection;
 import java.util.List;
@@ -41,9 +44,9 @@ public class StationaryRadarBlockEntity extends SmartBlockEntity implements IRad
     @Override
     public void tick() {
         super.tick();
-//        if (!Mods.VALKYRIENSKIES.isLoaded())
-//            return;
-        Direction facing = getBlockState().getValue(StationaryRadarBlock.FACING);
+        if (!Mods.VALKYRIENSKIES.isLoaded() && !VS2Utils.isBlockInShipyard(level,worldPosition))
+            return;
+        Direction facing = getBlockState().getValue(StationaryRadarBlock.FACING).getOpposite();
         Vec3 facingVec = new Vec3(facing.getStepX(), facing.getStepY(), facing.getStepZ());
         Vec3 shipVec = PhysicsHandler.getWorldVecDirectionTransform(facingVec, this);
         double angle = Math.toDegrees(Math.atan2(shipVec.x, shipVec.z));
@@ -81,11 +84,33 @@ public class StationaryRadarBlockEntity extends SmartBlockEntity implements IRad
 
     @Override
     public float getGlobalAngle() {
-        return 0;
+        if(!Mods.VALKYRIENSKIES.isLoaded())return 0;
+        Ship ship = VSGameUtilsKt.getShipManagingPos(level,getBlockPos());
+        if(ship == null) return 0;
+        float rot = (float) ship.getTransform().getRotation().y();
+        Direction facing =this.getBlockState().getValue(StationaryRadarBlock.FACING);
+        int fOffset;
+        switch (facing){
+            case NORTH -> fOffset = 0;
+            case EAST -> fOffset = 90;
+            case SOUTH -> fOffset = 180;
+            case WEST -> fOffset = 270;
+            default -> fOffset =0;
+        }
+        return fOffset +rot;
     }
 
     @Override
     public boolean renderRelativeToMonitor() {
-        return false;
+        return true;
+    }
+    @Override
+    public String getRadarType(){
+        return "nonspinning";
+    }
+
+    @Override
+    public Direction getradarDirection() {
+        return getBlockState().getValue(StationaryRadarBlock.FACING);
     }
 }

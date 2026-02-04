@@ -12,14 +12,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class WeaponNetworkData extends SavedData {
 
@@ -300,13 +295,15 @@ public class WeaponNetworkData extends SavedData {
         setDirty();
     }
 
-    /** Optional helper: remove a specific controller and keep group if it still has links. */
-    public boolean removeController(ResourceKey<Level> dim, BlockPos controllerPos) {
+    /**
+     * Optional helper: remove a specific controller and keep group if it still has links.
+     */
+    public void removeController(ResourceKey<Level> dim, BlockPos controllerPos) {
         String mountKey = controllerToMount.remove(key(dim, controllerPos));
-        if (mountKey == null) return false;
+        if (mountKey == null) return;
 
         Group group = groupsByMount.get(mountKey);
-        if (group == null) return true;
+        if (group == null) return;
 
         if (controllerPos.equals(group.yawPos)) group.yawPos = null;
         if (controllerPos.equals(group.pitchPos)) group.pitchPos = null;
@@ -316,17 +313,7 @@ public class WeaponNetworkData extends SavedData {
         cleanupIfEmpty(dim, mountKey, group);
 
         setDirty();
-        return true;
     }
-
-    // -------------------------
-    // DataLink removal + cleanup
-    // -------------------------
-
-    /**
-     * Removes only the DataLink position from the group.
-     * Auto-deletes the group if it becomes empty (no links + no controllers).
-     */
     public boolean removeDataLink(ResourceKey<Level> dim, BlockPos dataLinkPos) {
         String dlKey = key(dim, dataLinkPos);
         String mountKey = dataLinkToMount.remove(dlKey);
@@ -347,11 +334,6 @@ public class WeaponNetworkData extends SavedData {
         return true;
     }
 
-    /**
-     * Strong auto-delete behavior:
-     * - removes the DataLink
-     * - if that was the last DataLink, clears controllers and deletes the whole group
-     */
     public void removeDataLinkAndCleanup(ResourceKey<Level> dim, BlockPos dataLinkPos) {
         String dlKey = key(dim, dataLinkPos);
         String mountKey = dataLinkToMount.remove(dlKey);
@@ -365,7 +347,6 @@ public class WeaponNetworkData extends SavedData {
 
         group.dataLinks.remove(dataLinkPos);
 
-        // If no DataLinks remain, remove all controllers + delete group
         if (group.dataLinks.isEmpty()) {
             if (group.yawPos != null) {
                 controllerToMount.remove(key(dim, group.yawPos));
@@ -382,7 +363,6 @@ public class WeaponNetworkData extends SavedData {
 
             groupsByMount.remove(mountKey);
         } else {
-            // Otherwise just delete group if it's totally empty (shouldn't happen here)
             cleanupIfEmpty(dim, mountKey, group);
         }
 
@@ -396,7 +376,63 @@ public class WeaponNetworkData extends SavedData {
         // no links, no controllers => delete group
         groupsByMount.remove(mountKey);
     }
+    public boolean updateWeaponEndpointPosition(ResourceKey<Level> dim, BlockPos oldPos, BlockPos newPos) {
+        if (oldPos.equals(newPos))
+            return true;
 
+        String oldKey = key(dim, oldPos);
+        String mountKey = controllerToMount.get(oldKey);
+
+        Group g = null;
+
+        // fast path via index
+        if (mountKey != null) {
+            g = groupsByMount.get(mountKey);
+        }
+        if (g == null) {
+            g = findGroupByEndpointSlow(dim, oldPos);
+            if (g == null)
+                return false;
+
+            mountKey = key(dim, g.key.mountPos());
+            groupsByMount.put(mountKey, g);
+
+            if (g.yawPos != null)    controllerToMount.put(key(dim, g.yawPos), mountKey);
+            if (g.pitchPos != null)  controllerToMount.put(key(dim, g.pitchPos), mountKey);
+            if (g.firingPos != null) controllerToMount.put(key(dim, g.firingPos), mountKey);
+        }
+
+        // if newPos is already indexed to a different mount, don't silently steal it
+        String newKey = key(dim, newPos);
+        String existingMountForNew = controllerToMount.get(newKey);
+        if (existingMountForNew != null && !existingMountForNew.equals(mountKey)) {
+            return false;
+        }
+
+        boolean updated = false;
+
+        // update the actual group field
+        if (oldPos.equals(g.yawPos)) {
+            g.yawPos = newPos;
+            updated = true;
+        } else if (oldPos.equals(g.pitchPos)) {
+            g.pitchPos = newPos;
+            updated = true;
+        } else if (oldPos.equals(g.firingPos)) {
+            g.firingPos = newPos;
+            updated = true;
+        }
+
+        if (!updated)
+            return false;
+
+        // fix the index
+        controllerToMount.remove(oldKey);
+        controllerToMount.put(newKey, mountKey);
+
+        setDirty();
+        return true;
+    }
     // -------------------------
     // Validation (no mutation)
     // -------------------------
@@ -435,4 +471,127 @@ public class WeaponNetworkData extends SavedData {
         root.put("targeting", TargetingConfig.DEFAULT.toTag());
         return root;
     }
+
+    public record ValidationResult(
+            int groupsRemoved,
+            int controllersCleared,
+            int dataLinksRemoved
+    ) {}
+
+    public ValidationResult validateAllKnownPositions(ServerLevel level, boolean onlyIfChunkLoaded) {
+        if (level == null) return new ValidationResult(0,0,0);
+
+        int groupsRemoved = 0;
+        int controllersCleared = 0;
+        int dataLinksRemoved = 0;
+
+        ResourceKey<Level> levelDim = level.dimension();
+
+        // i snapshot keys so i can mutate safely
+        List<String> mountKeys = new ArrayList<>(groupsByMount.keySet());
+
+        for (String mountKey : mountKeys) {
+            Group group = groupsByMount.get(mountKey);
+            if (group == null) continue;
+
+            if (!group.key.dim().equals(levelDim)) continue;
+
+            // if the mount is definitely gone, remove the whole group + indexes
+            if (isDefinitelyMissing(level, group.key.mountPos(), onlyIfChunkLoaded, true)) {
+                removeGroupFully(levelDim, mountKey, group);
+                groupsRemoved++;
+                continue;
+            }
+
+            // yaw
+            if (group.yawPos != null && isDefinitelyMissing(level, group.yawPos, onlyIfChunkLoaded, true)) {
+                controllerToMount.remove(key(levelDim, group.yawPos));
+                group.yawPos = null;
+                controllersCleared++;
+            }
+
+            // pitch
+            if (group.pitchPos != null && isDefinitelyMissing(level, group.pitchPos, onlyIfChunkLoaded, true)) {
+                controllerToMount.remove(key(levelDim, group.pitchPos));
+                group.pitchPos = null;
+                controllersCleared++;
+            }
+
+            // firing
+            if (group.firingPos != null && isDefinitelyMissing(level, group.firingPos, onlyIfChunkLoaded, true)) {
+                controllerToMount.remove(key(levelDim, group.firingPos));
+                group.firingPos = null;
+                controllersCleared++;
+            }
+
+            // datalinks
+            if (!group.dataLinks.isEmpty()) {
+                Iterator<BlockPos> it = group.dataLinks.iterator();
+                while (it.hasNext()) {
+                    BlockPos dlPos = it.next();
+
+                    if (!isDefinitelyMissing(level, dlPos, onlyIfChunkLoaded, true)) {
+                        continue; // PRESENT or UNKNOWN => keep
+                    }
+
+                    it.remove();
+                    dataLinkToMount.remove(key(levelDim, dlPos));
+                    dataLinksRemoved++;
+                }
+            }
+
+            // delete group if empty (no links + no controllers)
+            cleanupIfEmpty(levelDim, mountKey, group);
+        }
+
+        if (groupsRemoved != 0 || controllersCleared != 0 || dataLinksRemoved != 0) {
+            setDirty();
+        }
+
+        return new ValidationResult(groupsRemoved, controllersCleared, dataLinksRemoved);
+    }
+
+
+    private void removeGroupFully(ResourceKey<Level> dim, String mountKey, Group group) {
+        // clear controller indexes
+        if (group.yawPos != null) controllerToMount.remove(key(dim, group.yawPos));
+        if (group.pitchPos != null) controllerToMount.remove(key(dim, group.pitchPos));
+        if (group.firingPos != null) controllerToMount.remove(key(dim, group.firingPos));
+
+        // clear datalink index
+        for (BlockPos dl : group.dataLinks) {
+            dataLinkToMount.remove(key(dim, dl));
+        }
+
+        groupsByMount.remove(mountKey);
+    }
+
+    private enum Presence { PRESENT, MISSING, UNKNOWN }
+
+    private Presence checkPresence(ServerLevel level, BlockPos pos, boolean onlyIfChunkLoaded, boolean requireBlockEntity) {
+        if (pos == null) return Presence.MISSING;
+
+        // i don't want this validator chunkloading the world
+        if (onlyIfChunkLoaded && !level.hasChunkAt(pos)) {
+            return Presence.UNKNOWN;
+        }
+
+        // air in a loaded chunk is a guaranteed delete signal
+        if (level.isEmptyBlock(pos)) {
+            return Presence.MISSING;
+        }
+
+        if (!requireBlockEntity) {
+            return Presence.PRESENT;
+        }
+
+        // VS-safe: if the BE isn't accessible yet, don't delete links
+        return level.getBlockEntity(pos) != null ? Presence.PRESENT : Presence.UNKNOWN;
+    }
+
+    private boolean isDefinitelyMissing(ServerLevel level, BlockPos pos, boolean onlyIfChunkLoaded, boolean requireBlockEntity) {
+        return checkPresence(level, pos, onlyIfChunkLoaded, requireBlockEntity) == Presence.MISSING;
+    }
+
+
 }

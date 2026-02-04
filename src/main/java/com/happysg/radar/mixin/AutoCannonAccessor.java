@@ -7,12 +7,12 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 import rbasamoyai.createbigcannons.cannon_control.contraption.MountedAutocannonContraption;
 import rbasamoyai.createbigcannons.cannons.autocannon.material.AutocannonMaterial;
 
-@Mixin({
+@Mixin(value = {
         MountedAutocannonContraption.class,
         MountedTwinAutocannonContraption.class,
         MountedHeavyAutocannonContraption.class
-})
+}, remap = false)
 public interface AutoCannonAccessor {
-    @Accessor(value = "cannonMaterial", remap = false)
+    @Accessor("cannonMaterial")
     AutocannonMaterial getMaterial();
 }

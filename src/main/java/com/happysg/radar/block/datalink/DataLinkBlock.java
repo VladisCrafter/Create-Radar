@@ -1,28 +1,23 @@
 package com.happysg.radar.block.datalink;
 
-import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.behavior.networks.NetworkData;
 import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
+import com.happysg.radar.compat.Mods;
+import com.happysg.radar.compat.vs2.VSAssemblySuppression;
 import com.happysg.radar.registry.ModBlockEntityTypes;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.AllShapes;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.block.WrenchableDirectionalBlock;
-import net.createmod.catnip.gui.ScreenOpener;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.StringRepresentable;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.DirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -30,13 +25,8 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.pathfinder.PathComputationType;
-import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.fml.DistExecutor;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 public class DataLinkBlock extends WrenchableDirectionalBlock implements IBE<DataLinkBlockEntity> {
@@ -59,7 +49,7 @@ public class DataLinkBlock extends WrenchableDirectionalBlock implements IBE<Dat
     public DataLinkBlock(Properties props) {
         super(props);
         this.registerDefaultState(this.stateDefinition.any()
-                .setValue(FACING, net.minecraft.core.Direction.UP)
+                .setValue(FACING, Direction.UP)
                 .setValue(LINK_STYLE, LinkStyle.RADAR));
     }
 
@@ -104,21 +94,21 @@ public class DataLinkBlock extends WrenchableDirectionalBlock implements IBE<Dat
 
     @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
-        /*
-        if (state.is(newState.getBlock())) {
-            super.onRemove(state, level, pos, newState, isMoving);
-            return;
-        }
-
-         */
         if (!level.isClientSide && level instanceof ServerLevel serverLevel) {
+            if(Mods.VALKYRIENSKIES.isLoaded() && VSAssemblySuppression.isSuppressed(serverLevel)) return;
             ResourceKey<Level> dim = serverLevel.dimension();
+            Direction supportFace = state.getValue(FACING);
 
-            WeaponNetworkData.get(serverLevel)
-                    .removeDataLinkAndCleanup(dim, pos);
-            LOGGER.warn("Removing");
-            NetworkData.get(serverLevel)
-                    .removeDataLinkAndCleanup(dim, pos, serverLevel);
+            NetworkData.get(serverLevel).removeDataLinkAndCleanup(dim, pos, serverLevel);
+            WeaponNetworkData.get(serverLevel).removeDataLinkAndCleanup(dim, pos);
+
+            if (state.getValue(LINK_STYLE) == LinkStyle.RADAR) {
+                NetworkData.get(serverLevel).onEndpointRemoved(serverLevel, pos.relative(supportFace.getOpposite()));
+            }
+
+            if (state.getValue(LINK_STYLE) == LinkStyle.CONTROLLER) {
+                WeaponNetworkData.get(serverLevel).removeController(dim, pos.relative(supportFace.getOpposite()));
+            }
         }
 
         super.onRemove(state, level, pos, newState, isMoving);

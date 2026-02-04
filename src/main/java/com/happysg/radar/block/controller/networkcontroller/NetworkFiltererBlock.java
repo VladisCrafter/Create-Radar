@@ -2,6 +2,7 @@ package com.happysg.radar.block.controller.networkcontroller;
 
 import com.happysg.radar.CreateRadar;
 import com.happysg.radar.block.behavior.networks.NetworkData;
+import com.happysg.radar.item.binos.Binoculars;
 import com.happysg.radar.registry.ModBlockEntityTypes;
 import com.happysg.radar.registry.ModBlocks;
 import com.happysg.radar.registry.ModItems;
@@ -34,6 +35,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import org.jetbrains.annotations.Nullable;
 
 
 public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements IBE<NetworkFiltererBlockEntity> {
@@ -62,7 +65,14 @@ public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements 
 
     }
 
-
+    @Nullable
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        if (type == ModBlockEntityTypes.NETWORK_FILTER_BLOCK_ENTITY.get()) {
+            return (lvl, pos, st, be) -> NetworkFiltererBlockEntity.tick(lvl, pos, st, (NetworkFiltererBlockEntity) be);
+        }
+        return null;
+    }
 
     public Class<NetworkFiltererBlockEntity> getBlockEntityClass() {
         return NetworkFiltererBlockEntity.class;
@@ -76,7 +86,9 @@ public class NetworkFiltererBlock extends WrenchableDirectionalBlock implements 
     @Override
     public @NotNull InteractionResult use(BlockState state, Level world, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
             ItemStack held = player.getItemInHand(hand);
-
+        if(held.is(ModItems.BINOCULARS.asItem())){
+            return InteractionResult.SUCCESS;
+        }
         if (held.isEmpty()) {
             // client: play hand animation and bail early (server does the work)
             if (world.isClientSide) return InteractionResult.SUCCESS;

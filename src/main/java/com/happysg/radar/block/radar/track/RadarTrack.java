@@ -1,20 +1,23 @@
 package com.happysg.radar.block.radar.track;
 
 import com.happysg.radar.block.monitor.MonitorSprite;
+import com.happysg.radar.compat.cbc.CannonLead;
+import com.happysg.radar.compat.cbc.VelocityTracker;
 import com.happysg.radar.config.RadarConfig;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.valkyrienskies.core.api.ships.Ship;
 
+import javax.annotation.Nullable;
 import java.util.UUID;
 
 
 public class RadarTrack {
     private final String id;
-    private final UUID uuid;
     private Vec3 position;
     private Vec3 velocity;
     private long scannedTime;
@@ -24,7 +27,7 @@ public class RadarTrack {
 
     private Vec3 vector;
 
-    public RadarTrack(String id, Vec3 position, Vec3 velocity, long scannedTime, TrackCategory trackCategory, String entityType, float entityheight, UUID uuid) {
+    public RadarTrack(String id, Vec3 position, Vec3 velocity, long scannedTime, TrackCategory trackCategory, String entityType, float entityheight) {
         this.id = id;
         this.position = position;
         this.velocity = velocity;
@@ -32,12 +35,12 @@ public class RadarTrack {
         this.trackCategory = trackCategory;
         this.entityType = entityType;
         this.entityheight = entityheight;
-        this.uuid = uuid;
+
     }
 
     public RadarTrack(Entity entity) {
         this(entity.getUUID().toString(), entity.position(), entity.getDeltaMovement(), entity.level().getGameTime(),
-                TrackCategory.get(entity), entity.getType().toString(), entity.getBbHeight(), entity.getUUID());
+                TrackCategory.get(entity), entity.getType().toString(), entity.getBbHeight());
     }
 
     public Color getColor() {
@@ -62,6 +65,7 @@ public class RadarTrack {
         };
     }
 
+
     public static RadarTrack deserializeNBT(CompoundTag tag) {
         return new RadarTrack(tag.getString("id"),
                 new Vec3(tag.getDouble("x"), tag.getDouble("y"), tag.getDouble("z")),
@@ -69,8 +73,7 @@ public class RadarTrack {
                 tag.getLong("scannedTime"),
                 TrackCategory.values()[tag.getInt("Category")],
                 tag.getString("entityType"),
-                tag.getFloat("eh"),
-                tag.getUUID("uuid")
+                tag.getFloat("eh")
 
         );
     }
@@ -89,7 +92,6 @@ public class RadarTrack {
         tag.putInt("Category", trackCategory.ordinal());
         tag.putString("entityType", entityType);
         tag.putFloat("eh", entityheight );
-        tag.putUUID("uuid", uuid);
 
         return tag;
     }
@@ -143,7 +145,6 @@ public class RadarTrack {
     public String getEntityType() {
         return entityType;
     }
-    public UUID getUuid(){return uuid;}
 
 
 

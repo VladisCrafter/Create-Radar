@@ -1,12 +1,25 @@
 package com.happysg.radar.block.controller.networkcontroller;
 
+import com.happysg.radar.block.arad.aradnetworks.RadarContactRegistry;
 import com.happysg.radar.block.behavior.networks.NetworkData;
+import com.happysg.radar.block.behavior.networks.WeaponFiringControl;
+import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
+import com.happysg.radar.block.behavior.networks.config.AutoTargetingHelper;
 import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import com.happysg.radar.block.behavior.networks.config.IdentificationConfig;
 import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
+import com.happysg.radar.block.radar.behavior.RadarScanningBlockBehavior;
 import com.happysg.radar.block.radar.track.RadarTrack;
+import com.happysg.radar.compat.Mods;
+import com.happysg.radar.item.binos.Binoculars;
+import com.happysg.radar.block.radar.behavior.IRadar;
+import com.happysg.radar.block.radar.track.TrackCategory;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import com.mojang.logging.LogUtils;
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
+import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -14,28 +27,25 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 import org.slf4j.Logger;
-import com.happysg.radar.block.radar.behavior.RadarScanningBlockBehavior;
-import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
-import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
-import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
+import org.valkyrienskies.core.api.ships.Ship;
+import org.valkyrienskies.mod.common.VSGameUtilsKt;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class NetworkFiltererBlockEntity extends BlockEntity {
     private static final String NBT_INVENTORY = "Inventory";
@@ -49,7 +59,281 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     private static final int SLOT_IDENT     = 1;
     private static final int SLOT_TARGETING = 2;
 
+    private boolean selectedWasAuto = false;
+
+    private long vsLoadedCacheUntilTick = -1;
+    private final Map<Long, Boolean> vsLoadedCache = new HashMap<>();
+
     private  TargetingConfig targeting = TargetingConfig.DEFAULT;
+    private List<AABB> safeZones = new ArrayList<>();
+    private BlockPos lastKnownPos = BlockPos.ZERO;
+    private RadarTrack currenttrack;
+    private @Nullable BlockPos radarPosCache;
+    private @Nullable IRadar radarCache;
+    private List<RadarTrack> cachedTracks = List.of();
+    private DetectionConfig detectionCache = DetectionConfig.DEFAULT;
+    private @Nullable RadarTrack activeTrackCache;
+
+    private List<AutoPitchControllerBlockEntity> endpointCache = List.of();
+    private long endpointCacheUntilTick = -1;
+    private long rangeCacheUntilTick = -1;
+    private double rangeCacheBlocks = 0.0;
+
+    public void refreshPosition(){
+        if (!level.isClientSide && level.getGameTime() % 40 == 0) {
+            if (level instanceof ServerLevel serverLevel) {
+
+                if (lastKnownPos.equals(worldPosition))
+                    return;
+
+                ResourceKey<Level> dim = serverLevel.dimension();
+                NetworkData data = NetworkData.get(serverLevel);
+
+                boolean ok = data.updateFiltererPosition(dim, lastKnownPos, worldPosition);
+                if (ok) {
+                    lastKnownPos = worldPosition;
+                    setChanged();
+                }
+            }
+        }
+
+    }
+    public static void tick(Level level, BlockPos pos, BlockState state, NetworkFiltererBlockEntity be) {
+        if (!(level instanceof ServerLevel sl)) return;
+        if (level.isClientSide) return;
+        be.refreshPosition();
+        NetworkData data = NetworkData.get(sl);
+        NetworkData.Group group = data.getOrCreateGroup(sl.dimension(), pos);
+
+        String selectedId = data.getSelectedTargetId(group);
+        if (Mods.VALKYRIENSKIES.isLoaded()) {
+            long shipId = parseShipIdOrNeg(selectedId);
+            if (shipId != -1L) {
+                Ship ship = VSGameUtilsKt.getAllShips(level).getById(shipId);
+                if (ship != null) {
+                    RadarContactRegistry.markLocked(sl, shipId, 10);
+                }
+            }
+        }
+
+        if (sl.getGameTime() % 5 != 0) return;
+        be.headlessTick(sl);
+
+    }
+
+    private boolean isVsShipStillLoaded(ServerLevel sl, @Nullable RadarTrack track) {
+        if (!Mods.VALKYRIENSKIES.isLoaded()) return true;
+        if (track == null) return true;
+        if (track.trackCategory() != TrackCategory.VS2) return true;
+
+        final long shipId;
+        try {
+            shipId = Long.parseLong(track.getId());
+        } catch (NumberFormatException ignored) {
+            return false;
+        }
+
+        long now = sl.getGameTime();
+
+        // refresh cache
+        if (now > vsLoadedCacheUntilTick) {
+            vsLoadedCache.clear();
+            vsLoadedCacheUntilTick = now + 10;
+        }
+
+        Boolean cached = vsLoadedCache.get(shipId);
+        if (cached != null) return cached;
+
+        boolean loaded;
+        try {
+            loaded = VSGameUtilsKt.getShipObjectWorld(sl).getLoadedShips().getById(shipId) != null;
+        } catch (Throwable t) {
+            loaded = false;
+        }
+
+        vsLoadedCache.put(shipId, loaded);
+        return loaded;
+    }
+
+    private void headlessTick(ServerLevel sl) {
+        NetworkData data = NetworkData.get(sl);
+        NetworkData.Group group = data.getOrCreateGroup(sl.dimension(), worldPosition);
+
+        targeting = readTargetingFromSlot();
+
+        // sync radar position + detection
+        BlockPos netRadar = group.radarPos;
+        if (!Objects.equals(netRadar, radarPosCache)) {
+            radarPosCache = netRadar;
+            radarCache = null;
+            vsLoadedCacheUntilTick = -1;
+        }
+
+        detectionCache = DetectionConfig.fromTag(group.detectionTag);
+
+        // resolve radar
+        IRadar radar = getRadar(sl);
+        if (radar == null || !radar.isRunning()) {
+            cachedTracks = List.of();
+            activeTrackCache = null;
+
+            if (group.selectedTargetId != null) {
+                selectedWasAuto = false;
+                applySelectedTarget(sl, data, group, null);
+            }
+            return;
+        }
+
+        // rebuild track cache filtered
+
+        cachedTracks = radar.getTracks().stream().filter(detectionCache::test).toList();
+
+        // resolve current selected track from group.selectedTargetId
+        RadarTrack selected = resolveSelectedTrack(group.selectedTargetId);
+        if (selected != null && !isVsShipStillLoaded(sl, selected)) {
+            selectedWasAuto = false;
+
+            applySelectedTarget(sl, data, group, null);
+            selected = null;
+        }
+
+        // If selection id exists but track isn't present anymore, clear it and stop.
+        if (group.selectedTargetId != null && selected == null) {
+            selectedWasAuto = false;
+
+            applySelectedTarget(sl, data, group, null);
+            return;
+        }
+
+        if (selected != null) {
+            TargetingConfig cfg = targeting != null ? targeting : TargetingConfig.DEFAULT;
+
+            if (selectedWasAuto && !cfg.test(selected.trackCategory())) {
+                selectedWasAuto = false;
+                applySelectedTarget(sl, data, group, null);
+                return;
+            }
+
+            if (selectedWasAuto && !cfg.autoTarget()) {
+                selectedWasAuto = false;
+                applySelectedTarget(sl, data, group, null);
+                return;
+            }
+        }
+
+        if (selected == null) {
+            RadarTrack picked = pickAutoTarget_PerCannon(sl, cachedTracks, safeZones);
+            if (picked != null) {
+                selectedWasAuto = true;
+                applySelectedTarget(sl, data, group, picked);
+            }
+            return;
+        }
+
+        TargetingConfig cfg = targeting != null ? targeting : TargetingConfig.DEFAULT;
+        boolean requireLos = cfg.lineOfSight();
+
+        if (!anyCannonCanEngage(sl, selected, requireLos)) {
+            if (selectedWasAuto) {
+                dropOrReselectAuto(sl, data, group);
+            } else {
+                applySelectedTarget(sl, data, group, null);
+                selectedWasAuto = false;
+            }
+            return;
+        }
+
+        TargetingConfig cfg2 = targeting != null ? targeting : TargetingConfig.DEFAULT;
+        if (selectedWasAuto && cfg2.lineOfSight()) {
+            if (!anyCannonCanEngage(sl, selected, true)) {
+                RadarTrack better = pickAutoTarget_PerCannon(sl, cachedTracks, safeZones); // requireLos comes from cfg.lineOfSight()
+                if (better != null) {
+                    selectedWasAuto = true;
+                    applySelectedTarget(sl, data, group, better);
+                } else {
+                    selectedWasAuto = false;
+                    applySelectedTarget(sl, data, group, null);
+                }
+                return;
+            }
+        }
+
+        activeTrackCache = selected;
+        LOGGER.debug("push");
+        pushToEndpoints(selected);
+    }
+
+
+    private @Nullable IRadar getRadar(ServerLevel sl) {
+        if (radarPosCache == null) return null;
+
+        if (radarCache instanceof BlockEntity be && be.getBlockPos().equals(radarPosCache)) {
+            return radarCache;
+        }
+
+        radarCache = null;
+        BlockEntity be = sl.getBlockEntity(radarPosCache);
+        if (be instanceof IRadar r) radarCache = r;
+
+        return radarCache;
+    }
+
+    private @Nullable RadarTrack resolveSelectedTrack(@Nullable String selectedId) {
+        if (selectedId == null) return null;
+        for (RadarTrack t : cachedTracks) {
+            if (t == null) continue;
+            if (selectedId.equals(t.getId())) return t;
+        }
+        return null;
+    }
+
+    private void applySelectedTarget(ServerLevel sl, NetworkData data, NetworkData.Group group, @Nullable RadarTrack track) {
+        String prev = data.getSelectedTargetId(group);
+
+        data.setSelectedTargetId(group, track == null ? null : track.getId());
+
+        if (Mods.VALKYRIENSKIES.isLoaded()) {
+            if (prev != null && track == null) {
+                long prevShipId = parseShipIdOrNeg(prev);
+                if (prevShipId != -1L) {
+                    RadarContactRegistry.unLock(sl, prevShipId);
+                }
+            }
+
+            if (track != null && track.trackCategory() == TrackCategory.VS2) {
+                long shipId = parseShipIdOrNeg(track.getId());
+                if (shipId != -1L) {
+                    LOGGER.debug("locking");
+                    RadarContactRegistry.markLocked(sl, shipId, 10);
+                }
+            }
+        }
+        activeTrackCache = track;
+        pushToEndpoints(track);
+    }
+
+    private double distSqFromFilterer(Vec3 pos) {
+        return worldPosition.getCenter().distanceToSqr(pos);
+    }
+
+    private boolean anyCannonCanEngage(ServerLevel sl, RadarTrack track, boolean requireLos) {
+        for (AutoPitchControllerBlockEntity pitch : getWeaponEndpointsCached(sl)) {
+            if (pitch.canEngageTrack(track, requireLos)) return true;
+        }
+        return false;
+    }
+
+
+    private void pushToEndpoints(@Nullable RadarTrack track) {
+        TargetingConfig cfg = targeting != null ? targeting : TargetingConfig.DEFAULT;
+
+        List<AutoPitchControllerBlockEntity> entities = (level instanceof ServerLevel sl) ? getWeaponEndpointsCached(sl) : List.of();
+        for (AutoPitchControllerBlockEntity pitch : entities) {
+
+            pitch.setAndAcquireTrack(track, cfg);
+            pitch.setSafeZones(safeZones);
+        }
+    }
 
     private final ItemStackHandler inventory = new ItemStackHandler(3) {
         @Override
@@ -62,8 +346,8 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
                 applyFiltersToNetwork();
             }
 
-
             setChanged();
+
             if (level != null) {
                 level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
             }
@@ -102,15 +386,49 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     }
 
     public void receiveSelectedTargetFromMonitor(@Nullable RadarTrack track, List<AABB> safeZones) {
-        if (!(level instanceof ServerLevel serverLevel)) return;
-        TargetingConfig cfg = targeting != null ? targeting : TargetingConfig.DEFAULT;
-        List<AutoPitchControllerBlockEntity> entities  = getWeaponEndpointBlockEntities();
-        for(AutoPitchControllerBlockEntity pitch: entities) {
-            pitch.setAndAcquireTrack(track, targeting);
-            pitch.setSafeZones(safeZones);
-        }
+        if (!(level instanceof ServerLevel sl)) return;
+
+        endpointCacheUntilTick = -1;
+
+        this.safeZones.clear();
+        if (safeZones != null) this.safeZones.addAll(safeZones);
+
+        selectedWasAuto = false;
+
+        NetworkData data = NetworkData.get(sl);
+        NetworkData.Group group = data.getOrCreateGroup(sl.dimension(), worldPosition);
+
+
+        // sets canonical selectedTargetId + pushes to endpoints
+        applySelectedTarget(sl, data, group, track);
+        data.setDirty();
     }
 
+    public void onBinocularsTriggered(Player player, ItemStack binos, boolean reset) {
+        if (!(level instanceof ServerLevel serverLevel)) return;
+
+        BlockPos targetpos = Binoculars.getLastHit(binos);
+        if(targetpos == null) return;
+        //RadarTrack faketrack = new RadarTrack("binotarget", targetpos.getCenter(), Vec3.ZERO,10, TrackCategory.MISC,"misc",1);
+        TargetingConfig cfg = targeting != null ? targeting : TargetingConfig.DEFAULT;
+
+        List<AutoPitchControllerBlockEntity> entities = getWeaponEndpointBlockEntities();
+        for (AutoPitchControllerBlockEntity pitch : entities) {
+            pitch.setAndAcquirePos(targetpos, cfg,reset);
+            pitch.setSafeZones(safeZones);
+        }
+
+        selectedWasAuto = false;
+    }
+
+
+    public void dissolveNetwork(ServerLevel level) {
+        NetworkData data = NetworkData.get(level);
+        if (data == null) return;
+
+        data.dissolveNetworkForBrokenController(level, worldPosition);
+        data.setDirty();
+    }
     private void updateSlotNbtFromInventory(int slot) {
         if (slot < 0 || slot >= inventory.getSlots()) return;
 
@@ -122,6 +440,7 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
             slotNbt[slot] = tag == null ? null : tag.copy();
         }
     }
+
 
     // Compact format: SlotNbt: [ {Slot:0, Tag:{...}}, ... ]
     private void loadSlotNbt(CompoundTag nbt) {
@@ -140,11 +459,26 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
             slotNbt[slot] = t.isEmpty() ? null : t.copy();
         }
     }
+
+    private List<AutoPitchControllerBlockEntity> getWeaponEndpointsCached(ServerLevel sl) {
+        long now = sl.getGameTime();
+
+        // reuse for 20 ticks (1 second). Tune to 10-40 as desired.
+        if (now <= endpointCacheUntilTick && endpointCache != null) {
+            return endpointCache;
+        }
+
+        endpointCache = getWeaponEndpointBlockEntities();
+        endpointCacheUntilTick = now + 20;
+        return endpointCache;
+    }
+
     public List<AutoPitchControllerBlockEntity> getWeaponEndpointBlockEntities() {
         if (!(level instanceof ServerLevel serverLevel))
             return List.of();
         NetworkData data = NetworkData.get(serverLevel);
         NetworkData.Group group = data.getGroup(serverLevel.dimension(), worldPosition);
+        LOGGER.debug("ping1");
         if (group == null)
             return List.of();
         Set<BlockPos> pos = data.getWeaponEndpoints(group);
@@ -154,9 +488,105 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
                 entities.add(pitch);
             }
         }
-
+        LOGGER.debug(""+entities);
         return entities;
     }
+
+
+    private Set<String> buildIgnoreList(IdentificationConfig config) {
+        Set<String> out = new HashSet<>();
+        if (config == null) return out;
+
+        for (String name : config.usernames()) {
+            if (name == null || name.isBlank()) continue;
+            out.add(name.toLowerCase(Locale.ROOT));
+        }
+
+        if (config.label() != null && !config.label().isBlank()) {
+            out.add(config.label().toLowerCase(Locale.ROOT));
+        }
+
+        return out;
+    }
+
+//    private boolean isIgnoredByIdentification(RadarTrack track, @Nullable ServerLevel sl, Set<String> ignoreList) {
+//        if (track == null || ignoreList == null || ignoreList.isEmpty()) return false;
+//
+//        // PLAYER → username
+//        if (track.trackCategory() == TrackCategory.PLAYER) {
+//            if (sl == null) return false;
+//
+//            try {
+//                UUID uuid = UUID.fromString(track.getId());
+//                var p = sl.getPlayerByUUID(uuid);
+//                if (p == null) return false;
+//                String name = p.getGameProfile().getName();
+//                return name != null && ignoreList.contains(name.toLowerCase(Locale.ROOT));
+//            } catch (IllegalArgumentException ignored) {
+//                return false;
+//            }
+//        }
+//
+//        // VS2 → transponder / name via IDManager
+//        if (track.trackCategory() == TrackCategory.VS2) {
+//            try {
+//                long shipId = Long.parseLong(track.getId());
+//                var rec = com.happysg.radar.block.controller.id.IDManager.getIDRecordByShipId(shipId);
+//                if (rec == null) return false;
+//
+//                String key = (rec.secretID() != null && !rec.secretID().isBlank())
+//                        ? rec.secretID()
+//                        : rec.name();
+//
+//                return key != null && !key.isBlank() && ignoreList.contains(key.toLowerCase(Locale.ROOT));
+//            } catch (NumberFormatException ignored) {
+//                return false;
+//            }
+//        }
+//
+//        return false;
+//    }
+
+    @Nullable
+    private RadarTrack pickAutoTarget_PerCannon(ServerLevel sl, Collection<RadarTrack> tracks, List<AABB> safeZones) {
+        TargetingConfig cfg = targeting != null ? targeting : TargetingConfig.DEFAULT;
+        if (!cfg.autoTarget()) return null;
+
+        IdentificationConfig ident = readIdentificationFromSlot();
+        if (ident == null) ident = IdentificationConfig.DEFAULT;
+        Set<String> ignoreList = buildIgnoreList(ident);
+
+        boolean requireLos = cfg.lineOfSight();
+
+        // Build list of candidates sorted by distance to FILTERER
+        ArrayList<RadarTrack> candidates = new ArrayList<>();
+        for (RadarTrack track : tracks) {
+            if (track == null) continue;
+
+            if (!cfg.test(track.trackCategory())) continue;
+            if (!isVsShipStillLoaded(sl, track)) continue;
+
+            Vec3 pos = track.position();
+            if (pos == null) continue;
+
+            if (AutoTargetingHelper.isIgnoredByIdentification(track, sl, ignoreList)) continue;
+            if (AutoTargetingHelper.isInSafeZone(pos, safeZones)) continue;
+
+            candidates.add(track);
+        }
+
+        candidates.sort(Comparator.comparingDouble(t -> distSqFromFilterer(t.position())));
+
+        // per-cannon gating (range + angle + safezone segment + LOS if enabled)
+        for (RadarTrack t : candidates) {
+            if (anyCannonCanEngage(sl, t, requireLos)) {
+                return t;
+            }
+        }
+
+        return null;
+    }
+
 
     private void saveSlotNbt(CompoundTag nbt) {
         ListTag list = new ListTag();
@@ -191,14 +621,24 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         }
     }
 
-
-
     @Override
     protected void saveAdditional(CompoundTag nbt) {
         super.saveAdditional(nbt);
-
         nbt.put(NBT_INVENTORY, inventory.serializeNBT());
         saveSlotNbt(nbt);
+        nbt.putLong("LastKnownPos", lastKnownPos.asLong());
+    }
+
+
+    protected void write(CompoundTag tag, boolean clientPacket) {
+        tag.putLong("LastKnownPos", lastKnownPos.asLong());
+    }
+    protected void read(CompoundTag tag, boolean clientPacket) {
+        if (tag.contains("LastKnownPos", Tag.TAG_LONG)) {
+            lastKnownPos = BlockPos.of(tag.getLong("LastKnownPos"));
+        } else {
+            lastKnownPos = worldPosition;
+        }
     }
 
     @Override
@@ -267,6 +707,8 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         if (level == null || level.isClientSide) return;
         if (!(level instanceof ServerLevel sl)) return;
 
+        endpointCacheUntilTick = -1;
+
         DetectionConfig detection = readDetectionFromSlot();
         IdentificationConfig ident = readIdentificationFromSlot();
         targeting = readTargetingFromSlot();
@@ -312,14 +754,7 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     private IdentificationConfig readIdentificationFromSlot() {
         return readIdentificationFromItem(inventory.getStackInSlot(SLOT_IDENT));
     }
-    public void dissolveNetwork(ServerLevel level) {
-        NetworkData data = NetworkData.get(level);
-        if (data == null) return;
 
-        data.dissolveNetworkForBrokenController(level, worldPosition);
-
-        data.setDirty();
-    }
 
     private static IdentificationConfig readIdentificationFromItem(ItemStack stack) {
         if (stack == null || stack.isEmpty() || !stack.hasTag()) return IdentificationConfig.DEFAULT;
@@ -336,6 +771,13 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
             return IdentificationConfig.fromTag(root.getCompound("identification"));
         }
 
+        // i only try legacy lists if they actually exist as lists
+        if (!root.contains("EntriesList", Tag.TAG_LIST)) {
+            if (root.contains("IDSTRING", Tag.TAG_STRING))
+                return new IdentificationConfig(List.of(), root.getString("IDSTRING"));
+            return IdentificationConfig.DEFAULT;
+        }
+
         ListTag entriesTag = root.getList("EntriesList", Tag.TAG_STRING);
         ListTag foeTag = root.getList("FriendOrFoeList", Tag.TAG_BYTE);
 
@@ -344,16 +786,11 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
             return IdentificationConfig.DEFAULT;
 
         List<String> names = new ArrayList<>(n);
-        List<Boolean> flags = new ArrayList<>(n);
-        for (int i = 0; i < n; i++) {
-            names.add(entriesTag.getString(i));
-            flags.add(foeTag.getInt(i) != 0);
-
-        }
 
         String label = root.getString("IDSTRING");
-        return new IdentificationConfig(names, flags, label);
+        return new IdentificationConfig(names, label);
     }
+
     private TargetingConfig readTargetingFromSlot() {
         return readTargetingFromItem(inventory.getStackInSlot(SLOT_TARGETING));
     }
@@ -362,10 +799,18 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         CompoundTag inner = extractConfigCompound(stack, "targeting");
         if (inner == null) return TargetingConfig.DEFAULT;
 
-        CompoundTag root = new CompoundTag();
-        root.put("targeting", inner);
-        return TargetingConfig.fromTag(root);
+        boolean player      = inner.contains("player", Tag.TAG_BYTE) ? inner.getBoolean("player") : TargetingConfig.DEFAULT.player();
+
+        boolean contraption = inner.contains("contraption", Tag.TAG_BYTE) ? inner.getBoolean("contraption") : TargetingConfig.DEFAULT.contraption();
+        boolean mob         = inner.contains("mob", Tag.TAG_BYTE) ? inner.getBoolean("mob") : TargetingConfig.DEFAULT.mob();
+        boolean animal      = inner.contains("animal", Tag.TAG_BYTE) ? inner.getBoolean("animal") : TargetingConfig.DEFAULT.animal();
+        boolean projectile  = inner.contains("projectile", Tag.TAG_BYTE) ? inner.getBoolean("projectile") : TargetingConfig.DEFAULT.projectile();
+        boolean autoTarget  = inner.contains("autoTarget", Tag.TAG_BYTE) ? inner.getBoolean("autoTarget") : TargetingConfig.DEFAULT.autoTarget();
+        //boolean artillery   = inner.contains("artillery", Tag.TAG_BYTE) ? inner.getBoolean("artillery") : TargetingConfig.DEFAULT.artillery();
+        boolean los         = inner.contains("lineSight", Tag.TAG_BYTE) ? inner.getBoolean("lineSight") : TargetingConfig.DEFAULT.lineOfSight();
+        return new TargetingConfig(player, contraption, mob, animal, projectile, autoTarget, true, los);
     }
+
     @Nullable
     private static CompoundTag extractConfigCompound(ItemStack stack, String key) {
         if (stack == null || stack.isEmpty() || !stack.hasTag()) return null;
@@ -382,13 +827,35 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
             return root.getCompound(key);
         }
 
-
         return null;
     }
 
+    private static boolean isNumericId(@Nullable String s) {
+        if (s == null || s.isEmpty()) return false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c < '0' || c > '9') return false;
+        }
+        return true;
+    }
 
+    private static long parseShipIdOrNeg(@Nullable String s) {
+        if (!isNumericId(s)) return -1L;
+        try {
+            return Long.parseLong(s);
+        } catch (NumberFormatException e) {
+            return -1L;
+        }
+    }
 
-
-
-
+    private void dropOrReselectAuto(ServerLevel sl, NetworkData data, NetworkData.Group group) {
+        RadarTrack picked = pickAutoTarget_PerCannon(sl, cachedTracks, safeZones);
+        if (picked != null) {
+            selectedWasAuto = true;
+            applySelectedTarget(sl, data, group, picked);
+        } else {
+            selectedWasAuto = false;
+            applySelectedTarget(sl, data, group, null);
+        }
+    }
 }

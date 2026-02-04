@@ -1,5 +1,6 @@
 package com.happysg.radar.block.radar.behavior;
 
+import com.happysg.radar.block.arad.aradnetworks.RadarContactRegistry;
 import com.happysg.radar.block.radar.bearing.RadarBearingBlockEntity;
 
 import com.happysg.radar.block.radar.track.RadarTrack;
@@ -9,6 +10,7 @@ import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
+import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BehaviourType;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -16,13 +18,16 @@ import com.happysg.radar.block.behavior.networks.config.DetectionConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.valkyrienskies.core.api.ships.Ship;
 
+import java.lang.reflect.Method;
 import java.util.*;
 
 public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
@@ -47,7 +52,6 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
     public RadarScanningBlockBehavior(SmartBlockEntity be) {
         super(be);
         this.bearingEntity = be;
-        setLazyTickRate(1);
     }
 
     public void applyDetectionConfig(DetectionConfig cfg) {
@@ -116,13 +120,23 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         removeDeadTracks();
         if (running)
             updateRadarTracks();
+        if (running) {
+            scannedEntities.clear();
+            scannedShips.clear();
+            scannedProjectiles.clear();
+
+            scanForEntityTracks();
+            if (Mods.VALKYRIENSKIES.isLoaded() && scanVS2)
+                scanForVSTracks();
+        }
     }
 
 
     private void updateRadarTracks() {
         scanPos = PhysicsHandler.getWorldPos(bearingEntity).getCenter();
-
         Level level = blockEntity.getLevel();
+        boolean isServer = level instanceof net.minecraft.server.level.ServerLevel;
+        net.minecraft.server.level.ServerLevel sl = isServer ? (net.minecraft.server.level.ServerLevel) level : null;
         if (level == null )return;
 
 
@@ -142,30 +156,35 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
         for (Ship ship : scannedShips) {
             Vec3 pos = RadarTrackUtil.getPosition(ship);
             if (isInFovAndRange(pos)) {
+
+                long key = ship.getId();
+
                 radarTracks.compute(ship.getSlug(), (id, track) -> {
                     if (track == null) return RadarTrackUtil.getRadarTrack(ship, level);
                     track.updateRadarTrack(ship, level);
                     return track;
                 });
+                if (isServer) {
+                    RadarContactRegistry.markInRange(sl, key, 20);
+                }
             }
         }
     }
 
     private boolean isInFovAndRange(Vec3 target) {
         double distance = scanPos.distanceTo(target);
-        if(radarBearing != null && radarBearing.getSpeed() >=225){
-            return true;
-        }
 
         if (distance < 2)
             return true;
-
+        double a = scanAngleDeg();
         double angleToEntity = Math.toDegrees(Math.atan2(target.x() - scanPos.x(), target.z() - scanPos.z()));
         angleToEntity = (angleToEntity + 360) % 360;
-        double angleDiff = Math.abs(angleToEntity - angle);
+
+        double angleDiff = Math.abs(angleToEntity - a);
         if (angleDiff > 180) angleDiff = 360 - angleDiff;
 
         return angleDiff <= fov / 2.0 && distance <= range;
+
     }
 
     private void removeDeadTracks() {
@@ -190,21 +209,6 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
             return dead;
         });
     }
-
-    @Override
-    public void lazyTick() {
-        if (running) {
-            scannedEntities.clear();
-            scannedShips.clear();
-            scannedProjectiles.clear();
-
-            scanForEntityTracks();
-            if (Mods.VALKYRIENSKIES.isLoaded() && scanVS2)
-                scanForVSTracks();
-        }
-        super.lazyTick();
-    }
-
     private void scanForEntityTracks() {
         Level level = blockEntity.getLevel();
         if (level == null) return;
@@ -219,23 +223,23 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
             }
 
             if (scanPlayers)
-                scannedEntities.addAll(level.getEntitiesOfClass(net.minecraft.world.entity.player.Player.class, aabb));
+                scannedEntities.addAll(level.getEntitiesOfClass(Player.class, aabb));
 
             if (scanProjectiles)
                 scannedEntities.addAll(level.getEntitiesOfClass(Projectile.class, aabb));
 
             if (scanItems)
-                scannedEntities.addAll(level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, aabb));
+                scannedEntities.addAll(level.getEntitiesOfClass(ItemEntity.class, aabb));
 
             if (scanContraptions)
-                scannedEntities.addAll(level.getEntitiesOfClass(com.simibubi.create.content.contraptions.AbstractContraptionEntity.class, aabb));
+                scannedEntities.addAll(level.getEntitiesOfClass(AbstractContraptionEntity.class, aabb));
 
             if (scanAnimals)
-                scannedEntities.addAll(level.getEntitiesOfClass(net.minecraft.world.entity.animal.Animal.class, aabb));
+                scannedEntities.addAll(level.getEntitiesOfClass(Animal.class, aabb));
 
             if (scanMobs) {
                 scannedEntities.addAll(level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, aabb,
-                        e -> !(e instanceof net.minecraft.world.entity.animal.Animal)));
+                        e -> !(e instanceof Animal)));
             }
         }
     }
@@ -250,17 +254,34 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
 
     private AABB getRadarAABB() {
         BlockPos radarPos = PhysicsHandler.getWorldPos(blockEntity);
-        double xOffset = range * Math.sin(Math.toRadians(angle));
-        double zOffset = range * Math.cos(Math.toRadians(angle));
+        double x = radarPos.getX() + 0.5;
+        double y = radarPos.getY() + 0.5;
+        double z = radarPos.getZ() + 0.5;
+
+        double yScan = RadarConfig.server().radarYScanRange.get();
+
+        // forward endpoint
+        double dx = range * Math.sin(Math.toRadians(angle));
+        double dz = range * Math.cos(Math.toRadians(angle));
+
+        double minX = Math.min(x, x + dx);
+        double maxX = Math.max(x, x + dx);
+        double minZ = Math.min(z, z + dz);
+        double maxZ = Math.max(z, z + dz);
+
+        // widen it a bit so it’s not a razor-thin line
+        double widen = range * 0.5;
+
         return new AABB(
-                radarPos.getX() - xOffset,
-                radarPos.getY() - RadarConfig.server().radarYScanRange.get(),
-                radarPos.getZ() - zOffset,
-                radarPos.getX() + xOffset,
-                radarPos.getY() + RadarConfig.server().radarYScanRange.get(),
-                radarPos.getZ() + zOffset
+                minX - widen, y - yScan, minZ - widen,
+                maxX + widen, y + yScan, maxZ + widen
         );
     }
+    private double scanAngleDeg() {
+        // my bearing angle is opposite of atan2(dx, dz) convention, so i flip it
+        return (angle + 180.0) % 360.0;
+    }
+
 
     public static List<AABB> splitAABB(AABB aabb, double maxSize) {
         List<AABB> result = new ArrayList<>();

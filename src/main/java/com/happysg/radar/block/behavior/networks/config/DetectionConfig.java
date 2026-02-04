@@ -2,6 +2,7 @@ package com.happysg.radar.block.behavior.networks.config;
 
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.TrackCategory;
+import com.happysg.radar.compat.Mods;
 import com.happysg.radar.config.RadarConfig;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.nbt.CompoundTag;
@@ -81,7 +82,7 @@ public record DetectionConfig(boolean player, boolean vs2, boolean contraption, 
     private boolean test(TrackCategory trackCategory) {
         if (trackCategory == TrackCategory.PLAYER) {
             return player;
-        } else if (trackCategory == TrackCategory.VS2) {
+        } else if (Mods.VALKYRIENSKIES.isLoaded() && trackCategory == TrackCategory.VS2) {
             return vs2;
         } else if (trackCategory == TrackCategory.CONTRAPTION) {
             return contraption;

@@ -3,6 +3,8 @@ package com.happysg.radar.block.monitor;
 
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -16,13 +18,16 @@ public class MonitorInputHandler {
 
     static Vec3 adjustRelativeVectorForFacing(Vec3 relative, Direction monitorFacing) {
         return switch (monitorFacing) {
-            case NORTH -> new Vec3(relative.x(), 0, relative.y());
-            case SOUTH -> new Vec3(relative.x(), 0, -relative.y());
+            case NORTH -> new Vec3( relative.x(), 0,  relative.y());
+            case SOUTH -> new Vec3(relative.x(), 0,  -relative.y());
             case WEST -> new Vec3(relative.y(), 0, relative.z());
             case EAST -> new Vec3(-relative.y(), 0, relative.z());
-            default -> relative;
+            default    -> relative;
         };
     }
+
+
+
 
     public static RadarTrack findTrack(Level level, Vec3 hit, MonitorBlockEntity controller) {
         if (controller.getRadarCenterPos() == null)
@@ -63,7 +68,7 @@ public class MonitorInputHandler {
 
         Player player = event.player;
         Level level = event.player.level();
-        if (level.isClientSide())
+        if (!level.isClientSide())
             return;
         Vec3 hit = player.pick(5, 0.0F, false).getLocation();
         if (player.pick(5, 0.0F, false) instanceof BlockHitResult result) {
@@ -73,12 +78,11 @@ public class MonitorInputHandler {
                 String oldHovered = monitor.hoveredEntity;
                 String newHovered = (track != null) ? track.id() : null;
 
-                // Only update when the hovered target actually changes
                 if ((oldHovered == null && newHovered != null) ||
                         (oldHovered != null && !oldHovered.equals(newHovered))) {
 
                     monitor.hoveredEntity = newHovered;
-                    monitor.notifyUpdate();   // <-- now only fires when needed
+                    monitor.notifyUpdate();
                 }
 
             }
@@ -100,7 +104,6 @@ public class MonitorInputHandler {
                 be.selectedEntity = track.id();
                 be.setSelectedTargetServer(track);
                 be.notifyUpdate();
-
             }
         }
         return InteractionResult.SUCCESS;

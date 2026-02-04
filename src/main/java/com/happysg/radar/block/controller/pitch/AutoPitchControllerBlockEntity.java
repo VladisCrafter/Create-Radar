@@ -1,5 +1,6 @@
 package com.happysg.radar.block.controller.pitch;
 
+import com.happysg.radar.block.behavior.networks.NetworkData;
 import com.happysg.radar.block.behavior.networks.WeaponFiringControl;
 import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
 import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
@@ -7,17 +8,21 @@ import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.CannonTargeting;
+import com.happysg.radar.compat.cbc.CannonUtil;
 import com.happysg.radar.compat.cbc.VS2CannonTargeting;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
-import com.mojang.datafixers.types.Type;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollOptionBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -28,7 +33,6 @@ import org.joml.Vector3d;
 import org.slf4j.Logger;
 import org.valkyrienskies.clockwork.content.contraptions.phys.bearing.PhysBearingBlockEntity;
 import org.valkyrienskies.clockwork.platform.api.ContraptionController;
-import org.valkyrienskies.core.api.ships.LoadedServerShip;
 import org.valkyrienskies.core.api.ships.Ship;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
@@ -38,19 +42,18 @@ import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContr
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
-    // CBC tolerance in "CBC units" (radians in your current code)
     private static final double CBC_TOLERANCE = 0.10;
 
     // PhysBearing tolerance in degrees
     private static final double PHYS_TOLERANCE_DEG = 0.10;
     private static final double DEADBAND_DEG = 0.25;
 
-    // ===== State =====
+
+    // State
     private double targetAngle;
     public boolean isRunning;
 
@@ -59,10 +62,10 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
 
     private RadarTrack track;
 
-    // firing control
+    private BlockPos lastKnownPos = BlockPos.ZERO;
+
     public WeaponFiringControl firingControl;
     public AutoYawControllerBlockEntity autoyaw;
-    // ===== PhysBearing smoothing state (NO player tracking) =====
     private static final double SNAP_DISTANCE = 32.0;
     private static final double MIN_MOVE_PER_TICK = 0.02;
     private static final double MAX_MOVE_PER_TICK = 2.0;
@@ -71,37 +74,39 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     private static final double MAX_DEG_PER_TICK = 18.0; // 256 RPM feel
     private static final double CURVE_GAMMA = 1.65;
 
-    private static final int MOUNT_RECHECK_EVERY_TICKS = 20;
-
     private double lastCommandedDeg = Double.NaN;
 
     @Nullable
     private Vec3 desiredTarget = null;   // latest commanded target (ship-space if on ship)
-
+    private  boolean binoMode;
     @Nullable
     private Vec3 smoothedTarget = null;
 
     private boolean mountDirty = true;
     private int mountRecheckCooldown = 0;
-    private Entity targetentity;
-
     // cached mount
     private PhysBearingBlockEntity currentMount;
 
-    public void getfiringcontrol() {
-        if (firingControl == null && level instanceof ServerLevel serverLevel) {
-            if ( WeaponNetworkData.get(serverLevel).getWeaponGroupViewFromEndpoint(serverLevel.dimension(), worldPosition) != null && getWeaponGroup().yawPos() != null) {
-                if (level != null && level.getBlockEntity(getWeaponGroup().yawPos()) instanceof AutoYawControllerBlockEntity aYCBE) {
-                    autoyaw = aYCBE;
-                }
-            }
-            if (level != null && level.getBlockEntity(getMount()) instanceof CannonMountBlockEntity mount) {
-                firingControl = new WeaponFiringControl(this, mount, autoyaw);
-                LOGGER.warn("made new Weapon Config!");
-            }
+    public void getFiringControl() {
+        if (firingControl != null) return;
+        if (!(level instanceof ServerLevel serverLevel)) return;
+
+        var view = getWeaponGroup();
+        if (view == null) return;
+
+        if (view.yawPos() != null && level.getBlockEntity(view.yawPos()) instanceof AutoYawControllerBlockEntity aYCBE) {
+            autoyaw = aYCBE;
+        }
+
+        BlockPos mountPos = view.mountPos();
+        if (mountPos == null) return;
+
+        BlockEntity be = level.getBlockEntity(mountPos);
+        if (be instanceof CannonMountBlockEntity mount) {
+            firingControl = new WeaponFiringControl(this, mount, autoyaw);
+            LOGGER.debug("made new Weapon Config!");
         }
     }
-
 
     public AutoPitchControllerBlockEntity(BlockEntityType<?> typeIn, BlockPos pos, BlockState state) {
         super(typeIn, pos, state);
@@ -115,28 +120,87 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             if ( WeaponNetworkData.get(serverLevel).getWeaponGroupViewFromEndpoint(serverLevel.dimension(), worldPosition) == null ) return;
         }
         if (firingControl == null){
-            getfiringcontrol();
+            getFiringControl();
         }
 
         Mount mount = resolveMount();
         if (mount == null)
             return;
-        if (track != null) {
-            if (mount.kind == MountKind.CBC && Mods.CREATEBIGCANNONS.isLoaded()) {
-                rotateCBC(mount.cbc);
-            } else if (mount.kind == MountKind.PHYS && Mods.VS_CLOCKWORK.isLoaded()) {
-                rotatePhysBearing(mount.phys);
-            }
+
+        LOGGER.debug(
+                "PITCH.tick mount={} kind={} isRunning={} track={} bino={}",
+                mount,
+                mount.kind,
+                isRunning,
+                track != null,
+                binoMode
+        );
+
+        if (mount.kind == MountKind.CBC && Mods.CREATEBIGCANNONS.isLoaded()) {
+            rotateCBC(mount.cbc);
+        } else if (mount.kind == MountKind.PHYS && Mods.VS_CLOCKWORK.isLoaded()) {
+            rotatePhysBearing(mount.phys);
         }
-        if (firingControl != null && track != null) {
-            firingControl.tick();
+
+        if (!level.isClientSide && level.getGameTime() % 40 == 0) {
+            if (level instanceof ServerLevel serverLevel) {
+                if (lastKnownPos.equals(worldPosition))
+                    return;
+
+                ResourceKey<Level> dim = serverLevel.dimension();
+                WeaponNetworkData data = WeaponNetworkData.get(serverLevel);
+                boolean updated = data.updateWeaponEndpointPosition(
+                        dim,
+                        lastKnownPos,
+                        worldPosition
+                );
+                if (updated) {
+                    lastKnownPos = worldPosition;
+                    LOGGER.debug("Controller moved {} -> {}", lastKnownPos, worldPosition);
+                    setChanged();
+                }
+            }
         }
     }
 
     /** Horizontal controller: mount is in front of the controller. */
-    public BlockPos getMount(){
+    @Nullable
+    public BlockPos isFacingCannonMount(Level level, BlockPos pos, BlockState state) {
+        if (level == null || state == null) return null;
+        if (!state.hasProperty(HorizontalDirectionalBlock.FACING)) return null;
 
-        return getWeaponGroup().mountPos();
+        Direction facing = state.getValue(HorizontalDirectionalBlock.FACING);
+        return pos.relative(facing);
+    }
+
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        if(this.firingControl != null) {
+            firingControl.clearBinoTarget();
+        }
+        if (level == null || level.isClientSide)
+            return;
+
+        // first load or same position
+        if (lastKnownPos.equals(worldPosition)) {
+            lastKnownPos = worldPosition;
+            setChanged();
+            return;
+        }
+
+        // moved: tell the network
+        ServerLevel sl = (ServerLevel) level;
+        ResourceKey<Level> dim = sl.dimension();
+
+        NetworkData data = NetworkData.get(sl);
+        WeaponNetworkData wData = WeaponNetworkData.get(sl);
+
+        data.updateWeaponEndpointPosition(dim, lastKnownPos, worldPosition);
+        wData.updateWeaponEndpointPosition(dim,lastKnownPos,worldPosition);
+
+        lastKnownPos = worldPosition;
+        setChanged();
     }
 
     public void setTargetAngle(float angle) {
@@ -160,38 +224,88 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         WeaponNetworkData data = WeaponNetworkData.get(sl);
         return data.getWeaponGroupViewFromEndpoint(sl.dimension(), worldPosition);
     }
+
     public static Entity getEntityByUUID(ServerLevel level, UUID uuid) {
         return level.getEntity(uuid);
     }
+
     public void setAndAcquireTrack(@Nullable RadarTrack tTrack, TargetingConfig config) {
-        if (level == null || level.isClientSide) return;
-        if(tTrack == null){
+        if (level == null || level.isClientSide || binoMode) return; // binoculars have priority
+
+        if (firingControl == null) getFiringControl();
+
+        LOGGER.debug("PITCH setAndAcquireTrack track={} firingControl={}", tTrack == null ? "null" : tTrack.getId(), firingControl != null);
+
+        if (tTrack == null) {
             track = null;
-            firingControl.resetTarget();
+            if (firingControl != null) firingControl.resetTarget();
             return;
         }
         if (tTrack != track) {
-            targetentity = null;
             track = tTrack;
         }
-
-
-        if (firingControl == null) getfiringcontrol();
         if (firingControl == null) return;
-
         if (!(level instanceof ServerLevel sl)) return;
 
-        if (targetentity == null) {
-            targetentity = getEntityByUUID(sl, tTrack.getUuid());
-            if (targetentity == null) {
-                LOGGER.warn("target entity lookup failed for {}", tTrack.getUuid());
-                return;
-            }
+
+
+        var view = getWeaponGroup();
+        if (view == null) {
+            LOGGER.debug("PITCH {} getWeaponGroup() returned null - cannot aim/fire", worldPosition);
+            return;
         }
+        LOGGER.debug("ptfc");
+        firingControl.setTarget(track.getPosition(), config, tTrack, view);
+    }
+
+    public double getMaxEngagementRangeBlocks() {
+        if (level == null || level.isClientSide) return 0;
+        if (!(level instanceof ServerLevel sl)) return 0;
+
+        Mount m = resolveMount();
+        if (m == null) return 0;
+
+        if (m.kind == MountKind.CBC && Mods.CREATEBIGCANNONS.isLoaded()) {
+            PitchOrientedContraptionEntity ce = m.cbc.getContraption();
+            if (ce == null) return 0;
+            if (!(ce.getContraption() instanceof AbstractMountedCannonContraption cannon)) return 0;
+
+            double r = CannonUtil.getMaxProjectileRangeBlocks(cannon, sl);
+            LOGGER.debug("RANGE DBG endpoint={} cannon={} range={} blocks", worldPosition, cannon.getClass().getSimpleName(), r);
+            return r;
+        }
+        return 0;
+    }
+
+    public Vec3 getRayStart() {
+        if (firingControl == null) getFiringControl();
+        return firingControl != null
+                ? firingControl.getCannonRayStart()
+                : worldPosition.getCenter();
+    }
+
+    public void setAndAcquirePos(@Nullable BlockPos binoTargetPos, TargetingConfig config, boolean reset) {
+        if (level == null || level.isClientSide) return;
+
+        if (reset || binoTargetPos == null) {
+            this.binoMode = false;
+
+            if (firingControl != null) {
+                firingControl.clearBinoTarget();
+            }
+            return;
+        }
+        if (firingControl == null) getFiringControl();
+        if (firingControl == null) return;
+        if (!(level instanceof ServerLevel sl)) return;
 
         var view = getWeaponGroup();
         if (view == null) return;
-        firingControl.setTarget(targetentity.position(), config, tTrack, view, targetentity);
+
+        // i only enable binoMode once i know i can actually apply it
+        this.binoMode = true;
+
+        firingControl.setBinoTarget(binoTargetPos, config, view, reset);
     }
 
 
@@ -292,13 +406,13 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         firingControl.setSafeZones(safeZones);
     }
 
-    // ============================================================
     // CBC behavior (aligned to yaw’s “snap + stop” flow)
-    // ============================================================
 
     private void rotateCBC(CannonMountBlockEntity mount) {
-        if (!isRunning)
+        if (!isRunning) {
+            LOGGER.debug("PITCH.rotateCBC aborted: isRunning=false");
             return;
+        }
 
         PitchOrientedContraptionEntity contraption = mount.getContraption();
         if (contraption == null)
@@ -312,8 +426,15 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         currentPitch = currentPitch * -invert;
 
         double diff = targetAngle - currentPitch;
+        LOGGER.debug(
+                "PITCH.rotateCBC current={} target={} diff={} speed={}",
+                currentPitch,
+                targetAngle,
+                diff,
+                getSpeed()
+        );
 
-        // close enough; snap + stop (like yaw)
+        // close enough; snap + stop
         if (Math.abs(diff) <= CBC_TOLERANCE) {
             mount.setPitch((float) targetAngle);
             mount.notifyUpdate();
@@ -349,10 +470,10 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             // pitch
             this.targetAngle = angles.get(0).get(0);
 
-            // yaw (if you have firingControl)
-            if (firingControl != null) {
-                firingControl.cannonMount.setYaw(angles.get(0).get(1).floatValue());
-            }
+//            // yaw (if you have firingControl)
+//            if (firingControl != null) {
+//                firingControl.yawController.setTargetAngle(angles.get(0).get(1).floatValue());
+//            }
 
             isRunning = true;
             notifyUpdate();
@@ -360,9 +481,17 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return;
         }
 
-        // normal CBC pitch targeting
-        List<Double> angles = CannonTargeting.calculatePitch(mount, targetPos, serverLevel);
+        Vec3 origin = (firingControl != null) ? firingControl.getCannonMuzzlePos() : getRayStart();
+        List<Double> angles = CannonTargeting.calculatePitch(mount, origin, targetPos, serverLevel);
+        LOGGER.warn(
+                "PITCH.solve origin={} target={} mountPos={}",
+                origin,
+                targetPos,
+                mount.getBlockPos()
+        );
+
         if (angles == null || angles.isEmpty()) {
+            LOGGER.warn("PITCH.solve FAILED: no pitch roots");
             isRunning = false;
             return;
         }
@@ -382,15 +511,15 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             targetAngle = usableAngles.get(0);
         }
 
+        LOGGER.warn("PITCH.solve targetAngle={}", targetAngle);
+
         isRunning = true;
         notifyUpdate();
         setChanged();
     }
 
-    // ============================================================
-    // PhysBearing behavior (aligned to yaw: follow-angle + unwrap)
-    // ============================================================
 
+    // PhysBearing behavior (aligned to yaw: follow-angle + unwrap)
     private void rotatePhysBearing(PhysBearingBlockEntity mount) {
         // Ensure follow-angle mode
         ScrollOptionBehaviour<ContraptionController.LockedMode> mode = mount.getMovementMode();
@@ -415,7 +544,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         double currentDeg = wrap360(Math.toDegrees(actualRad));
         double desiredDeg = wrap360(targetAngle);
 
-        // "snap at max rpm" like yaw
+        // "snap at max rpm"
         if (rpmAbs >= 256.0) {
             lastCommandedDeg = desiredDeg;
             mount.setAngle((float) desiredDeg);
@@ -431,7 +560,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         // unwrap target near last command to avoid long spins
         double desiredContinuous = unwrapNear(lastCommandedDeg, desiredDeg);
 
-        // deadband: stop running when close enough (similar spirit to yaw CBC stop)
+        // deadband: stop running when close enough
         if (Math.abs(shortestDelta(currentDeg, desiredDeg)) <= Math.max(PHYS_TOLERANCE_DEG, DEADBAND_DEG)) {
             mount.setAngle((float) desiredDeg);
             mount.notifyUpdate();
@@ -450,7 +579,9 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return;
 
         Direction facing = getBlockState().getValue(AutoPitchControllerBlock.HORIZONTAL_FACING);
-        Vec3 pivot = getMount().getCenter(); // pivot at the bearing block center (one ahead)
+        BlockPos mountPos = isFacingCannonMount(level,worldPosition, this.getBlockState());
+        if (mountPos == null) return;
+        Vec3 pivot = mountPos.getCenter();
 
         if (smoothedTarget == null) {
             smoothedTarget = desiredTarget;
@@ -477,10 +608,8 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         targetAngle = approachWrapped(targetAngle, newAngle);
     }
 
-    // ============================================================
-    // Mount resolution (aligned conceptually to yaw, but horizontal/front)
-    // ============================================================
 
+    // Mount resolution (aligned conceptually to yaw, but horizontal/front)
     private enum MountKind { CBC, PHYS }
 
     private static class Mount {
@@ -506,13 +635,14 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         if (level == null)
             return null;
 
-        // Recheck/refresh phys cache periodically (like yaw’s repeated resolve)
+        // Recheck/refresh phys cache periodically
         if (!mountDirty && mountRecheckCooldown-- > 0) {
 
         } else {
 
 
-            BlockPos front = getMount();
+            BlockPos front = isFacingCannonMount(level,worldPosition,getBlockState());
+            if (front == null) return null;
             BlockEntity be = level.getBlockEntity(front);
 
             // CBC first if present
@@ -532,15 +662,19 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         return null;
     }
 
-    // ============================================================
-    // NBT (same keys as before)
-    // ============================================================
-
+    // NBT
     @Override
     protected void read(CompoundTag compound, boolean clientPacket) {
         super.read(compound, clientPacket);
         targetAngle = compound.getDouble("TargetAngle");
         isRunning = compound.getBoolean("IsRunning");
+        if (compound.contains("LastKnownPos", Tag.TAG_LONG)) {
+            lastKnownPos = BlockPos.of(compound.getLong("LastKnownPos"));
+        } else {
+            lastKnownPos = worldPosition;
+        }
+
+
         // smoothing state not persisted by design
         desiredTarget = null;
         smoothedTarget = null;
@@ -550,6 +684,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     @Override
     protected void write(CompoundTag compound, boolean clientPacket) {
         super.write(compound, clientPacket);
+        compound.putLong("LastKnownPos", lastKnownPos.asLong());
         compound.putDouble("TargetAngle", targetAngle);
         compound.putBoolean("IsRunning", isRunning);
     }
@@ -559,10 +694,8 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         // keep empty, matching yaw controller style
     }
 
-    // ============================================================
-    // Geometry + helpers (PhysBearing mode)
-    // ============================================================
 
+    // Geometry + helpers (PhysBearing mode)
     private static Vec3 forwardHoriz(Direction facing) {
         Vec3 f = new Vec3(facing.getStepX(), 0, facing.getStepZ());
         if (f.lengthSqr() < 1e-8)
@@ -649,14 +782,16 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         return lastContinuous + shortestDelta(lastWrapped, newWrapped);
     }
 
-    // ============================================================
-    // VS helpers (PhysBearing target space)
-    // ============================================================
 
+    // VS helpers (PhysBearing target space)
     @Nullable
     private Ship getShipIfPresent() {
         if (level == null) return null;
-        return VSGameUtilsKt.getShipManagingPos(level, worldPosition);
+
+        if (!Mods.VALKYRIENSKIES.isLoaded())
+            return null;
+
+        return VSGameUtilsKt.getShipManagingPos(level, worldPosition.above(1));
     }
 
     private static Vec3 toShipSpace(Ship ship, Vec3 worldPos) {
@@ -664,5 +799,43 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         Vector3d v = new Vector3d(worldPos.x, worldPos.y, worldPos.z);
         worldToShip.transformPosition(v);
         return new Vec3(v.x, v.y, v.z);
+    }
+
+    public boolean canEngageTrack(@Nullable RadarTrack track, boolean requireLos) {
+        if (track == null) return false;
+        if (!(level instanceof ServerLevel sl)) return false;
+
+        getFiringControl();
+        if (firingControl == null) return false;
+
+        Mount mount = resolveMount();
+        if (mount == null) return false;
+
+        if (mount.kind == MountKind.CBC) {
+            if (mount.cbc == null) return false;
+            if (mount.cbc.getContraption() == null) return false;
+            if (!(mount.cbc.getContraption().getContraption() instanceof AbstractMountedCannonContraption)) return false;
+        }
+
+        Vec3 p = track.position();
+        if (p == null) return false;
+
+        double max = getMaxEngagementRangeBlocks();
+        if (max > 0.0) {
+            Vec3 start = firingControl.getCannonRayStart();
+            if (start.distanceToSqr(p) > (max * max)) return false;
+        }
+
+        if (mount.kind == MountKind.CBC && mount.cbc != null) {
+            Vec3 origin = (firingControl != null) ? firingControl.getCannonMuzzlePos() : getRayStart();
+            List<Double> pitches = CannonTargeting.calculatePitch(mount.cbc, origin, p, sl);
+            if (pitches == null || pitches.isEmpty()) return false;
+        }
+
+        if (requireLos) {
+            return firingControl.hasLineOfSightTo(track);
+        }
+
+        return true;
     }
 }

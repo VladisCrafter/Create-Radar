@@ -3,6 +3,7 @@ package com.happysg.radar.compat.cbc;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.mixin.AbstractCannonAccessor;
 import com.happysg.radar.mixin.AutoCannonAccessor;
+import com.happysg.radar.mixin.AutocannonProjectileAccessor;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import net.minecraft.core.BlockPos;
@@ -14,6 +15,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.item.ItemStack;
+
 import org.slf4j.Logger;
 
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
@@ -30,6 +33,9 @@ import rbasamoyai.createbigcannons.munitions.big_cannon.AbstractBigCannonProject
 import rbasamoyai.createbigcannons.munitions.big_cannon.ProjectileBlock;
 import rbasamoyai.createbigcannons.munitions.big_cannon.propellant.BigCannonPropellantBlock;
 import rbasamoyai.createbigcannons.munitions.config.components.BallisticPropertiesComponent;
+import rbasamoyai.createbigcannons.forge.cannons.AutocannonBreechBlockEntity;
+import rbasamoyai.createbigcannons.munitions.autocannon.AutocannonAmmoItem;
+import rbasamoyai.createbigcannons.munitions.autocannon.AbstractAutocannonProjectile;
 import riftyboi.cbcmodernwarfare.cannon_control.compact_mount.CompactCannonMountBlockEntity;
 import riftyboi.cbcmodernwarfare.cannon_control.contraption.MountedMediumcannonContraption;
 import riftyboi.cbcmodernwarfare.cannon_control.contraption.MountedRotarycannonContraption;
@@ -57,6 +63,9 @@ import static riftyboi.cbcmodernwarfare.cannon_control.compact_mount.CompactCann
 
 public class CannonUtil {
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    private static final BallisticPropertiesComponent AC_FALLBACK = new BallisticPropertiesComponent(-0.025, 0.0, false, 0, 0, 0, 0);
+
     public static int getBarrelLength(AbstractMountedCannonContraption cannon) {
         if (cannon == null)
             return 0;
@@ -98,6 +107,28 @@ public class CannonUtil {
             }
         }
         return offset;
+    }
+
+    public static BallisticPropertiesComponent getAutocannonBallistics(AbstractMountedCannonContraption cannon, Level level) {
+        if (cannon == null || level == null) return AC_FALLBACK;
+
+        // Find breech on contraption
+        AutocannonBreechBlockEntity breech = null;
+        for (BlockEntity be : cannon.presentBlockEntities.values()) {
+            if (be instanceof AutocannonBreechBlockEntity b) { breech = b; break; }
+        }
+        if (breech == null) return AC_FALLBACK;
+
+        // Slot 0 = output buffer = chambered round
+        ItemStack round = breech.createItemHandler().getStackInSlot(0);
+        if (round == null || round.isEmpty()) return AC_FALLBACK;
+
+        if (!(round.getItem() instanceof AutocannonAmmoItem ammo)) return BallisticPropertiesComponent.DEFAULT;
+
+        AbstractAutocannonProjectile proj = ammo.getAutocannonProjectile(round, level);
+        if (proj == null) return BallisticPropertiesComponent.DEFAULT;
+
+        return ((AutocannonProjectileAccessor) proj).radar$getBallisticProperties();
     }
 
     public static float getRotarySpeed( AbstractMountedCannonContraption contraptionEntity) {
@@ -196,6 +227,58 @@ public class CannonUtil {
         }
         LOGGER.debug("   • No known cannon type → returning 0");
         return 0;
+    }
+
+    public static int getAutocannonLifetimeTicks(AbstractMountedCannonContraption cannon) {
+        if (cannon == null) return 100; // fallback
+
+        try {
+            AutocannonMaterial mat = ((AutoCannonAccessor) (Object) cannon).getMaterial();
+            if (mat != null) {
+                int t = mat.properties().projectileLifetime();
+                if (t > 0) return t;
+            }
+        } catch (Throwable ignored) {
+            LOGGER.debug("Mixin maybe didnt apply?");
+        }
+
+        return 100;
+    }
+
+    public static double getMaxProjectileRangeBlocks(AbstractMountedCannonContraption cannon, ServerLevel level) {
+        if (cannon == null || level == null) return 0;
+
+        double speed = getInitialVelocity(cannon, level);
+        if (speed <= 0) return 0;
+
+        // lifetime
+        int lifeTicks = getAutocannonLifetimeTicks(cannon);
+        if (lifeTicks <= 0) return 0;
+
+        boolean isAutoFamily = isAutoCannon(cannon) || isRotaryCannon(cannon) || isMediumCannon(cannon)
+                || isTwinAutocannon(cannon) || isHeavyAutocannon(cannon);
+
+        if (isAutoFamily) {
+            BallisticPropertiesComponent bp = getAutocannonBallistics(cannon, level);
+
+            if (bp.isQuadraticDrag()) {
+                return speed * lifeTicks; // generous upper bound
+            }
+
+            double drag = Math.max(0.0, Math.min(0.25, bp.drag()));
+            double retained = Math.pow(1.0 - drag, lifeTicks);
+            double avg = (1.0 + retained) * 0.5;
+            return speed * lifeTicks * avg;
+        }
+
+        // Big cannon path (your existing approximation)
+        double drag = getProjectileDrag(cannon, level);
+        drag = Math.max(0.0, Math.min(0.25, drag));
+
+        double retained = Math.pow(1.0 - drag, lifeTicks);
+        double avg = (1.0 + retained) * 0.5;
+
+        return speed * lifeTicks * avg;
     }
 
     public static double getProjectileGravity(AbstractMountedCannonContraption cannon, ServerLevel level) {
@@ -297,7 +380,7 @@ public class CannonUtil {
 
         while (true) {
             BlockEntity be = cannon.presentBlockEntities.get(pos);
-            if (!isBarrel.test(be)) break;
+            if (be == null || !isBarrel.test(be)) break;
 
             count++;
             if (count <= props.maxSpeedIncreases())  speed += props.speedIncreasePerBarrel();

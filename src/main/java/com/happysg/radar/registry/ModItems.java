@@ -1,7 +1,7 @@
 package com.happysg.radar.registry;
 
 import com.happysg.radar.CreateRadar;
-import com.happysg.radar.item.Binoculars;
+import com.happysg.radar.item.binos.Binoculars;
 import com.happysg.radar.item.SafeZoneDesignatorItem;
 import com.happysg.radar.item.detectionfilter.DetectionFilterItem;
 import com.happysg.radar.item.identfilter.IdentFilterItem;

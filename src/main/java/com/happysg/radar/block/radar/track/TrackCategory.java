@@ -1,5 +1,6 @@
 package com.happysg.radar.block.radar.track;
 
+import com.happysg.radar.compat.Mods;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -25,7 +26,7 @@ public enum TrackCategory {
 
     public static TrackCategory get(Entity entity) {
             if (entity instanceof Player) return PLAYER;
-            //if (entity instanceof Ship) return VS2;
+            if (Mods.VALKYRIENSKIES.isLoaded() && entity instanceof Ship) return VS2;
             if (entity instanceof Enemy) return HOSTILE;
             if (entity instanceof Animal) return ANIMAL;
             if (entity instanceof Mob) return MOB;

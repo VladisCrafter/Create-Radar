@@ -3,8 +3,10 @@ package com.happysg.radar;
 import com.happysg.radar.block.controller.id.IDManager;
 import com.happysg.radar.block.datalink.DataLinkBlockItem;
 import com.happysg.radar.block.monitor.MonitorInputHandler;
-import com.happysg.radar.commands.DebugBeam;
-import com.happysg.radar.commands.RadarDebugCommands;
+import com.happysg.radar.compat.computercraft.CCCompatRegister;
+import com.happysg.radar.ponder.RadarPonderPlugin;
+import com.happysg.radar.registry.ModCommands;
+
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.CBCCompatRegister;
 import com.happysg.radar.compat.cbcmw.CBCMWCompatRegister;
@@ -18,6 +20,7 @@ import com.mojang.logging.LogUtils;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.simibubi.create.api.stress.BlockStressValues;
 
+import net.createmod.ponder.foundation.PonderIndex;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.LevelAccessor;
 
@@ -52,8 +55,7 @@ public class CreateRadar {
     public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(MODID);
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
-        DebugBeam.register(event.getDispatcher());
-        RadarDebugCommands.register(event.getDispatcher());
+        ModCommands.register(event.getDispatcher());
     }
 
     public CreateRadar() {
@@ -76,19 +78,29 @@ public class CreateRadar {
         modEventBus.addListener(CreateRadar::init);
         modEventBus.addListener(CreateRadar::clientInit);
         modEventBus.addListener(CreateRadar::onLoadComplete);
+        ModContainer container = ModList.get()
+                .getModContainerById(CreateRadar.MODID)
+                .orElseThrow(() -> new IllegalStateException("Radar mod container missing on LoadComplete"));
 
-        MinecraftForge.EVENT_BUS.addListener(MonitorInputHandler::monitorPlayerHovering);
+        container.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
+                () -> new ConfigScreenHandler.ConfigScreenFactory(RadarConfig::createConfigScreen));
+
         MinecraftForge.EVENT_BUS.addListener(CreateRadar::clientTick);
         MinecraftForge.EVENT_BUS.addListener(CreateRadar::onLoadWorld);
+        ModSounds.register(modEventBus);
 
         // Compat modules
         if (Mods.CREATEBIGCANNONS.isLoaded())
             CBCCompatRegister.registerCBC();
         if (Mods.CBCMODERNWARFARE.isLoaded())
             CBCMWCompatRegister.registerCBCMW();
+        if (Mods.COMPUTERCRAFT.isLoaded())
+            CCCompatRegister.registerPeripherals();
+    }
+    @SubscribeEvent
+    public static void commonSetup(FMLCommonSetupEvent event) {
 
     }
-
 
     private static void clientTick(TickEvent.ClientTickEvent event) {
         DataLinkBlockItem.clientTick();
@@ -103,7 +115,6 @@ public class CreateRadar {
     }
 
 
-
     public static String toHumanReadable(String key) {
         String s = key.replace("_", " ");
         s = Arrays.stream(StringUtils.splitByCharacterTypeCamelCase(s))
@@ -113,22 +124,12 @@ public class CreateRadar {
     }
 
     public static void clientInit(final FMLClientSetupEvent event) {
-        // Ponder registration (optional, currently commented out)
-        // PonderSceneRegistrationHelper<ResourceLocation> sceneHelper = PonderSceneRegistrationHelper.forMod(CreateRadar.MODID);
-        // ModPonderIndex.register(sceneHelper);
-        //
-        // PonderTagRegistrationHelper<ResourceLocation> tagHelper = PonderTagRegistrationHelper.forMod(CreateRadar.MODID);
-        // ModPonderTags.register(tagHelper);
-
+        PonderIndex.addPlugin(new RadarPonderPlugin());
+        MinecraftForge.EVENT_BUS.addListener(MonitorInputHandler::monitorPlayerHovering);
     }
 
     public static void onLoadComplete(FMLLoadCompleteEvent event) {
-        ModContainer container = ModList.get()
-                .getModContainerById(CreateRadar.MODID)
-                .orElseThrow(() -> new IllegalStateException("Radar mod container missing on LoadComplete"));
 
-        container.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
-                () -> new ConfigScreenHandler.ConfigScreenFactory(RadarConfig::createConfigScreen));
     }
 
     public static void onLoadWorld(LevelEvent.Load event) {
@@ -137,8 +138,8 @@ public class CreateRadar {
             IDManager.load(world.getServer());
         }
     }
-
     public static void init(final FMLCommonSetupEvent event) {
+
         event.enqueueWork(() -> {
             // Must be registered after registries open
             ModContraptionTypes.register();
@@ -146,7 +147,7 @@ public class CreateRadar {
             BlockStressValues.IMPACTS.register(ModBlocks.RADAR_BEARING_BLOCK.get(), () -> 4d);
             BlockStressValues.IMPACTS.register(ModBlocks.AUTO_YAW_CONTROLLER_BLOCK.get(), () -> 128d);
             BlockStressValues.IMPACTS.register(ModBlocks.AUTO_PITCH_CONTROLLER_BLOCK.get(), () -> 128d);
-            BlockStressValues.IMPACTS.register(ModBlocks.TRACK_CONTROLLER_BLOCK.get(), () -> 16d);
+          //  BlockStressValues.IMPACTS.register(ModBlocks.TRACK_CONTROLLER_BLOCK.get(), () -> 16d);
 
             BlockStressValues.IMPACTS.register(ModBlocks.RADAR_RECEIVER_BLOCK.get(), () -> 0d);
             BlockStressValues.IMPACTS.register(ModBlocks.RADAR_DISH_BLOCK.get(), () -> 0d);
