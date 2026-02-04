@@ -3,22 +3,22 @@
   "category": "misc",
   "key": {
     "A": {
-      "item": "minecraft:redstone_torch"
+      "item": "minecraft:amethyst_shard"
+    },
+    "T": {
+      "item": "create:transmitter"
     },
     "B": {
-      "item": "create:brass_casing"
-    },
-    "C": {
-      "item": "create:transmitter"
+      "item": "create:brass_ingot"
     }
   },
   "pattern": [
-    "A",
-    "B",
-    "C"
+    "A A",
+    "BTB",
+    "B B"
   ],
   "result": {
-    "item": "create_radar:data_link"
+    "item": "create_radar:binoculars"
   },
   "show_notification": true
 }

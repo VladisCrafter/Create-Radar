@@ -2,23 +2,23 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "A": {
-      "item": "minecraft:redstone_torch"
+    "I": {
+      "item": "minecraft:iron_nugget"
     },
-    "B": {
-      "item": "create:brass_casing"
-    },
-    "C": {
+    "T": {
       "item": "create:transmitter"
+    },
+    "S": {
+      "tag": "forge:plates/iron"
     }
   },
   "pattern": [
-    "A",
-    "B",
-    "C"
+    "I",
+    "T",
+    "S"
   ],
   "result": {
-    "item": "create_radar:data_link"
+    "item": "create_radar:radar_safe_zone_designator"
   },
   "show_notification": true
 }

@@ -2,23 +2,23 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "R": {
-      "item": "minecraft:lightning_rod"
+    "T": {
+      "item": "create:transmitter"
     },
     "I": {
       "item": "create:industrial_iron_block"
     },
-    "E": {
-      "item": "create:electron_tube"
+    "F": {
+      "item": "create_radar:ident_filter_item"
     }
   },
   "pattern": [
-    "R",
+    "T",
     "I",
-    "E"
+    "F"
   ],
   "result": {
-    "item": "create_radar:radar_receiver_block"
+    "item": "create_radar:identification_transponder"
   },
   "show_notification": true
 }

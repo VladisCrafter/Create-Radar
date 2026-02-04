@@ -6,6 +6,7 @@ import com.happysg.radar.item.SafeZoneDesignatorItem;
 import com.happysg.radar.item.detectionfilter.DetectionFilterItem;
 import com.happysg.radar.item.identfilter.IdentFilterItem;
 import com.happysg.radar.item.targetfilter.TargetFilterItem;
+import com.simibubi.create.content.processing.sequenced.SequencedAssemblyItem;
 import com.tterrag.registrate.util.entry.ItemEntry;
 
 import static com.happysg.radar.CreateRadar.REGISTRATE;
@@ -22,6 +23,9 @@ public class ModItems {
             .register();
     public static final ItemEntry<Binoculars> BINOCULARS = REGISTRATE.item("binoculars", Binoculars::new)
             .register();
+    public static final ItemEntry<SequencedAssemblyItem> INCOMPLETE_NETWORK_CONTROLLER =
+            REGISTRATE.item("incomplete_network_controller", SequencedAssemblyItem::new)
+                    .register();
 
     public static void register() {
         CreateRadar.getLogger().info("Registering Items!");

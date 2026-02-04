@@ -2,23 +2,20 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "A": {
-      "item": "minecraft:redstone_torch"
+    "R": {
+      "item": "minecraft:redstone"
     },
     "B": {
       "item": "create:brass_casing"
-    },
-    "C": {
-      "item": "create:transmitter"
     }
   },
   "pattern": [
-    "A",
-    "B",
-    "C"
+    " R ",
+    "RBR",
+    " R "
   ],
   "result": {
-    "item": "create_radar:data_link"
+    "item": "create_radar:fire_controller"
   },
   "show_notification": true
 }
