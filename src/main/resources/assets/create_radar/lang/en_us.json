@@ -150,5 +150,6 @@
   "item.create_radar.radar_filter_item": "Detection Filter",
   "item.create_radar.radar_safe_zone_designator": "Radar Safe Zone Designator",
   "item.create_radar.target_filter_item": "Targeting Filter",
+  "item.create_radar.incomplete_network_controller": "Incomplete Network Controller",
   "itemGroup.create_radar.radar": "Create: Radars"
 }
