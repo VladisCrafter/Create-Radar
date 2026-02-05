@@ -108,7 +108,7 @@ public class RadarBearingBlockEntity extends MechanicalBearingBlockEntity implem
     public float getGlobalAngle() {
         Vec3 receiverVector = new Vec3(receiverFacing.getStepX(), receiverFacing.getStepY(), receiverFacing.getStepZ());
         float receiverAngle = (float) Math.toDegrees(Math.atan2(receiverVector.x, receiverVector.z));
-        return (receiverAngle + angle + 360) % 360;
+        return ((receiverAngle + angle + 360)+180) % 360;
     }
 
     public float getAngularSpeed() {

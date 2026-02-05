@@ -29,6 +29,8 @@ import java.util.Collection;
 
 import java.util.UUID;
 
+import static com.happysg.radar.block.monitor.MonitorRenderer.getConeDirectionOnMonitor;
+
 /**
  * A UI screen version of the MonitorRenderer. Draws the radar in 2D and lets the player hover/click tracks.
  */
@@ -174,6 +176,16 @@ public class MonitorScreen extends Screen {
         gg.setColor(1f, 1f, 1f, 1f);
         RenderSystem.disableBlend();
     }
+    private static Vec3 rotateAroundYDeg(Vec3 v, float deg) {
+        double rad = Math.toRadians(deg);
+        double cos = Math.cos(rad);
+        double sin = Math.sin(rad);
+
+        // i rotate around world up so the 2D projection matches the sweep orientation
+        double x = v.x * cos - v.z * sin;
+        double z = v.x * sin + v.z * cos;
+        return new Vec3(x, v.y, z);
+    }
 
     private void renderSweep(GuiGraphics gg, MonitorBlockEntity monitor, IRadar radar, float partialTicks) {
         Color color = new Color(RadarConfig.client().groundRadarColor.get());
@@ -183,6 +195,23 @@ public class MonitorScreen extends Screen {
         if(radarFacing ==null)return;
         float facingOffset = radarFacingOffsetDeg(monitorFacing, radarFacing);
         float screenAngle = (a + facingOffset) % 360f;
+        if(monitor.getShip() == null && radar.getRadarType().equals("spinning")){
+             monitorFacing = monitor.getBlockState().getValue(MonitorBlock.FACING);
+             radarFacing   = radar.getradarDirection();
+            if(radarFacing == null)return;// or however you store it
+
+            MonitorRenderer.ConeDir2D cone = getConeDirectionOnMonitor(monitorFacing, radarFacing);
+            switch (cone){
+                case NORTH -> screenAngle = 0+radar.getGlobalAngle();
+                case DOWN -> screenAngle = 180+radar.getGlobalAngle();
+                case LEFT -> screenAngle =90+radar.getGlobalAngle();
+                case RIGHT -> screenAngle =270+radar.getGlobalAngle();
+                default -> screenAngle =30;
+            }
+            screenAngle = screenAngle +180;
+
+        }
+
 
         int cx = left + UI_SIZE / 2;
         int cy = top + UI_SIZE / 2;
@@ -210,11 +239,13 @@ public class MonitorScreen extends Screen {
 
         int m = monitorFacing.get2DDataValue();
         int r = radarFacing.get2DDataValue();
+        if(m == r) return -90;
+        // i compute clockwise steps from monitor -> radar
+        int stepsCW = (r - m) & 3;
 
-        int stepsCW = (m - r) & 3;
-
-        return stepsCW * 90f;
+        return (stepsCW * 90f + 90) % 360f;
     }
+
 
     private static Vec3 rotateAroundY(Vec3 v, double angleRad) {
         double cos = Math.cos(angleRad);
@@ -258,10 +289,7 @@ public class MonitorScreen extends Screen {
                 continue;
 
             Vec3 rel = track.position().subtract(radarPos);
-            if (radar.renderRelativeToMonitor() && monitor.getShip() != null) {
-                double yawRad = getShipYawRad(monitor.getShip());
-                rel = rotateAroundY(rel, -yawRad);
-            }
+            rel = rotateAroundYDeg(rel, 0);
 
             float xOff = calculateTrackOffset(rel, monitor.getBlockState().getValue(MonitorBlock.FACING), range, true);
             float zOff = calculateTrackOffset(rel, monitor.getBlockState().getValue(MonitorBlock.FACING), range, false);

@@ -128,7 +128,7 @@ public class CannonUtil {
         AbstractAutocannonProjectile proj = ammo.getAutocannonProjectile(round, level);
         if (proj == null) return BallisticPropertiesComponent.DEFAULT;
 
-        return ((AutocannonProjectileAccessor) proj).radar$getBallisticProperties();
+        return ((AutocannonProjectileAccessor) proj).getBallisticProperties();
     }
 
     public static float getRotarySpeed( AbstractMountedCannonContraption contraptionEntity) {

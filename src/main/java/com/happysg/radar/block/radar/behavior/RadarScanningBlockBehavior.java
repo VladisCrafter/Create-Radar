@@ -176,15 +176,13 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
 
         if (distance < 2)
             return true;
-        double a = scanAngleDeg();
+
         double angleToEntity = Math.toDegrees(Math.atan2(target.x() - scanPos.x(), target.z() - scanPos.z()));
         angleToEntity = (angleToEntity + 360) % 360;
-
-        double angleDiff = Math.abs(angleToEntity - a);
+        double angleDiff = Math.abs(angleToEntity - angle);
         if (angleDiff > 180) angleDiff = 360 - angleDiff;
 
         return angleDiff <= fov / 2.0 && distance <= range;
-
     }
 
     private void removeDeadTracks() {
@@ -251,7 +249,6 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
 
         scannedShips.remove(VS2Utils.getShipManagingPos(blockEntity));
     }
-
     private AABB getRadarAABB() {
         BlockPos radarPos = PhysicsHandler.getWorldPos(blockEntity);
         double x = radarPos.getX() + 0.5;
@@ -260,28 +257,11 @@ public class RadarScanningBlockBehavior extends BlockEntityBehaviour {
 
         double yScan = RadarConfig.server().radarYScanRange.get();
 
-        // forward endpoint
-        double dx = range * Math.sin(Math.toRadians(angle));
-        double dz = range * Math.cos(Math.toRadians(angle));
-
-        double minX = Math.min(x, x + dx);
-        double maxX = Math.max(x, x + dx);
-        double minZ = Math.min(z, z + dz);
-        double maxZ = Math.max(z, z + dz);
-
-        // widen it a bit so it’s not a razor-thin line
-        double widen = range * 0.5;
-
         return new AABB(
-                minX - widen, y - yScan, minZ - widen,
-                maxX + widen, y + yScan, maxZ + widen
+                x - range, y - yScan, z - range,
+                x + range, y + yScan, z + range
         );
     }
-    private double scanAngleDeg() {
-        // my bearing angle is opposite of atan2(dx, dz) convention, so i flip it
-        return (angle + 180.0) % 360.0;
-    }
-
 
     public static List<AABB> splitAABB(AABB aabb, double maxSize) {
         List<AABB> result = new ArrayList<>();

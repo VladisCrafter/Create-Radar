@@ -3,10 +3,13 @@ package com.happysg.radar.registry;
 import com.happysg.radar.block.behavior.networks.NetworkData;
 import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
 import com.happysg.radar.block.controller.id.IDManager;
+import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
+import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.config.RadarConfig;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.FloatArgumentType;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSource;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -17,15 +20,18 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.storage.LevelResource;
-import net.minecraft.world.level.storage.WorldData;
-import net.minecraftforge.client.event.RegisterClientCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.versions.forge.ForgeVersion;
-import org.apache.logging.log4j.core.jmx.Server;
 
 import javax.annotation.Nullable;
 import java.awt.*;
@@ -106,9 +112,120 @@ public class  ModCommands {
                                 )
                         )
         );
+        dispatcher.register(
+                Commands.literal("radar")
+                        .then(Commands.literal("controller_angle")
+                                .then(Commands.argument("min", FloatArgumentType.floatArg(-180,360))
+                                        .then(Commands.argument("max", FloatArgumentType.floatArg(-180,360))
+                                                .executes(ctx -> {
+
+                                                    float min = FloatArgumentType.getFloat(ctx, "min");
+                                                    float max = FloatArgumentType.getFloat(ctx, "max");
+
+                                                    setControllerAngle(ctx.getSource(), min, max);
+                                                    return 1;
+                                                })
+                                        )
+                                )
+                        )
+        );
+
 
     }
+    private static void setControllerAngle(CommandSourceStack source, float minIn, float maxIn) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        ServerLevel level = player.serverLevel();
 
+        BlockHitResult hit = raycastBlock(player, 6.0);
+        if (hit.getType() != HitResult.Type.BLOCK) {
+            source.sendFailure(Component.literal("Not looking at a block."));
+            return;
+        }
+
+        BlockPos pos = hit.getBlockPos();
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be == null) {
+            source.sendFailure(Component.literal("That block has no block entity."));
+            return;
+        }
+
+        double min = Math.min(minIn, maxIn);
+        double max = Math.max(minIn, maxIn);
+
+        // ─────────────────────────────────────────────
+        // pitch controller → clamp to [-180, 180]
+        // ─────────────────────────────────────────────
+        if (be instanceof AutoPitchControllerBlockEntity pitch) {
+
+            min = Mth.clamp(min, -90, 90);
+            max = Mth.clamp(max, -90, 90);
+
+            pitch.setMinAngleDeg(min);
+            pitch.setMaxAngleDeg(max);
+
+            be.setChanged();
+            level.sendBlockUpdated(pos, be.getBlockState(), be.getBlockState(), 3);
+            boolean clamped = (min != minIn || max != maxIn);
+            if (clamped) {
+                double finalMax = max;
+                double finalMin1 = min;
+                source.sendSuccess(
+                        () -> Component.literal("Values clamped to pitch range [-90, 90] now [" + finalMin1 + ", " + finalMax + "]"),
+                        false
+                );
+            }else {
+
+                double finalMax1 = max;
+                double finalMin = min;
+                source.sendSuccess(
+                        () -> Component.literal("Set PITCH limits to [" + finalMin + ", " + finalMax1 + "]"),
+                        false
+                );
+                return;
+            }
+        } else if (be instanceof AutoYawControllerBlockEntity yaw) {
+
+            min = Mth.clamp(min, -0, 360.0);
+            max = Mth.clamp(max, -0, 360.0);
+
+            yaw.setMinAngleDeg(min);
+            yaw.setMaxAngleDeg(max);
+
+            be.setChanged();
+            level.sendBlockUpdated(pos, be.getBlockState(), be.getBlockState(), 3);
+
+            double finalMin2 = min;
+            double finalMax2 = max;
+            boolean clamped = (min != minIn || max != maxIn);
+            if (clamped) {
+                source.sendSuccess(
+                        () -> Component.literal("Values clamped to yaw range [-180, 180] now [" + finalMin2 + ", " + finalMax2 + "]"),
+                        false
+                );
+            }else source.sendSuccess(
+
+                    () -> Component.literal("Set YAW limits to [" + finalMin2 + ", " + finalMax2 + "]"),
+                    false
+            );
+
+        }else{
+            source.sendFailure(Component.literal("That isn't a pitch or yaw controller."));
+        }
+    }
+
+    private static BlockHitResult raycastBlock(ServerPlayer player, double distance) {
+        Vec3 eye = player.getEyePosition();
+        Vec3 look = player.getViewVector(1.0f);
+        Vec3 end = eye.add(look.scale(distance));
+
+        return player.level().clip(new ClipContext(
+                eye,
+                end,
+                ClipContext.Block.OUTLINE,
+                ClipContext.Fluid.NONE,
+                player
+        ));
+    }
 
     private static int toggleDebugBeams(CommandSourceStack source) {
         RadarConfig.DEBUG_BEAMS = !RadarConfig.DEBUG_BEAMS;

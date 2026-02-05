@@ -20,7 +20,8 @@ public enum Mods {
     TRACKWORK,
     CBCMODERNWARFARE,
     CBC_AT,
-    CREATEBIGCANNONS;
+    CREATEBIGCANNONS,
+    SHUPAPIUM;
 
     private final String id;
 

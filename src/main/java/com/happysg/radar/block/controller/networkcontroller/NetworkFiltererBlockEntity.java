@@ -79,36 +79,19 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     private long rangeCacheUntilTick = -1;
     private double rangeCacheBlocks = 0.0;
 
-    public void refreshPosition(){
-        if (!level.isClientSide && level.getGameTime() % 40 == 0) {
-            if (level instanceof ServerLevel serverLevel) {
-
-                if (lastKnownPos.equals(worldPosition))
-                    return;
-
-                ResourceKey<Level> dim = serverLevel.dimension();
-                NetworkData data = NetworkData.get(serverLevel);
-
-                boolean ok = data.updateFiltererPosition(dim, lastKnownPos, worldPosition);
-                if (ok) {
-                    lastKnownPos = worldPosition;
-                    setChanged();
-                }
-            }
-        }
-
-    }
     public static void tick(Level level, BlockPos pos, BlockState state, NetworkFiltererBlockEntity be) {
         if (!(level instanceof ServerLevel sl)) return;
         if (level.isClientSide) return;
-        be.refreshPosition();
+
         NetworkData data = NetworkData.get(sl);
         NetworkData.Group group = data.getOrCreateGroup(sl.dimension(), pos);
 
         String selectedId = data.getSelectedTargetId(group);
-        if (Mods.VALKYRIENSKIES.isLoaded()) {
+
+        if (Mods.VALKYRIENSKIES.isLoaded() && selectedId != null) {
             long shipId = parseShipIdOrNeg(selectedId);
             if (shipId != -1L) {
+                // i only do VS lookups after i know it's a valid numeric ship id
                 Ship ship = VSGameUtilsKt.getAllShips(level).getById(shipId);
                 if (ship != null) {
                     RadarContactRegistry.markLocked(sl, shipId, 10);
@@ -118,7 +101,6 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 
         if (sl.getGameTime() % 5 != 0) return;
         be.headlessTick(sl);
-
     }
 
     private boolean isVsShipStillLoaded(ServerLevel sl, @Nullable RadarTrack track) {
