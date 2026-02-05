@@ -323,30 +323,19 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
     private double clampYawToLimits(double deg) {
         deg = wrap360(deg);
 
-        // full range quick exit (common default)
+        // if min == max, treat it as FULL RANGE (not locked)
         if (Math.abs(shortestDelta(minAngleDeg, maxAngleDeg)) < 1e-6) {
-            // i interpret equal min/max as "locked to min"
-            return minAngleDeg;
+            return deg;
         }
-
-        // non-wrapping case: min <= max in circular sense
-        // i detect wrap by checking whether the interval crosses 0
         boolean wraps = minAngleDeg > maxAngleDeg;
-
         if (!wraps) {
-            // simple clamp
             if (deg < minAngleDeg) return minAngleDeg;
             if (deg > maxAngleDeg) return maxAngleDeg;
             return deg;
         }
-
-        // wrapping interval like 300..40
-        // allowed if deg >= min OR deg <= max
         if (deg >= minAngleDeg || deg <= maxAngleDeg) {
             return deg;
         }
-
-        // outside: snap to whichever bound is closer on the circle
         double dToMin = Math.abs(shortestDelta(deg, minAngleDeg));
         double dToMax = Math.abs(shortestDelta(deg, maxAngleDeg));
         return (dToMin <= dToMax) ? minAngleDeg : maxAngleDeg;
@@ -477,7 +466,7 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
             this.phys = phys;
         }
     }
-    private boolean isUpsideDown() {
+    public boolean isUpsideDown() {
         if (level == null) return false;
         BlockState state = getBlockState();
         if (!state.hasProperty(DirectionalKineticBlock.FACING)) return false;

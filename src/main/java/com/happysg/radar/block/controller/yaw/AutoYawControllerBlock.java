@@ -31,11 +31,17 @@ public class AutoYawControllerBlock extends DirectionalKineticBlock implements I
     }
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        boolean crouching = context.getPlayer() != null && context.getPlayer().isCrouching();
-        Direction targetFacing = context.getNearestLookingDirection().getOpposite();
+        Direction look = context.getNearestLookingDirection();
 
-        return this.defaultBlockState()
-                .setValue(FACING, crouching ? targetFacing.getOpposite() : targetFacing);
+        // Only allow UP or DOWN
+        Direction vertical = look.getAxis() == Direction.Axis.Y
+                ? look
+                : Direction.UP;
+
+        boolean crouching = context.getPlayer() != null && context.getPlayer().isCrouching();
+
+        return defaultBlockState()
+                .setValue(FACING, crouching ? vertical.getOpposite() : vertical);
     }
 
     @Override

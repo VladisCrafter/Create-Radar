@@ -156,7 +156,7 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
         addRenderableWidget(lineofSightButton);
         addRenderableWidget(lineofSightIndicator);
 
-        autoTargetButton = new IconButton(guiLeft + 170, guiTop + 42, ModGuiTextures.AUTO_TARGET);
+        autoTargetButton = new IconButton(guiLeft + 191, guiTop + 42, ModGuiTextures.AUTO_TARGET);
         autoTargetButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.auto_target"));
         autoTargetIndicator = new Indicator(guiLeft + 170, guiTop + 35, Component.empty());
         autoTargetIndicator.state = autoTarget ? Indicator.State.GREEN : Indicator.State.RED;
@@ -177,7 +177,7 @@ public class AutoTargetScreen extends AbstractDataLinkScreen {
     @Override
     public void onClose(CompoundTag tag) {
         super.onClose(tag);
-        TargetingConfig targetingConfig = new TargetingConfig(player, contraption, mob, animal, projectile, autoTarget, autoFire,lineofSight);
-        tag.put("targeting", targetingConfig.toTag());
+        //TargetingConfig targetingConfig = new TargetingConfig(player, contraption, mob, animal, projectile, autoTarget, autoFire,lineofSight,art);
+        //tag.put("targeting", targetingConfig.toTag());
     }
 }

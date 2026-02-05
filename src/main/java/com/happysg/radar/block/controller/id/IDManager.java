@@ -55,10 +55,6 @@ public class IDManager extends SavedData {
                 ID_RECORDS.put(shipId, new IDRecord(name, secretID));
                 continue;
             }
-
-            // legacy fallback (old saves keyed by shipSlug)
-            // i try to preserve the info by hashing it into a fake key,
-            // but ideally you migrate once you have the real shipId available.
             String legacySlug = c.getString("shipSlug");
             String name = c.getString("name");
             String secretID = c.getString("secretID");

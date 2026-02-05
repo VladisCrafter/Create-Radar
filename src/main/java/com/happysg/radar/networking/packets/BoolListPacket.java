@@ -11,7 +11,7 @@ import net.minecraftforge.network.NetworkEvent;
 import java.util.function.Supplier;
 
 public class BoolListPacket {
-    private static final int EXPECTED_FLAG_COUNT = 7;
+    private static final int EXPECTED_FLAG_COUNT = 8;
 
     public final boolean mainHand;
     public final boolean[] flags;

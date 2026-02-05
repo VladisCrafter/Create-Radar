@@ -19,7 +19,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class AutoTargetScreen extends AbstractSimiScreen  {
     private static final String KEY = "TargetBools";
-    private static final int COUNT = 7;
+    private static final int COUNT = 8;
 
     boolean player =true;
     boolean contraption=true;
@@ -47,6 +47,8 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
     protected IconButton lineofSightButton;
     protected Indicator lineofSightIndicator;
     protected IconButton confirmButton;
+    protected IconButton artillery;
+    protected Indicator artilleryIndicator;
 
     protected ModGuiTextures background;
     public AutoTargetScreen() {
@@ -153,9 +155,20 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         addRenderableWidget(lineofSightButton);
         addRenderableWidget(lineofSightIndicator);
 
-        autoTargetButton = new IconButton(guiLeft + 170, guiTop + 42, ModGuiTextures.AUTO_TARGET);
+        artillery = new IconButton(guiLeft +142,guiTop + 43, ModGuiTextures.ARTILLERY);
+        artillery.setToolTip(Component.translatable(CreateRadar.MODID +".radar_button.artillery"));
+        artilleryIndicator = new Indicator(guiLeft + 142, guiTop + 36,Component.empty());
+        artilleryIndicator.state = artilleryMode ? Indicator.State.GREEN : Indicator.State.RED;
+        artillery.withCallback((x,y) -> {
+            artilleryMode = !artilleryMode;
+            artilleryIndicator.state = artilleryMode ? Indicator.State.GREEN : Indicator.State.RED;
+        });
+        addRenderableWidget(artillery);
+        addRenderableWidget(artilleryIndicator);
+
+        autoTargetButton = new IconButton(guiLeft + 190, guiTop + 42, ModGuiTextures.AUTO_TARGET);
         autoTargetButton.setToolTip(Component.translatable(CreateRadar.MODID + ".radar_button.auto_target"));
-        autoTargetIndicator = new Indicator(guiLeft + 170, guiTop + 35, Component.empty());
+        autoTargetIndicator = new Indicator(guiLeft + 190, guiTop + 35, Component.empty());
         autoTargetIndicator.state = autoTarget ? Indicator.State.GREEN : Indicator.State.RED;
         autoTargetButton.withCallback((x, y) -> {
             autoTarget = !autoTarget;
@@ -164,7 +177,7 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         addRenderableWidget(autoTargetButton);
         addRenderableWidget(autoTargetIndicator);
 
-        confirmButton = new IconButton(guiLeft+191,guiTop+83, AllIcons.I_CONFIRM);
+        confirmButton = new IconButton(guiLeft+211,guiTop+83, AllIcons.I_CONFIRM);
         confirmButton.withCallback(this::onClose);
         addRenderableWidget(confirmButton);
 
@@ -183,6 +196,7 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
                 projectile = arr[4];
                 lineofSight = arr[5];
                 autoTarget  = arr[6];
+                artilleryMode = arr[7];
             }
         }
     }
@@ -203,6 +217,7 @@ public class AutoTargetScreen extends AbstractSimiScreen  {
         flags[4] = projectile;
         flags[5] = lineofSight;
         flags[6] = autoTarget;
+        flags[7] = artilleryMode;
         BoolNBThelper.saveBooleansAsBytes(stack,flags, KEY);
         NetworkHandler.CHANNEL.sendToServer(new BoolListPacket(true, flags, KEY));
 

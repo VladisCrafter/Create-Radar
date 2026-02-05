@@ -3,6 +3,7 @@ package com.happysg.radar.block.behavior.networks;
 import com.happysg.radar.block.behavior.networks.config.TargetingConfig;
 import com.happysg.radar.block.controller.firing.FireControllerBlockEntity;
 import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
+import com.happysg.radar.block.controller.yaw.AutoYawControllerBlock;
 import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.RadarTrackUtil;
@@ -43,7 +44,7 @@ public class WeaponFiringControl {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int TARGET_TIMEOUT_TICKS = 20;
 
-    private TargetingConfig targetingConfig = TargetingConfig.DEFAULT;
+    public TargetingConfig targetingConfig = TargetingConfig.DEFAULT;
     private Vec3 target;
     private boolean firing;
     private float offset;
@@ -144,32 +145,21 @@ public class WeaponFiringControl {
     }
 
     public Vec3 getCannonMuzzlePos() {
-        PitchOrientedContraptionEntity ce = cannonMount.getContraption();
-        if (ce == null) {
+        if(yawController != null && yawController.isUpsideDown()){
+            return cannonMount.getBlockPos().getCenter().add(0, -2.0, 0);
+        }else{
             return cannonMount.getBlockPos().getCenter().add(0, 2.0, 0);
         }
 
-        if (!(ce.getContraption() instanceof AbstractMountedCannonContraption)) {
-            return ce.position().add(0, 0.1, 0);
-        }
-
-        Vec3 muzzle = CBCMuzzleUtil.getCBCSpawnAnchorWorld(ce);
-        if (muzzle != null && muzzle != Vec3.ZERO) return muzzle;
-
-        return ce.position().add(0, 0.1, 0);
     }
 
     /** Raycasts should start slightly forward to avoid self-hit on contraption blocks. */
     public Vec3 getCannonRayStart() {
-        PitchOrientedContraptionEntity ce = cannonMount.getContraption();
-        Vec3 muzzle = getCannonMuzzlePos();
-
-        if (ce == null) return muzzle;
-
-        Vec3 fwd = CBCMuzzleUtil.getForwardWorld(ce);
-        if (fwd == null || fwd == Vec3.ZERO) return muzzle;
-
-        return muzzle.add(fwd.scale(0.35));
+        if(yawController != null && yawController.isUpsideDown()){
+            return cannonMount.getBlockPos().getCenter().add(0, -2.0, 0);
+        }else{
+            return cannonMount.getBlockPos().getCenter().add(0, 2.0, 0);
+        }
     }
 
 
@@ -598,17 +588,7 @@ public class WeaponFiringControl {
             target = binoTargetPos.getCenter();
         }
 
-        Vec3 entitySolvePos = null;
 
-
-        if (!binoMode && targetEntity != null) {
-            Vec3 vis = getCachedVisiblePoint(targetEntity);
-            if (vis != null) {
-                entitySolvePos = vis;
-            } else {
-                entitySolvePos = targetEntity.position().add(0.0, targetEntity.getBbHeight() * 0.5, 0.0);
-            }
-        }
 
 
         AbstractMountedCannonContraption cannonContraption;
@@ -676,20 +656,32 @@ public class WeaponFiringControl {
         }else{
             return;
         }
+        double dist = getCannonMuzzlePos().distanceTo(target);
+        double noLeadDist = 8.0; // tune this
 
-        CannonLead.LeadSolution lead = CannonLead.solveLeadPerTickWithAcceleration(
-                cannonMount, cannonContraption, serverLevel,
-                shooterVel,
-                shooterAccel,
-                target,
-                targetVel,
-                targetAccel,
-                RadarConfig.server().leadFiringDelay.get());
+        Vec3 solvePos = target;
+
+        if (!binoMode && targetEntity != null) {
+            Vec3 vis = getCachedVisiblePoint(targetEntity);
+            solvePos = (vis != null)
+                    ? vis
+                    : targetEntity.position().add(0.0, (targetEntity.getBbHeight() * 0.5)+.5, 0.0); // aim center mass
+        }
+
+        CannonLead.LeadSolution lead = null;
+        if (dist > noLeadDist) {
+            lead = CannonLead.solveLeadPerTickWithAcceleration(
+                    cannonMount, cannonContraption, serverLevel,
+                    shooterVel, shooterAccel,
+                    solvePos, // use solvePos, not feet
+                    targetVel, targetAccel,
+                    RadarConfig.server().leadFiringDelay.get());
+        }
 
         boolean hasLeadSolution = (lead != null && lead.aimPoint != null);
-
-        Vec3 offsetAim = hasLeadSolution ? lead.aimPoint : target;
+        Vec3 offsetAim = hasLeadSolution ? lead.aimPoint : solvePos;
         lastAimPoint = offsetAim;
+
 
         if (lastOffsetAim == null || lastOffsetAim.distanceTo(offsetAim) > AIM_STABLE_EPS) {
             aimStableTicks = 0;

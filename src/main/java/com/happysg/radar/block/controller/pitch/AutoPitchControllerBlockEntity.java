@@ -36,11 +36,13 @@ import org.valkyrienskies.clockwork.platform.api.ContraptionController;
 import org.valkyrienskies.core.api.ships.Ship;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
+import rbasamoyai.createbigcannons.cannon_control.cannon_mount.YawControllerBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,8 +53,13 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     // PhysBearing tolerance in degrees
     private static final double PHYS_TOLERANCE_DEG = 0.10;
     private static final double DEADBAND_DEG = 0.25;
-    private double minAngleDeg = 0;
-    private double maxAngleDeg =  360;
+    // CBC (normal mount) pitch limits: [-90, 90] by default
+    private double minAngleDeg = -90.0;
+    private double maxAngleDeg =  90.0;
+    @Nullable private Vec3 lastTargetPos = null;
+    // PhysBearing pitch limits in wrapped degrees: [0, 360) by default
+    private double physMinAngleDeg = 0.0;
+    private double physMaxAngleDeg = 360.0;
 
     public double getMinAngleDeg() { return minAngleDeg; }
     public double getMaxAngleDeg() { return maxAngleDeg; }
@@ -334,7 +341,13 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             setChanged();
             return;
         }
-
+        if (getWeaponGroup() != null && getWeaponGroup().yawPos() != null){
+            if(level.getBlockEntity(getWeaponGroup().yawPos()) instanceof AutoYawControllerBlockEntity ybe){
+                if (ybe.isUpsideDown()){
+                    targetPos = targetPos.add(0,0.75,0);
+                }
+            }
+        }
         Mount mount = resolveMount();
         if (mount == null)
             return;
@@ -402,7 +415,45 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     public void setTrack(RadarTrack track) {
         this.track = track;
     }
+    private double clampToLimitsCBC(double deg) {
+        return Math.max(minAngleDeg, Math.min(maxAngleDeg, deg));
+    }
 
+    private double clampToLimitsPhys(double deg) {
+        deg = wrap360(deg);
+
+        double min = wrap360(physMinAngleDeg);
+        double max = wrap360(physMaxAngleDeg);
+
+        // if equal, i treat it as full range for bearings
+        if (Math.abs(shortestDelta(min, max)) < 1e-6) {
+            return deg;
+        }
+
+        boolean wraps = min > max;
+
+        if (!wraps) {
+            if (deg < min) return min;
+            if (deg > max) return max;
+            return deg;
+        }
+
+        // wrapping interval like 300..40
+        if (deg >= min || deg <= max) return deg;
+
+        double dToMin = Math.abs(shortestDelta(deg, min));
+        double dToMax = Math.abs(shortestDelta(deg, max));
+        return (dToMin <= dToMax) ? min : max;
+    }
+
+    // i clamp based on what i'm actually attached to
+    private double clampToLimits(double deg) {
+        Mount m = resolveMount();
+        if (m != null && m.kind == MountKind.PHYS) {
+            return clampToLimitsPhys(deg);
+        }
+        return clampToLimitsCBC(deg);
+    }
 
 
     public void setSafeZones(List<AABB> safeZones) {
@@ -431,20 +482,37 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         currentPitch = currentPitch * -invert;
 
         double diff = targetAngle - currentPitch;
+
+        // i add a distance-based deadband: if the target is within 10 blocks,
+        // i require a much larger angle change before i let the mount move
+        double nearDeadbandDeg = CBC_TOLERANCE; // default
+        if (firingControl != null) {
+            Vec3 muzzle = firingControl.getCannonMuzzlePos();
+            Vec3 target = lastTargetPos;
+            if (target != null) {
+                double dist = muzzle.distanceTo(target);
+                if (dist <= 10.0) {
+                    nearDeadbandDeg = 6.0; // tune this "dramatic" threshold however you want
+                }
+            }
+        }
+
         LOGGER.debug(
-                "PITCH.rotateCBC current={} target={} diff={} speed={}",
+                "PITCH.rotateCBC current={} target={} diff={} speed={} deadband={}",
                 currentPitch,
                 targetAngle,
                 diff,
-                getSpeed()
+                getSpeed(),
+                nearDeadbandDeg
         );
 
-        // close enough; snap + stop
-        if (Math.abs(diff) <= CBC_TOLERANCE) {
-            double clamped = clampToLimits(targetAngle);
+        // if the change isn't big enough (especially when close), i hold position
+        if (Math.abs(diff) <= nearDeadbandDeg) {
+            double clamped = clampToLimitsCBC(targetAngle);
             mount.setPitch((float) clamped);
-
             mount.notifyUpdate();
+
+            // i stop running once we're within the chosen deadband
             isRunning = false;
             return;
         }
@@ -463,7 +531,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         mount.setPitch((float) next);
         mount.notifyUpdate();
     }
-
     private void setTargetCBC(CannonMountBlockEntity mount, Vec3 targetPos) {
         if (level == null || !(level instanceof ServerLevel serverLevel))
             return;
@@ -475,7 +542,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
                 return;
 
             // pitch
-            this.targetAngle = clampToLimits(angles.get(0).get(0));
+            this.targetAngle = clampToLimitsCBC(angles.get(0).get(0));
 
 //            // yaw (if you have firingControl)
 //            if (firingControl != null) {
@@ -496,7 +563,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
                 targetPos,
                 mount.getBlockPos()
         );
-
+        lastTargetPos = targetPos;
         if (angles == null || angles.isEmpty()) {
             LOGGER.warn("PITCH.solve FAILED: no pitch roots");
             isRunning = false;
@@ -513,9 +580,9 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         }
 
         if (artillery && usableAngles.size() == 2) {
-            targetAngle = clampToLimits(angles.get(1));
+            targetAngle = clampToLimitsCBC(angles.get(1));
         } else if (!usableAngles.isEmpty()) {
-            targetAngle = clampToLimits(usableAngles.get(0));
+            targetAngle = clampToLimitsCBC(usableAngles.get(0));
         }
 
         LOGGER.warn("PITCH.solve targetAngle={}", targetAngle);
@@ -612,7 +679,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return;
         }
 
-        targetAngle = clampToLimits(approachWrapped(targetAngle, newAngle));
+        targetAngle = clampToLimitsPhys(approachWrapped(targetAngle, newAngle));
     }
 
 
@@ -669,40 +736,43 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         return null;
     }
     public void setMinAngleDeg(double v) {
-        minAngleDeg = v;
-        // i keep the range sane
-        if (minAngleDeg > maxAngleDeg) {
-            double tmp = minAngleDeg;
-            minAngleDeg = maxAngleDeg;
-            maxAngleDeg = tmp;
+        Mount m = resolveMount();
+
+        if (m != null && m.kind == MountKind.PHYS) {
+            physMinAngleDeg = wrap360(v);
+        } else {
+            minAngleDeg = v;
+            if (minAngleDeg > maxAngleDeg) {
+                double tmp = minAngleDeg;
+                minAngleDeg = maxAngleDeg;
+                maxAngleDeg = tmp;
+            }
         }
 
-        // i clamp the current target too, so it immediately respects the new bounds
         targetAngle = clampToLimits(targetAngle);
-
         notifyUpdate();
         setChanged();
     }
 
     public void setMaxAngleDeg(double v) {
-        maxAngleDeg = v;
-        // i keep the range sane
-        if (minAngleDeg > maxAngleDeg) {
-            double tmp = minAngleDeg;
-            minAngleDeg = maxAngleDeg;
-            maxAngleDeg = tmp;
+        Mount m = resolveMount();
+
+        if (m != null && m.kind == MountKind.PHYS) {
+            physMaxAngleDeg = wrap360(v);
+        } else {
+            maxAngleDeg = v;
+            if (minAngleDeg > maxAngleDeg) {
+                double tmp = minAngleDeg;
+                minAngleDeg = maxAngleDeg;
+                maxAngleDeg = tmp;
+            }
         }
 
-        // i clamp the current target too, so it immediately respects the new bounds
         targetAngle = clampToLimits(targetAngle);
-
         notifyUpdate();
         setChanged();
     }
 
-    private double clampToLimits(double deg) {
-        return Math.max(minAngleDeg, Math.min(maxAngleDeg, deg));
-    }
     // NBT
     @Override
     protected void read(CompoundTag compound, boolean clientPacket) {
@@ -722,7 +792,16 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             minAngleDeg = maxAngleDeg;
             maxAngleDeg = tmp;
         }
+        minAngleDeg = compound.contains("MinAngleDeg", Tag.TAG_DOUBLE) ? compound.getDouble("MinAngleDeg") : -90.0;
+        maxAngleDeg = compound.contains("MaxAngleDeg", Tag.TAG_DOUBLE) ? compound.getDouble("MaxAngleDeg") :  90.0;
+        if (minAngleDeg > maxAngleDeg) {
+            double tmp = minAngleDeg;
+            minAngleDeg = maxAngleDeg;
+            maxAngleDeg = tmp;
+        }
 
+        physMinAngleDeg = compound.contains("PhysMinAngleDeg", Tag.TAG_DOUBLE) ? compound.getDouble("PhysMinAngleDeg") : 0.0;
+        physMaxAngleDeg = compound.contains("PhysMaxAngleDeg", Tag.TAG_DOUBLE) ? compound.getDouble("PhysMaxAngleDeg") : 360.0;
 
 
         // smoothing state not persisted by design
@@ -740,6 +819,11 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         // i save limits
         compound.putDouble("MinAngleDeg", minAngleDeg);
         compound.putDouble("MaxAngleDeg", maxAngleDeg);
+        compound.putDouble("MinAngleDeg", minAngleDeg);
+        compound.putDouble("MaxAngleDeg", maxAngleDeg);
+
+        compound.putDouble("PhysMinAngleDeg", physMinAngleDeg);
+        compound.putDouble("PhysMaxAngleDeg", physMaxAngleDeg);
 
     }
 

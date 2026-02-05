@@ -10,6 +10,10 @@ public class VelocityTracker {
     private static final Map<UUID, Vec3> LAST_POS = new java.util.concurrent.ConcurrentHashMap<>();
     private static final Map<UUID, Vec3> LAST_VEL = new java.util.concurrent.ConcurrentHashMap<>();
 
+    private static final double MIN_SPEED_BLOCKS_PER_SEC = 3.0;
+    private static final double MIN_SPEED_PER_TICK = MIN_SPEED_BLOCKS_PER_SEC / 20.0;
+    private static final double MIN_SPEED_PER_TICK_SQR = MIN_SPEED_PER_TICK * MIN_SPEED_PER_TICK;
+
     public static Vec3 getEstimatedVelocityPerTick(Entity e) {
         if (e == null) return Vec3.ZERO;
 
