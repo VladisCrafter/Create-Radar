@@ -171,7 +171,7 @@ public class ModBlocks {
                     .tag(BlockTags.MINEABLE_WITH_PICKAXE)
                     .tag(BlockTags.MINEABLE_WITH_AXE)
                     .transform(axeOrPickaxe())
-                    .blockstate((c, p) -> p.horizontalBlock(c.getEntry(), AssetLookup.standardModel(c, p)))
+                    .blockstate((c, p) -> p.directionalBlock(c.getEntry(), AssetLookup.standardModel(c, p)))
                     .simpleItem()
                     .register();
 

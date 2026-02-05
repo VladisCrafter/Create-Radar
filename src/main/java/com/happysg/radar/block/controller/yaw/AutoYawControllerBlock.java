@@ -3,17 +3,18 @@ package com.happysg.radar.block.controller.yaw;
 import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
 import com.happysg.radar.registry.ModBlockEntityTypes;
 import com.happysg.radar.block.datalink.DataLinkBlock;
-import com.simibubi.create.content.kinetics.base.HorizontalKineticBlock;
 import com.simibubi.create.foundation.block.IBE;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.Level;
+import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 
-public class AutoYawControllerBlock extends HorizontalKineticBlock implements IBE<AutoYawControllerBlockEntity> {
+public class AutoYawControllerBlock extends DirectionalKineticBlock implements IBE<AutoYawControllerBlockEntity> {
 
     public AutoYawControllerBlock(Properties properties) {
         super(properties);
@@ -26,7 +27,15 @@ public class AutoYawControllerBlock extends HorizontalKineticBlock implements IB
 
     @Override
     public boolean hasShaftTowards(LevelReader world, BlockPos pos, BlockState state, Direction face) {
-        return face == Direction.DOWN;
+        return face == state.getValue(FACING);
+    }
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        boolean crouching = context.getPlayer() != null && context.getPlayer().isCrouching();
+        Direction targetFacing = context.getNearestLookingDirection().getOpposite();
+
+        return this.defaultBlockState()
+                .setValue(FACING, crouching ? targetFacing.getOpposite() : targetFacing);
     }
 
     @Override
