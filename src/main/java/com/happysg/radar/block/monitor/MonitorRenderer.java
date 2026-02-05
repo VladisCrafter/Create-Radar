@@ -537,31 +537,33 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         }
         float currentAngle;
         if(radar.renderRelativeToMonitor() && controller.getShip() != null && !radar.getRadarType().equals("spinning")){
+            // Plane radar on shi
             Direction monitorFacing = controller.getBlockState().getValue(MonitorBlock.FACING);
             Direction radarFacing   = radar.getradarDirection();
-            if(radarFacing == null)return;// or however you store it
+            if(radarFacing == null)return;
 
             ConeDir2D cone = getConeDirectionOnMonitor(monitorFacing, radarFacing);
             switch (cone){
-                case NORTH -> currentAngle = 0;
-                case DOWN -> currentAngle = 180;
-                case LEFT -> currentAngle = 90;
-                case RIGHT -> currentAngle = 270;
+                case NORTH -> currentAngle = 0 + radar.getGlobalAngle();
+                case DOWN -> currentAngle = 180 + radar.getGlobalAngle();
+                case LEFT -> currentAngle = 90 + radar.getGlobalAngle();
+                case RIGHT -> currentAngle = 270 + radar.getGlobalAngle();
                 default -> currentAngle = 30;
             }
+            currentAngle = currentAngle + 90;
 
         }else{
             Direction monitorFacing = controller.getBlockState().getValue(MonitorBlock.FACING);
             Direction radarFacing   = radar.getradarDirection();
             ConeDir2D cone = getConeDirectionOnMonitor(monitorFacing, radarFacing);
             switch (cone){
-                case NORTH -> currentAngle = 0+radar.getGlobalAngle();
-                case DOWN -> currentAngle = 180+radar.getGlobalAngle();
-                case LEFT -> currentAngle =90+radar.getGlobalAngle();
-                case RIGHT -> currentAngle =270+radar.getGlobalAngle();
-                default -> currentAngle =30;
+                case NORTH -> currentAngle = 0 + radar.getGlobalAngle();
+                case DOWN -> currentAngle = 180 + radar.getGlobalAngle();
+                case LEFT -> currentAngle = 90 + radar.getGlobalAngle();
+                case RIGHT -> currentAngle = 270 + radar.getGlobalAngle();
+                default -> currentAngle = 30;
             }
-            currentAngle = currentAngle +180;
+            currentAngle = currentAngle + 270; // I am not sure if this is right offset seemed wrong before.
         }
 
         // Make sure we're working with normalized angles

@@ -87,17 +87,23 @@ public class StationaryRadarBlockEntity extends SmartBlockEntity implements IRad
         if(!Mods.VALKYRIENSKIES.isLoaded())return 0;
         Ship ship = VSGameUtilsKt.getShipManagingPos(level,getBlockPos());
         if(ship == null) return 0;
-        float rot = (float) ship.getTransform().getRotation().y();
-        Direction facing =this.getBlockState().getValue(StationaryRadarBlock.FACING);
+
+        // get yaw for rotating correctly for plane radar
+        org.joml.Quaterniondc shipRot = ship.getTransform().getShipToWorldRotation();
+        org.joml.Vector3d fwd = new org.joml.Vector3d(0, 0, 1);
+        shipRot.transform(fwd);
+        float rot = (float) -Math.toDegrees(Math.atan2(fwd.x, fwd.z));
+
+        Direction facing = this.getBlockState().getValue(StationaryRadarBlock.FACING);
         int fOffset;
         switch (facing){
             case NORTH -> fOffset = 0;
             case EAST -> fOffset = 90;
             case SOUTH -> fOffset = 180;
             case WEST -> fOffset = 270;
-            default -> fOffset =0;
+            default -> fOffset = 0;
         }
-        return fOffset +rot;
+        return fOffset + rot;
     }
 
     @Override

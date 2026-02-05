@@ -153,6 +153,13 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 
         detectionCache = DetectionConfig.fromTag(group.detectionTag);
 
+        // Auto-deselect if no cannon is available should work not very tested
+        if (getWeaponEndpointsCached(sl).isEmpty() && group.selectedTargetId != null) {
+            selectedWasAuto = false;
+            applySelectedTarget(sl, data, group, null);
+            return;
+        }
+
         // resolve radar
         IRadar radar = getRadar(sl);
         if (radar == null || !radar.isRunning()) {

@@ -341,13 +341,6 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             setChanged();
             return;
         }
-        if (getWeaponGroup() != null && getWeaponGroup().yawPos() != null){
-            if(level.getBlockEntity(getWeaponGroup().yawPos()) instanceof AutoYawControllerBlockEntity ybe){
-                if (ybe.isUpsideDown()){
-                    targetPos = targetPos.add(0,0.75,0);
-                }
-            }
-        }
         Mount mount = resolveMount();
         if (mount == null)
             return;
@@ -555,7 +548,13 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return;
         }
 
-        Vec3 origin = (firingControl != null) ? firingControl.getCannonMuzzlePos() : getRayStart();
+        // Use mount directly to determine origin
+        Vec3 origin;
+        if (CannonUtil.isUp(mount)) {
+            origin = mount.getBlockPos().getCenter().add(0, 2.0, 0);
+        } else {
+            origin = mount.getBlockPos().getCenter().add(0, -2.0, 0);
+        }
         List<Double> angles = CannonTargeting.calculatePitch(mount, origin, targetPos, serverLevel);
         LOGGER.warn(
                 "PITCH.solve origin={} target={} mountPos={}",
@@ -965,7 +964,12 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         }
 
         if (mount.kind == MountKind.CBC && mount.cbc != null) {
-            Vec3 origin = (firingControl != null) ? firingControl.getCannonMuzzlePos() : getRayStart();
+            Vec3 origin;
+            if (CannonUtil.isUp(mount.cbc)) {
+                origin = mount.cbc.getBlockPos().getCenter().add(0, 2.0, 0);
+            } else {
+                origin = mount.cbc.getBlockPos().getCenter().add(0, -2.0, 0);
+            }
             List<Double> pitches = CannonTargeting.calculatePitch(mount.cbc, origin, p, sl);
             if (pitches == null || pitches.isEmpty()) return false;
         }

@@ -8,13 +8,10 @@ import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.RadarTrackUtil;
 import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.cbc.AccelerationTracker;
-import com.happysg.radar.compat.cbc.CannonLead;
-import com.happysg.radar.compat.cbc.VelocityTracker;
+import com.happysg.radar.compat.cbc.*;
 import com.happysg.radar.compat.vs2.VS2ShipVelocityTracker;
 import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
-import com.happysg.radar.compat.cbc.CBCMuzzleUtil;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
@@ -145,20 +142,19 @@ public class WeaponFiringControl {
     }
 
     public Vec3 getCannonMuzzlePos() {
-        if(yawController != null && yawController.isUpsideDown()){
-            return cannonMount.getBlockPos().getCenter().add(0, -2.0, 0);
-        }else{
+        if(CannonUtil.isUp(cannonMount)){
             return cannonMount.getBlockPos().getCenter().add(0, 2.0, 0);
+        } else {
+            return cannonMount.getBlockPos().getCenter().add(0, -2.0, 0);
         }
-
     }
 
     /** Raycasts should start slightly forward to avoid self-hit on contraption blocks. */
     public Vec3 getCannonRayStart() {
-        if(yawController != null && yawController.isUpsideDown()){
-            return cannonMount.getBlockPos().getCenter().add(0, -2.0, 0);
-        }else{
+        if(CannonUtil.isUp(cannonMount)){
             return cannonMount.getBlockPos().getCenter().add(0, 2.0, 0);
+        } else {
+            return cannonMount.getBlockPos().getCenter().add(0, -2.0, 0);
         }
     }
 
