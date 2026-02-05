@@ -1,6 +1,7 @@
 package com.happysg.radar.mixin;
 
 import com.happysg.radar.compat.cbcwpf.IShupapiumACContraptionAccess;
+import net.ato.shupapium.utils.actypes.ShupapiumACProfile;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -15,5 +16,6 @@ public interface ShupapiumACContraptionAccessor extends IShupapiumACContraptionA
     AutocannonMaterial getShupapiumMaterial();
 
     @Override
-    Object getProfile();
+    @Accessor("profile")
+    ShupapiumACProfile getProfile();
 }
