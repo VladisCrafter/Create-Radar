@@ -8,11 +8,15 @@ import com.happysg.radar.block.controller.yaw.AutoYawControllerBlockEntity;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.block.radar.track.RadarTrackUtil;
 import com.happysg.radar.compat.Mods;
-import com.happysg.radar.compat.cbc.*;
+import com.happysg.radar.compat.cbc.AccelerationTracker;
+import com.happysg.radar.compat.cbc.CannonLead;
+import com.happysg.radar.compat.cbc.VelocityTracker;
 import com.happysg.radar.compat.vs2.VS2ShipVelocityTracker;
 import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
+import com.happysg.radar.compat.cbc.CBCMuzzleUtil;
 import com.mojang.logging.LogUtils;
+import net.createmod.catnip.math.VecHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.server.level.ServerLevel;
@@ -142,27 +146,30 @@ public class WeaponFiringControl {
     }
 
     public Vec3 getCannonMuzzlePos() {
-        if(CannonUtil.isUp(cannonMount)){
-            return cannonMount.getBlockPos().getCenter().add(0, 2.0, 0);
-        } else {
+        if(yawController != null && yawController.isUpsideDown()){
             return cannonMount.getBlockPos().getCenter().add(0, -2.0, 0);
+        }else{
+            return cannonMount.getBlockPos().getCenter().add(0, 2.0, 0);
         }
+
     }
 
-    /** Raycasts should start slightly forward to avoid self-hit on contraption blocks. */
     public Vec3 getCannonRayStart() {
-        if(CannonUtil.isUp(cannonMount)){
-            return cannonMount.getBlockPos().getCenter().add(0, 2.0, 0);
-        } else {
-            return cannonMount.getBlockPos().getCenter().add(0, -2.0, 0);
-        }
+        if (cannonMount == null)
+            return null;
+
+        PitchOrientedContraptionEntity poce = cannonMount.getContraption();
+        if (poce == null)
+            return cannonMount.getBlockPos().getCenter();
+
+        return poce.toGlobalVector(VecHelper.getCenterOf(BlockPos.ZERO), 1.0f);
     }
 
 
     private static BlockPos findMuzzleAirLocal(AbstractMountedCannonContraption cc) {
         BlockPos p = cc.getStartPos().immutable();
 
-        for (int i = 0; i < 512; i++) { // hard cap safety
+        for (int i = 0; i < 512; i++) {
             if (!cc.presentBlockEntities.containsKey(p)) {
                 return p;
             }
