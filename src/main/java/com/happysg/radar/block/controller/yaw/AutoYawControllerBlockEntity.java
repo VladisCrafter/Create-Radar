@@ -4,6 +4,7 @@ import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.VS2CannonTargeting;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
+import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollOptionBehaviour;
 import kotlin.Pair;
@@ -31,6 +32,8 @@ import org.valkyrienskies.mod.common.assembly.ICopyableBlock;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlock;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
+import net.minecraft.core.Direction;
+
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -159,7 +162,9 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
 
         isRunning = true;
 
-        Vec3 cannonCenter = worldPosition.above(3).getCenter();
+        Vec3 cannonCenter = isUpsideDown()
+                ? worldPosition.below(3).getCenter()
+                : worldPosition.above(3).getCenter();
         // i'm computing yaw in ship-space when we're on a VS2 ship
         double angle = computeYawToTargetDeg(cannonCenter, targetPos);
         double newAngle = wrap360(angle) + 180.0;
@@ -472,17 +477,25 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
             this.phys = phys;
         }
     }
+    private boolean isUpsideDown() {
+        if (level == null) return false;
+        BlockState state = getBlockState();
+        if (!state.hasProperty(DirectionalKineticBlock.FACING)) return false;
+        return state.getValue(DirectionalKineticBlock.FACING) == Direction.UP;
+    }
 
     @Nullable
     private Mount resolveMount() {
         if (level == null) return null;
 
-        BlockEntity above = level.getBlockEntity(worldPosition.above());
+        BlockEntity adjacent = isUpsideDown()
+                ? level.getBlockEntity(worldPosition.below())
+                : level.getBlockEntity(worldPosition.above());
 
-        if (Mods.CREATEBIGCANNONS.isLoaded() && above instanceof CannonMountBlockEntity cbc)
+        if (Mods.CREATEBIGCANNONS.isLoaded() && adjacent instanceof CannonMountBlockEntity cbc)
             return new Mount(cbc);
 
-        if (Mods.VS_CLOCKWORK.isLoaded() && above instanceof PhysBearingBlockEntity phys)
+        if (Mods.VS_CLOCKWORK.isLoaded() && adjacent instanceof PhysBearingBlockEntity phys)
             return new Mount(phys);
 
         return null;
