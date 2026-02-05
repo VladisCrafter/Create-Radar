@@ -9,5 +9,5 @@ import rbasamoyai.createbigcannons.munitions.config.components.BallisticProperti
 @Mixin(AbstractCannonProjectile.class)
 public interface AutocannonProjectileAccessor {
     @Invoker(value = "getBallisticProperties", remap = false)
-    BallisticPropertiesComponent radar$getBallisticProperties();
+    BallisticPropertiesComponent getBallisticProperties();
 }

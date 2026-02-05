@@ -9,7 +9,8 @@
   "mixins": [
     "AbstractCannonAccessor",
     "AutoCannonAccessor",
-    "AutocannonProjectileAccessor"
+    "AutocannonProjectileAccessor",
+    "ShupapiumACContraptionAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

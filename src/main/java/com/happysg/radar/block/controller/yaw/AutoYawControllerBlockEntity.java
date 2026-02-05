@@ -119,11 +119,12 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
 
     // ===== Public API =====
     public void setTargetAngle(float targetAngle) {
-        this.targetAngle = wrap360(targetAngle);
+        this.targetAngle = clampYawToLimits(targetAngle);
         this.isRunning = true;
         notifyUpdate();
         setChanged();
     }
+
 
     public double getTargetAngle() {
         return targetAngle;
@@ -149,7 +150,8 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
                     return;
 
                 // yaw
-                this.targetAngle =  wrap360(angles.get(0).get(1).floatValue());
+                this.targetAngle = clampYawToLimits(angles.get(0).get(1));
+
 
                 isRunning = true;
                 notifyUpdate();
@@ -165,14 +167,14 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
                 : worldPosition.above(3).getCenter();
         // i'm computing yaw in ship-space when we're on a VS2 ship
         double angle = computeYawToTargetDeg(cannonCenter, targetPos);
-        double newAngle = wrap360(angle)+180;
+        double newAngle = wrap360(angle) + 180.0;
+
 
         // store previous setpoint for 1-tick lag compensation
-        prevTargetAngle = this.targetAngle;
+        prevTargetAngle = clampYawToLimits(this.targetAngle);
         hasPrevTarget = true;
 
-        this.targetAngle = newAngle;
-
+        this.targetAngle = clampYawToLimits(newAngle);
         notifyUpdate();
         setChanged();
     }
@@ -188,7 +190,8 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
             PitchOrientedContraptionEntity contraption = mount.cbc.getContraption();
             if (contraption == null) return false;
 
-            double desired = hasPrevTarget ? wrap360(prevTargetAngle) : wrap360(targetAngle);
+            double desired = hasPrevTarget ? wrap360(clampYawToLimits(prevTargetAngle)) : wrap360(clampYawToLimits(targetAngle));
+
 
             // Prefer what we actually commanded (contraption.yaw can lag behind)
             double current = hasLastCbcYawWritten ? wrap360(lastCbcYawWritten) : wrap360(contraption.yaw);
@@ -215,7 +218,8 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
         if (contraption == null) return;
 
         double currentYaw = wrap360(contraption.yaw);
-        double desiredYaw = wrap360(targetAngle);
+        double desiredYaw = wrap360(clampYawToLimits(targetAngle));
+
 
         double yawDiff = shortestDelta(currentYaw, desiredYaw);
         if (Math.abs(yawDiff) <= TOLERANCE_DEG) {
@@ -261,7 +265,8 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
         if (actualRad == null) return;
 
         double currentDeg = wrap360(Math.toDegrees(actualRad));
-        double desiredDeg = wrap360(360.0 - targetAngle);
+        double desiredDeg = wrap360(360.0 - clampYawToLimits(targetAngle));
+
 
         double diff = shortestDelta(currentDeg, desiredDeg);
         double chosen = wrap360(currentDeg + diff);
@@ -278,58 +283,75 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
         mount.notifyUpdate();
     }
 
-    // ===== Target acquisition =====
-    private void updateTargetFromNearestPlayer() {
-        Player player = level.getNearestPlayer(
-                worldPosition.getX() + 0.5,
-                worldPosition.getY() + 0.5,
-                worldPosition.getZ() + 0.5,
-                -1,
-                false
-        );
+    // i store yaw limits in controller-space degrees (same space as targetAngle)
+    private double minAngleDeg = 0.0;
+    private double maxAngleDeg = 360.0;
 
-        if (player == null) {
-            isRunning = false;
-            smoothedTarget = null;
-            return;
-        }
+    public double getMinAngleDeg() { return minAngleDeg; }
+    public double getMaxAngleDeg() { return maxAngleDeg; }
 
-        Vec3 cannonCenterWorld = worldPosition.above(3).getCenter();
-        Vec3 desiredWorld = player.getEyePosition();
-
-        if (smoothedTarget == null) {
-            smoothedTarget = desiredWorld;
-        } else {
-            Vec3 delta = desiredWorld.subtract(smoothedTarget);
-            double dist = delta.length();
-
-            if (dist > SNAP_DISTANCE) {
-                smoothedTarget = desiredWorld;
-            } else if (dist > 1e-6) {
-                double range = smoothedTarget.distanceTo(cannonCenterWorld);
-                double step = getStep(range, dist);
-                smoothedTarget = smoothedTarget.add(delta.scale(step / dist));
-            }
-        }
-
-        Vec3 tWorld = smoothedTarget;
-
-        // i'm computing yaw in ship-space when we're on a VS2 ship
-        double angle = wrap360(computeYawToTargetDeg(cannonCenterWorld, tWorld));
-
-        if (Math.abs(shortestDelta(targetAngle, angle)) < DEADBAND_DEG) {
-            isRunning = true;
-            return;
-        }
-
-        if (currentmount == MountKind.CBC) {
-            targetAngle = angle + 180.0;
-        } else {
-            targetAngle = angle;
-        }
-
-        isRunning = true;
+    public void setMinAngleDeg(double v) {
+        minAngleDeg = wrap360(v);
+        // i keep the range valid (supports wrap cases via normalizeLimits)
+        normalizeLimits();
+        targetAngle = clampYawToLimits(targetAngle);
+        notifyUpdate();
+        setChanged();
     }
+
+    public void setMaxAngleDeg(double v) {
+        maxAngleDeg = wrap360(v);
+        // i keep the range valid (supports wrap cases via normalizeLimits)
+        normalizeLimits();
+        targetAngle = clampYawToLimits(targetAngle);
+        notifyUpdate();
+        setChanged();
+    }
+
+    /**
+     * i normalize so limits are always meaningful
+     * supports both "normal" ranges (30..120) and wrap ranges (300..40)
+     */
+    private void normalizeLimits() {
+        minAngleDeg = wrap360(minAngleDeg);
+        maxAngleDeg = wrap360(maxAngleDeg);
+
+        // if they're equal, i treat it as "no movement allowed" (a single heading)
+        // if you want "full range" instead, handle it differently
+    }
+
+    private double clampYawToLimits(double deg) {
+        deg = wrap360(deg);
+
+        // full range quick exit (common default)
+        if (Math.abs(shortestDelta(minAngleDeg, maxAngleDeg)) < 1e-6) {
+            // i interpret equal min/max as "locked to min"
+            return minAngleDeg;
+        }
+
+        // non-wrapping case: min <= max in circular sense
+        // i detect wrap by checking whether the interval crosses 0
+        boolean wraps = minAngleDeg > maxAngleDeg;
+
+        if (!wraps) {
+            // simple clamp
+            if (deg < minAngleDeg) return minAngleDeg;
+            if (deg > maxAngleDeg) return maxAngleDeg;
+            return deg;
+        }
+
+        // wrapping interval like 300..40
+        // allowed if deg >= min OR deg <= max
+        if (deg >= minAngleDeg || deg <= maxAngleDeg) {
+            return deg;
+        }
+
+        // outside: snap to whichever bound is closer on the circle
+        double dToMin = Math.abs(shortestDelta(deg, minAngleDeg));
+        double dToMax = Math.abs(shortestDelta(deg, maxAngleDeg));
+        return (dToMin <= dToMax) ? minAngleDeg : maxAngleDeg;
+    }
+
 
     private double getStep(double range, double dist) {
         double rpm = Math.abs(getSpeed());
@@ -365,7 +387,13 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
 
         return Math.toDegrees(Math.atan2(dz, dx)) + 90.0;
     }
-
+    private void fixLimitOrder() {
+        if (minAngleDeg > maxAngleDeg) {
+            double tmp = minAngleDeg;
+            minAngleDeg = maxAngleDeg;
+            maxAngleDeg = tmp;
+        }
+    }
     private Vec3 toShipSpace(Ship ship, Vec3 worldPos) {
         Vector3d tmp = new Vector3d(worldPos.x, worldPos.y, worldPos.z);
         ship.getTransform().getWorldToShip().transformPosition(tmp);
@@ -375,8 +403,21 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
     @Override
     protected void read(CompoundTag compound, boolean clientPacket) {
         super.read(compound, clientPacket);
-        targetAngle = wrap360(compound.getDouble("TargetAngle"));
+
+        // i load limits (defaults if missing)
+        if (compound.contains("MinAngleDeg", Tag.TAG_DOUBLE)) {
+            minAngleDeg = compound.getDouble("MinAngleDeg");
+        }
+        if (compound.contains("MaxAngleDeg", Tag.TAG_DOUBLE)) {
+            maxAngleDeg = compound.getDouble("MaxAngleDeg");
+        }
+        fixLimitOrder();
+
+        // i load target + clamp it to the limits
+        targetAngle = clampYawToLimits(wrap360(compound.getDouble("TargetAngle")));
+
         isRunning = compound.getBoolean("IsRunning");
+
         if (compound.contains("LastKnownPos", Tag.TAG_LONG)) {
             lastKnownPos = BlockPos.of(compound.getLong("LastKnownPos"));
         } else {
@@ -387,16 +428,23 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
     @Override
     protected void write(CompoundTag compound, boolean clientPacket) {
         super.write(compound, clientPacket);
-        compound.putDouble("TargetAngle", wrap360(targetAngle));
+
+        // i save limits
+        compound.putDouble("MinAngleDeg", minAngleDeg);
+        compound.putDouble("MaxAngleDeg", maxAngleDeg);
+
+        // i save target (clamped)
+        compound.putDouble("TargetAngle", wrap360(clampYawToLimits(targetAngle)));
+
         compound.putBoolean("IsRunning", isRunning);
         compound.putLong("LastKnownPos", lastKnownPos.asLong());
     }
+
 
     @Override
     protected void copySequenceContextFrom(KineticBlockEntity sourceBE) {
         // i'm keeping this empty like the original controller
     }
-
 
     @Override
     public @org.jetbrains.annotations.Nullable CompoundTag onCopy(@NotNull ServerLevel serverLevel, @NotNull BlockPos blockPos, @NotNull BlockState blockState, @org.jetbrains.annotations.Nullable BlockEntity blockEntity, @NotNull List<? extends ServerShip> list, @NotNull Map<Long, ? extends Vector3d> map) {
@@ -407,6 +455,7 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
     public @org.jetbrains.annotations.Nullable CompoundTag onPaste(@NotNull ServerLevel serverLevel, @NotNull BlockPos blockPos, @NotNull BlockState blockState, @NotNull Map<Long, Long> map, @NotNull Map<Long, ? extends Pair<? extends Vector3d, ? extends Vector3d>> map1, @org.jetbrains.annotations.Nullable CompoundTag compoundTag) {
         return null;
     }
+
 
     // ===== Mount resolution =====
     private enum MountKind { CBC, PHYS, RADAR }

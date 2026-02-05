@@ -3,6 +3,7 @@ package com.happysg.radar;
 import com.happysg.radar.block.controller.id.IDManager;
 import com.happysg.radar.block.datalink.DataLinkBlockItem;
 import com.happysg.radar.block.monitor.MonitorInputHandler;
+import com.happysg.radar.compat.cbcwpf.CBCWPFCompatRegister;
 import com.happysg.radar.compat.computercraft.CCCompatRegister;
 import com.happysg.radar.ponder.RadarPonderPlugin;
 import com.happysg.radar.registry.ModCommands;
@@ -96,6 +97,8 @@ public class CreateRadar {
             CBCMWCompatRegister.registerCBCMW();
         if (Mods.COMPUTERCRAFT.isLoaded())
             CCCompatRegister.registerPeripherals();
+        if (Mods.SHUPAPIUM.isLoaded())
+            CBCWPFCompatRegister.registerCBCWPF();
     }
     @SubscribeEvent
     public static void commonSetup(FMLCommonSetupEvent event) {

@@ -51,7 +51,11 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     // PhysBearing tolerance in degrees
     private static final double PHYS_TOLERANCE_DEG = 0.10;
     private static final double DEADBAND_DEG = 0.25;
+    private double minAngleDeg = 0;
+    private double maxAngleDeg =  360;
 
+    public double getMinAngleDeg() { return minAngleDeg; }
+    public double getMaxAngleDeg() { return maxAngleDeg; }
 
     // State
     private double targetAngle;
@@ -63,7 +67,8 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
     private RadarTrack track;
 
     private BlockPos lastKnownPos = BlockPos.ZERO;
-
+    public float minAngle;
+    public float Max_angle;
     public WeaponFiringControl firingControl;
     public AutoYawControllerBlockEntity autoyaw;
     private static final double SNAP_DISTANCE = 32.0;
@@ -436,7 +441,9 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
 
         // close enough; snap + stop
         if (Math.abs(diff) <= CBC_TOLERANCE) {
-            mount.setPitch((float) targetAngle);
+            double clamped = clampToLimits(targetAngle);
+            mount.setPitch((float) clamped);
+
             mount.notifyUpdate();
             isRunning = false;
             return;
@@ -468,7 +475,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
                 return;
 
             // pitch
-            this.targetAngle = angles.get(0).get(0);
+            this.targetAngle = clampToLimits(angles.get(0).get(0));
 
 //            // yaw (if you have firingControl)
 //            if (firingControl != null) {
@@ -506,9 +513,9 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         }
 
         if (artillery && usableAngles.size() == 2) {
-            targetAngle = angles.get(1);
+            targetAngle = clampToLimits(angles.get(1));
         } else if (!usableAngles.isEmpty()) {
-            targetAngle = usableAngles.get(0);
+            targetAngle = clampToLimits(usableAngles.get(0));
         }
 
         LOGGER.warn("PITCH.solve targetAngle={}", targetAngle);
@@ -605,7 +612,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return;
         }
 
-        targetAngle = approachWrapped(targetAngle, newAngle);
+        targetAngle = clampToLimits(approachWrapped(targetAngle, newAngle));
     }
 
 
@@ -661,7 +668,41 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         }
         return null;
     }
+    public void setMinAngleDeg(double v) {
+        minAngleDeg = v;
+        // i keep the range sane
+        if (minAngleDeg > maxAngleDeg) {
+            double tmp = minAngleDeg;
+            minAngleDeg = maxAngleDeg;
+            maxAngleDeg = tmp;
+        }
 
+        // i clamp the current target too, so it immediately respects the new bounds
+        targetAngle = clampToLimits(targetAngle);
+
+        notifyUpdate();
+        setChanged();
+    }
+
+    public void setMaxAngleDeg(double v) {
+        maxAngleDeg = v;
+        // i keep the range sane
+        if (minAngleDeg > maxAngleDeg) {
+            double tmp = minAngleDeg;
+            minAngleDeg = maxAngleDeg;
+            maxAngleDeg = tmp;
+        }
+
+        // i clamp the current target too, so it immediately respects the new bounds
+        targetAngle = clampToLimits(targetAngle);
+
+        notifyUpdate();
+        setChanged();
+    }
+
+    private double clampToLimits(double deg) {
+        return Math.max(minAngleDeg, Math.min(maxAngleDeg, deg));
+    }
     // NBT
     @Override
     protected void read(CompoundTag compound, boolean clientPacket) {
@@ -673,6 +714,15 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         } else {
             lastKnownPos = worldPosition;
         }
+        // i load limits (defaults if missing)
+        minAngleDeg = compound.contains("MinAngleDeg") ? compound.getDouble("MinAngleDeg") : -90.0;
+        maxAngleDeg =compound.contains("MaxAngleDeg") ?compound.getDouble("MaxAngleDeg") :  90.0;
+        if (minAngleDeg > maxAngleDeg) {
+            double tmp = minAngleDeg;
+            minAngleDeg = maxAngleDeg;
+            maxAngleDeg = tmp;
+        }
+
 
 
         // smoothing state not persisted by design
@@ -687,6 +737,10 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         compound.putLong("LastKnownPos", lastKnownPos.asLong());
         compound.putDouble("TargetAngle", targetAngle);
         compound.putBoolean("IsRunning", isRunning);
+        // i save limits
+        compound.putDouble("MinAngleDeg", minAngleDeg);
+        compound.putDouble("MaxAngleDeg", maxAngleDeg);
+
     }
 
     @Override

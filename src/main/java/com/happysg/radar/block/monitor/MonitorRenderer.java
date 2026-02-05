@@ -521,7 +521,7 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
         Color color = new Color(RadarConfig.client().groundRadarColor.get());
 
         float monitorAngle = 0;
-        if (!radar.renderRelativeToMonitor()) {
+        if (controller.getShip() != null && radar.getRadarType().equals("spinning")) {
             // Calculate the current angle
             Direction monitorFacing = controller.getBlockState().getValue(MonitorBlock.FACING);
             Vec3 facingVec = new Vec3(monitorFacing.getStepX(), monitorFacing.getStepY(), monitorFacing.getStepZ());
@@ -533,10 +533,10 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
             }
 
             // Normalize to positive angles
-            monitorAngle = (monitorAngle + 360) % 360;
+            monitorAngle = (monitorAngle + 360)+180 % 360;
         }
         float currentAngle;
-        if(radar.renderRelativeToMonitor() && controller.getShip() != null){
+        if(radar.renderRelativeToMonitor() && controller.getShip() != null && !radar.getRadarType().equals("spinning")){
             Direction monitorFacing = controller.getBlockState().getValue(MonitorBlock.FACING);
             Direction radarFacing   = radar.getradarDirection();
             if(radarFacing == null)return;// or however you store it
@@ -545,13 +545,23 @@ public class MonitorRenderer extends SmartBlockEntityRenderer<MonitorBlockEntity
             switch (cone){
                 case NORTH -> currentAngle = 0;
                 case DOWN -> currentAngle = 180;
-                case LEFT -> currentAngle =90;
-                case RIGHT -> currentAngle =270;
-                default -> currentAngle =30;
+                case LEFT -> currentAngle = 90;
+                case RIGHT -> currentAngle = 270;
+                default -> currentAngle = 30;
             }
 
-        }else {
-             currentAngle = radar.getGlobalAngle()+180;
+        }else{
+            Direction monitorFacing = controller.getBlockState().getValue(MonitorBlock.FACING);
+            Direction radarFacing   = radar.getradarDirection();
+            ConeDir2D cone = getConeDirectionOnMonitor(monitorFacing, radarFacing);
+            switch (cone){
+                case NORTH -> currentAngle = 0+radar.getGlobalAngle();
+                case DOWN -> currentAngle = 180+radar.getGlobalAngle();
+                case LEFT -> currentAngle =90+radar.getGlobalAngle();
+                case RIGHT -> currentAngle =270+radar.getGlobalAngle();
+                default -> currentAngle =30;
+            }
+            currentAngle = currentAngle +180;
         }
 
         // Make sure we're working with normalized angles
