@@ -17,8 +17,6 @@ import rbasamoyai.createbigcannons.munitions.config.components.BallisticProperti
 public final class CBCWPFShupapiumImpl {
     private CBCWPFShupapiumImpl() {}
 
-    /* ---------------- material / profile ---------------- */
-
     static AutocannonMaterial resolveMaterial(AbstractMountedCannonContraption cannon) {
         return ((IShupapiumACContraptionAccess) cannon).getShupapiumMaterial();
     }
@@ -26,8 +24,6 @@ public final class CBCWPFShupapiumImpl {
     static ShupapiumACProfile resolveProfile(AbstractMountedCannonContraption cannon) {
         return ((IShupapiumACContraptionAccess) cannon).getProfile();
     }
-
-    /* ---------------- breech / ammo helpers ---------------- */
 
     static ShupapiumACBreechBlockEntity findBreech(AbstractMountedCannonContraption cannon) {
         for (BlockEntity be : cannon.presentBlockEntities.values()) {
@@ -109,9 +105,9 @@ public final class CBCWPFShupapiumImpl {
     }
 
     public static BallisticPropertiesComponent ballistics(AbstractMountedCannonContraption cannon, Level level) {
-        final double FALLBACK_DRAG = 0.01;
+        final double FALLBACK_DRAG = 0.0;
         final boolean FALLBACK_QUAD = false;
-        final double GRAV_ON = -0.05;
+        final double GRAV_ON = -0.025;
 
         ShupapiumACBreechBlockEntity breech = findBreech(cannon);
         if (breech == null)
