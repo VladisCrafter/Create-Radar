@@ -153,13 +153,6 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
 
         detectionCache = DetectionConfig.fromTag(group.detectionTag);
 
-        // Auto-deselect if no cannon is available should work not very tested
-        if (getWeaponEndpointsCached(sl).isEmpty() && group.selectedTargetId != null) {
-            selectedWasAuto = false;
-            applySelectedTarget(sl, data, group, null);
-            return;
-        }
-
         // resolve radar
         IRadar radar = getRadar(sl);
         if (radar == null || !radar.isRunning()) {
@@ -222,20 +215,15 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
         TargetingConfig cfg = targeting != null ? targeting : TargetingConfig.DEFAULT;
         boolean requireLos = cfg.lineOfSight();
 
-        if (!anyCannonCanEngage(sl, selected, requireLos)) {
-            if (selectedWasAuto) {
-                dropOrReselectAuto(sl, data, group);
-            } else {
-                applySelectedTarget(sl, data, group, null);
-                selectedWasAuto = false;
-            }
+        // Only auto-selections should be affected by cannon engagement checks
+        if (selectedWasAuto && !anyCannonCanEngage(sl, selected, requireLos)) {
+            dropOrReselectAuto(sl, data, group);
             return;
         }
 
-        TargetingConfig cfg2 = targeting != null ? targeting : TargetingConfig.DEFAULT;
-        if (selectedWasAuto && cfg2.lineOfSight()) {
+        if (selectedWasAuto && cfg.lineOfSight()) {
             if (!anyCannonCanEngage(sl, selected, true)) {
-                RadarTrack better = pickAutoTarget_PerCannon(sl, cachedTracks, safeZones); // requireLos comes from cfg.lineOfSight()
+                RadarTrack better = pickAutoTarget_PerCannon(sl, cachedTracks, safeZones);
                 if (better != null) {
                     selectedWasAuto = true;
                     applySelectedTarget(sl, data, group, better);
