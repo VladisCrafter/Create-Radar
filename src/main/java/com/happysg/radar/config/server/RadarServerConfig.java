@@ -18,4 +18,6 @@ public class RadarServerConfig extends ConfigBase {
     public final ConfigFloat radarGuidanceTurnRate = f(.15f, 0f, 1f, "radarGuidanceTurnRate", "Turn rate of radar guidance for CBCMW Missiles");
     public final ConfigInt leadFiringDelay = i(0,0,1000,"firingDelay", "The firing delay used in leading calculation. Higher values may prove useful in laggy environments");
     public final ConfigBool gearRadarBearingSpeed = b(true, "gearRadarBearingSpeed", "If true, radar bearings will rotate slower the more dishes are connected to them");
+    public final ConfigInt planeRadarRange = i(250,1,1000,"planeRadarRange","increases the range of the plane radar(in blocks)");
+    public final ConfigFloat controllerPhysbearingMaxSpeed = f(25,2,25,"physMaxMove", "Increases the max Rotational speed of phys bearings controlled by Pitch/Yaw controllers");
 }

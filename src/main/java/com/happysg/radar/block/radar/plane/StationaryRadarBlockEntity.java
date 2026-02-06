@@ -6,6 +6,7 @@ import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.compat.vs2.VS2Utils;
+import com.happysg.radar.config.RadarConfig;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import net.minecraft.core.BlockPos;
@@ -44,8 +45,11 @@ public class StationaryRadarBlockEntity extends SmartBlockEntity implements IRad
     @Override
     public void tick() {
         super.tick();
-        if (!Mods.VALKYRIENSKIES.isLoaded() && !VS2Utils.isBlockInShipyard(level,worldPosition))
+        if (!Mods.VALKYRIENSKIES.isLoaded() && !VS2Utils.isBlockInShipyard(level,worldPosition)){
+            scanningBehavior.setRunning(false);
             return;
+        }else if(!isRunning() && VS2Utils.isBlockInShipyard(level,worldPosition))
+            scanningBehavior.setRunning(true);
         Direction facing = getBlockState().getValue(StationaryRadarBlock.FACING).getOpposite();
         Vec3 facingVec = new Vec3(facing.getStepX(), facing.getStepY(), facing.getStepZ());
         Vec3 shipVec = PhysicsHandler.getWorldVecDirectionTransform(facingVec, this);
@@ -58,7 +62,7 @@ public class StationaryRadarBlockEntity extends SmartBlockEntity implements IRad
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
         scanningBehavior = new RadarScanningBlockBehavior(this);
         scanningBehavior.setRunning(true);
-        scanningBehavior.setRange(250);
+        scanningBehavior.setRange(RadarConfig.server().planeRadarRange.get());
         scanningBehavior.setAngle((getBlockState().getValue(StationaryRadarBlock.FACING).toYRot() + 360) % 360);
         scanningBehavior.setScanPos(PhysicsHandler.getWorldVec(this));
         scanningBehavior.setTrackExpiration(1);
@@ -73,7 +77,7 @@ public class StationaryRadarBlockEntity extends SmartBlockEntity implements IRad
 
     @Override
     public float getRange() {
-        return 250;
+        return RadarConfig.server().planeRadarRange.get();
     }
 
     @Override

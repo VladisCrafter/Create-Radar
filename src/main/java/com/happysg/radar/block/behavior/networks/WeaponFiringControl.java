@@ -614,7 +614,7 @@ public class WeaponFiringControl {
         }
 
 
-
+        LOGGER.warn("check_accel");
         Vec3 shooterVel;
         Vec3 shooterAccel;
         Vec3 targetVel;
@@ -683,7 +683,7 @@ public class WeaponFiringControl {
 
         // drive controllers using offsetAim
         if (this.pitchController != null) {
-
+            LOGGER.warn("ptfc");
             this.pitchController.setTarget(offsetAim);
         }
 
@@ -782,21 +782,6 @@ public class WeaponFiringControl {
         if (level != null) this.lastTargetTick = level.getGameTime();
     }
 
-    private boolean isTargetInRange() {
-        if (binoMode) {
-            target = binoTargetPos.getCenter();
-        }
-
-        boolean hasTarget     = target != null;
-        boolean correctOrient = hasCorrectYawPitch();
-        boolean safeZoneClear = !passesSafeZone();
-
-        LOGGER.debug("isTargetInRange() check → hasTarget={}, yawPitchOK={}, safeZoneClear={}",
-                hasTarget, correctOrient, safeZoneClear);
-
-        return hasTarget && correctOrient && safeZoneClear;
-    }
-
     private boolean passesSafeZone() {
         if (safeZones == null || safeZones.isEmpty()) return false;
 
@@ -840,37 +825,6 @@ public class WeaponFiringControl {
         fireController.setPowered(true);
         LOGGER.debug("firing!");
 
-    }
-
-    public boolean canEngageTrack(@Nullable RadarTrack track, boolean requireLos) {
-        if (!isMountStateOk()) return false;
-        if (track == null) return false;
-        Vec3 p = track.position();
-        if (p == null) return false;
-        if (!(level instanceof ServerLevel sl)) return false;
-
-        if (passesSafeZoneForPoint(p)) return false;
-
-        // 2) Range gate (PER CANNON)
-        if (!isPointInShootableRange(p)) return false;
-
-        // 3) LOS (PER CANNON, only if required by config)
-        if (requireLos) return hasLineOfSightTo(track);
-
-        return true;
-    }
-
-    private boolean passesSafeZoneForPoint(Vec3 aim) {
-        if (safeZones == null || safeZones.isEmpty()) return false;
-        if (aim == null) return false;
-
-        Vec3 start = getCannonRayStart();
-        for (AABB zone : safeZones) {
-            if (zone == null) continue;
-            if (zone.contains(start) || zone.contains(aim)) return true;
-            if (zone.clip(start, aim).isPresent()) return true;
-        }
-        return false;
     }
 
 

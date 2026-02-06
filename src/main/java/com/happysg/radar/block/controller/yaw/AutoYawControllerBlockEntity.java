@@ -1,9 +1,11 @@
 package com.happysg.radar.block.controller.yaw;
 
+import com.happysg.radar.block.behavior.networks.WeaponNetwork;
 import com.happysg.radar.block.behavior.networks.WeaponNetworkData;
 import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.VS2CannonTargeting;
 import com.happysg.radar.compat.vs2.PhysicsHandler;
+import com.happysg.radar.config.RadarConfig;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollOptionBehaviour;
@@ -31,6 +33,7 @@ import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import org.valkyrienskies.mod.common.assembly.ICopyableBlock;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlock;
 import rbasamoyai.createbigcannons.cannon_control.cannon_mount.CannonMountBlockEntity;
+import rbasamoyai.createbigcannons.cannon_control.contraption.AbstractMountedCannonContraption;
 import rbasamoyai.createbigcannons.cannon_control.contraption.PitchOrientedContraptionEntity;
 import net.minecraft.core.Direction;
 
@@ -39,7 +42,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
-public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements ICopyableBlock {
+public class AutoYawControllerBlockEntity extends KineticBlockEntity{
 
     private static final double TOLERANCE_DEG = 0.1;
 
@@ -54,15 +57,16 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
     private boolean isRunning;
 
     private final double MIN_MOVE_PER_TICK = 0.02;
-    private static final double MAX_MOVE_PER_TICK = 2.0;
+    private static final double MAX_MOVE_PER_TICK = RadarConfig.server().controllerPhysbearingMaxSpeed.get();
     private static final double SNAP_DISTANCE = 32.0;
-    private static final double DEADBAND_DEG = 0.75;
+    private static final double DEADBAND_DEG = .5;
     private BlockPos lastKnownPos = BlockPos.ZERO;
-
+    private double yawZeroOffsetDeg = 0.0;
+    private boolean hasYawZeroOffset = false;
+    private double lastYawZeroOffsetDeg = 0.0;
     private MountKind currentmount;
 
-    @Nullable
-    private Vec3 smoothedTarget = null;
+
 
     public AutoYawControllerBlockEntity(BlockEntityType<?> typeIn, BlockPos pos, BlockState state) {
         super(typeIn, pos, state);
@@ -90,6 +94,7 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
         }
 
         if (mount.kind == MountKind.PHYS && Mods.VS_CLOCKWORK.isLoaded()) {
+            maybeUpdateYawZeroFromCannonInitialOrientation(mount.phys);
             currentmount = MountKind.PHYS;
             rotatePhysBearing(mount.phys);
         }
@@ -136,7 +141,7 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
 
         if (targetPos == null) {
             isRunning = false;
-            smoothedTarget = null;
+
             notifyUpdate();
             setChanged();
             return;
@@ -169,10 +174,9 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
         double angle = computeYawToTargetDeg(cannonCenter, targetPos);
         double newAngle = wrap360(angle) + 180.0;
 
-
-        // store previous setpoint for 1-tick lag compensation
-        prevTargetAngle = clampYawToLimits(this.targetAngle);
-        hasPrevTarget = true;
+        if (currentmount == MountKind.PHYS && hasYawZeroOffset) {
+            newAngle = wrap360(newAngle - yawZeroOffsetDeg);
+        }
 
         this.targetAngle = clampYawToLimits(newAngle);
         notifyUpdate();
@@ -252,38 +256,124 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
         mount.notifyUpdate();
     }
 
-    // ===== Behavior: PhysBearing =====
     private void rotatePhysBearing(PhysBearingBlockEntity mount) {
         ScrollOptionBehaviour<ContraptionController.LockedMode> mode = mount.getMovementMode();
         if (mode != null && mode.getValue() != ContraptionController.LockedMode.FOLLOW_ANGLE.ordinal()) {
             mode.setValue(ContraptionController.LockedMode.FOLLOW_ANGLE.ordinal());
         }
-        if (speed <= 0) return;
+
         if (!isRunning) return;
+
+        double rpm = Math.abs(getSpeed());
+        if (rpm <= 0.0) return;
 
         Double actualRad = mount.getActualAngle();
         if (actualRad == null) return;
 
-        double currentDeg = wrap360(Math.toDegrees(actualRad));
-        double desiredDeg = wrap360(360.0 - clampYawToLimits(targetAngle));
+        // i convert physbearing degrees -> controller degrees (your mapping)
+        double currentPhysDeg = wrap360(Math.toDegrees(actualRad));
+        double currentCtlDeg  = wrap360(360.0 - currentPhysDeg);
 
+        // i keep desired in controller-space and clamp to my limits
+        double desiredCtlDeg = clampYawToLimits(targetAngle);
 
-        double diff = shortestDelta(currentDeg, desiredDeg);
-        double chosen = wrap360(currentDeg + diff);
+        // i treat min==max as FULL RANGE (same behavior as your clampYawToLimits)
+        double min = wrap360(minAngleDeg);
+        double max = wrap360(maxAngleDeg);
+        double allowedLen = wrap360(max - min); // (max-min+360)%360
 
-        float rpm = (float) Math.abs(getSpeed());
+        boolean fullRange = allowedLen < 1e-6;
 
-        if (rpm >= 256.0f) {
-            mount.setAngle((float) desiredDeg);
+        // deadband in controller-space
+        double diffCtl = shortestDelta(currentCtlDeg, desiredCtlDeg);
+        double distCtl = Math.abs(diffCtl);
+        if (distCtl <= Math.max(TOLERANCE_DEG, DEADBAND_DEG)) {
+            double desiredPhysDeg = wrap360(360.0 - desiredCtlDeg);
+            mount.setAngle((float) desiredPhysDeg);
             mount.notifyUpdate();
             return;
         }
 
-        mount.setAngle((float) chosen);
+        // max degrees i can move this tick
+        double stepDeg = getStep(SNAP_DISTANCE, distCtl);
+
+        double nextCtlDeg;
+
+        if (fullRange) {
+            // no limit arc to respect, so i can take the normal shortest path
+            double move = Math.min(stepDeg, distCtl);
+            nextCtlDeg = wrap360(currentCtlDeg + Math.signum(diffCtl) * move);
+        } else {
+            // i step along the allowed arc only (prevents min<->max snapping)
+            double currentParam = angleToAllowedParamOrNearest(currentCtlDeg, min, allowedLen);
+            double desiredParam = angleToAllowedParamOrNearest(desiredCtlDeg, min, allowedLen); // already inside, but this is safe
+
+            double deltaParam = desiredParam - currentParam;
+            double move = Math.signum(deltaParam) * Math.min(Math.abs(deltaParam), stepDeg);
+
+            double nextParam = currentParam + move;
+            nextCtlDeg = allowedParamToAngle(nextParam, min, allowedLen);
+        }
+
+        // optional: very fast snap
+        if (rpm >= 256.0) {
+            nextCtlDeg = desiredCtlDeg;
+        }
+
+        // i convert back controller degrees -> physbearing degrees
+        double nextPhysDeg = wrap360(360.0 - nextCtlDeg);
+        mount.setAngle((float) nextPhysDeg);
         mount.notifyUpdate();
     }
+    private void maybeUpdateYawZeroFromCannonInitialOrientation(PhysBearingBlockEntity phys) {
+        if (level == null) return;
 
-    // i store yaw limits in controller-space degrees (same space as targetAngle)
+//        if (!PhysicsHandler.isBlockInShipyard(level, phys.getBlockPos()))
+//            return;
+        BlockPos cannonPos =WeaponNetworkData.get((ServerLevel) level).getMountForController(level.dimension(),worldPosition);
+        if(cannonPos == null)return;
+        CannonMountBlockEntity cannonMount;
+        if(level.getBlockEntity(cannonPos) instanceof CannonMountBlockEntity mount) cannonMount =mount;
+        else return;
+
+        PitchOrientedContraptionEntity ce = cannonMount.getContraption();
+        if (ce == null) return;
+
+        if (!(ce.getContraption() instanceof AbstractMountedCannonContraption cannonContraption))
+            return;
+
+        Direction initial = cannonContraption.initialOrientation();
+        if (initial == null || !initial.getAxis().isHorizontal())
+            return;
+
+        double newOffset = controllerYawForCardinalDirection(initial);
+
+        if (!hasYawZeroOffset) {
+            yawZeroOffsetDeg = wrap360(newOffset);
+            lastYawZeroOffsetDeg = yawZeroOffsetDeg;
+            hasYawZeroOffset = true;
+            setChanged();
+            return;
+        }
+
+        double oldOffset = lastYawZeroOffsetDeg;
+        double delta = shortestDelta(oldOffset, newOffset); // signed shortest path
+
+        if (Math.abs(delta) < 1e-6) return;
+
+        yawZeroOffsetDeg = wrap360(newOffset);
+        lastYawZeroOffsetDeg = yawZeroOffsetDeg;
+
+        targetAngle = wrap360(targetAngle - delta);
+        minAngleDeg = wrap360(minAngleDeg - delta);
+        maxAngleDeg = wrap360(maxAngleDeg - delta);
+
+        normalizeLimits();
+        targetAngle = clampYawToLimits(targetAngle);
+
+        notifyUpdate();
+        setChanged();
+    }
     private double minAngleDeg = 0.0;
     private double maxAngleDeg = 360.0;
 
@@ -292,7 +382,6 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
 
     public void setMinAngleDeg(double v) {
         minAngleDeg = wrap360(v);
-        // i keep the range valid (supports wrap cases via normalizeLimits)
         normalizeLimits();
         targetAngle = clampYawToLimits(targetAngle);
         notifyUpdate();
@@ -307,17 +396,43 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
         notifyUpdate();
         setChanged();
     }
+    private static double controllerYawForCardinalDirection(Direction d) {
+        return switch (d) {
+            case SOUTH -> 0.0;
+            case WEST  -> 90.0;
+            case NORTH -> 180.0;
+            case EAST  -> 270.0;
+            default    -> 0.0;
+        };
+    }
+    // i map any angle to a param along the allowed arc [0..allowedLen]
+// if the angle is in the forbidden gap, i snap it to whichever endpoint is closer
+    private static double angleToAllowedParamOrNearest(double angleDeg, double minDeg, double allowedLen) {
+        double a = wrap360(angleDeg);
+        double min = wrap360(minDeg);
 
-    /**
-     * i normalize so limits are always meaningful
-     * supports both "normal" ranges (30..120) and wrap ranges (300..40)
-     */
+        // distance forward from min along the circle
+        double d = wrap360(a - min); // [0..360)
+
+        // if i'm inside the allowed arc, i'm done
+        if (d <= allowedLen) return d;
+
+        // i'm in the forbidden gap; i choose nearest endpoint (0 for min, allowedLen for max)
+        double distToMaxAlongCircle = d - allowedLen;     // how far past max i am (forward)
+        double distToMinAlongCircle = 360.0 - d;          // how far to wrap back to min
+
+        return (distToMaxAlongCircle <= distToMinAlongCircle) ? allowedLen : 0.0;
+    }
+
+    // i convert a param back into an angle on the allowed arc
+    private static double allowedParamToAngle(double param, double minDeg, double allowedLen) {
+        double min = wrap360(minDeg);
+        double p = Math.max(0.0, Math.min(allowedLen, param));
+        return wrap360(min + p);
+    }
     private void normalizeLimits() {
         minAngleDeg = wrap360(minAngleDeg);
         maxAngleDeg = wrap360(maxAngleDeg);
-
-        // if they're equal, i treat it as "no movement allowed" (a single heading)
-        // if you want "full range" instead, handle it differently
     }
 
     private double clampYawToLimits(double deg) {
@@ -376,13 +491,7 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
 
         return Math.toDegrees(Math.atan2(dz, dx)) + 90.0;
     }
-    private void fixLimitOrder() {
-        if (minAngleDeg > maxAngleDeg) {
-            double tmp = minAngleDeg;
-            minAngleDeg = maxAngleDeg;
-            maxAngleDeg = tmp;
-        }
-    }
+
     private Vec3 toShipSpace(Ship ship, Vec3 worldPos) {
         Vector3d tmp = new Vector3d(worldPos.x, worldPos.y, worldPos.z);
         ship.getTransform().getWorldToShip().transformPosition(tmp);
@@ -400,7 +509,6 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
         if (compound.contains("MaxAngleDeg", Tag.TAG_DOUBLE)) {
             maxAngleDeg = compound.getDouble("MaxAngleDeg");
         }
-        fixLimitOrder();
 
         // i load target + clamp it to the limits
         targetAngle = clampYawToLimits(wrap360(compound.getDouble("TargetAngle")));
@@ -435,15 +543,6 @@ public class AutoYawControllerBlockEntity extends KineticBlockEntity  implements
         // i'm keeping this empty like the original controller
     }
 
-    @Override
-    public @org.jetbrains.annotations.Nullable CompoundTag onCopy(@NotNull ServerLevel serverLevel, @NotNull BlockPos blockPos, @NotNull BlockState blockState, @org.jetbrains.annotations.Nullable BlockEntity blockEntity, @NotNull List<? extends ServerShip> list, @NotNull Map<Long, ? extends Vector3d> map) {
-        return null;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable CompoundTag onPaste(@NotNull ServerLevel serverLevel, @NotNull BlockPos blockPos, @NotNull BlockState blockState, @NotNull Map<Long, Long> map, @NotNull Map<Long, ? extends Pair<? extends Vector3d, ? extends Vector3d>> map1, @org.jetbrains.annotations.Nullable CompoundTag compoundTag) {
-        return null;
-    }
 
 
     // ===== Mount resolution =====

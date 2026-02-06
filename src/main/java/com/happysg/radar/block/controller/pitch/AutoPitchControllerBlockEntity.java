@@ -139,7 +139,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         if (mount == null)
             return;
 
-        LOGGER.debug(
+        LOGGER.warn(
                 "PITCH.tick mount={} kind={} isRunning={} track={} bino={}",
                 mount,
                 mount.kind,
@@ -476,8 +476,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
 
         double diff = targetAngle - currentPitch;
 
-        // i add a distance-based deadband: if the target is within 10 blocks,
-        // i require a much larger angle change before i let the mount move
+
         double nearDeadbandDeg = CBC_TOLERANCE; // default
         if (firingControl != null) {
             Vec3 muzzle = firingControl.getCannonMuzzlePos();
@@ -520,7 +519,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         } else {
             next = targetAngle;
         }
-
+        LOGGER.warn("ping" +mount);
         mount.setPitch((float) next);
         mount.notifyUpdate();
     }
@@ -531,8 +530,10 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
 
         if (PhysicsHandler.isBlockInShipyard(level, this.getBlockPos())) {
             List<List<Double>> angles = VS2CannonTargeting.calculatePitchAndYawVS2(mount, targetPos, serverLevel);
-            if (angles == null || angles.isEmpty() || angles.get(0).isEmpty())
+            if (angles == null || angles.isEmpty() || angles.get(0).isEmpty()){
+                LOGGER.warn("ping-3"+angles);
                 return;
+            }
 
             // pitch
             this.targetAngle = clampToLimitsCBC(angles.get(0).get(0));
@@ -541,7 +542,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
 //            if (firingControl != null) {
 //                firingControl.yawController.setTargetAngle(angles.get(0).get(1).floatValue());
 //            }
-
+            LOGGER.warn("ping");
             isRunning = true;
             notifyUpdate();
             setChanged();
@@ -556,7 +557,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             origin = mount.getBlockPos().getCenter().add(0, -2.0, 0);
         }
         List<Double> angles = CannonTargeting.calculatePitch(mount, origin, targetPos, serverLevel);
-        LOGGER.warn(
+        LOGGER.debug(
                 "PITCH.solve origin={} target={} mountPos={}",
                 origin,
                 targetPos,
@@ -564,7 +565,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         );
         lastTargetPos = targetPos;
         if (angles == null || angles.isEmpty()) {
-            LOGGER.warn("PITCH.solve FAILED: no pitch roots");
+            LOGGER.debug("PITCH.solve FAILED: no pitch roots");
             isRunning = false;
             return;
         }
@@ -584,7 +585,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             targetAngle = clampToLimitsCBC(usableAngles.get(0));
         }
 
-        LOGGER.warn("PITCH.solve targetAngle={}", targetAngle);
+        LOGGER.debug("PITCH.solve targetAngle={}", targetAngle);
 
         isRunning = true;
         notifyUpdate();
@@ -608,7 +609,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
             return;
 
         // If we have a desired target, keep smoothing towards it and update targetAngle (degrees)
-        updateSmoothedTargetAndAngle(rpmAbs);
+        updateSmoothedTargetAndAngle(rpmAbs, mount);
 
         Double actualRad = mount.getActualAngle();
         if (actualRad == null)
@@ -647,14 +648,12 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         mount.notifyUpdate();
     }
 
-    private void updateSmoothedTargetAndAngle(double rpmAbs) {
-        if (desiredTarget == null)
-            return;
+    private void updateSmoothedTargetAndAngle(double rpmAbs, PhysBearingBlockEntity mount) {
+        if (desiredTarget == null) return;
 
         Direction facing = getBlockState().getValue(AutoPitchControllerBlock.HORIZONTAL_FACING);
-        BlockPos mountPos = isFacingCannonMount(level,worldPosition, this.getBlockState());
-        if (mountPos == null) return;
-        Vec3 pivot = mountPos.getCenter();
+
+        Vec3 pivot = mount.getBlockPos().getCenter();
 
         if (smoothedTarget == null) {
             smoothedTarget = desiredTarget;
@@ -670,19 +669,10 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
                 smoothedTarget = smoothedTarget.add(delta.scale(step / dist));
             }
         }
-
         double newAngle = rollAroundFacingDeg(pivot, smoothedTarget, facing);
-
-        // deadband to avoid micro-chasing
-        if (Math.abs(shortestDelta(targetAngle, newAngle)) < DEADBAND_DEG) {
-            return;
-        }
-
+        if (Math.abs(shortestDelta(targetAngle, newAngle)) < DEADBAND_DEG) return;
         targetAngle = clampToLimitsPhys(approachWrapped(targetAngle, newAngle));
     }
-
-
-    // Mount resolution (aligned conceptually to yaw, but horizontal/front)
     private enum MountKind { CBC, PHYS }
 
     private static class Mount {
@@ -928,7 +918,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         if (!Mods.VALKYRIENSKIES.isLoaded())
             return null;
 
-        return VSGameUtilsKt.getShipManagingPos(level, worldPosition.above(1));
+        return VSGameUtilsKt.getShipManagingPos(level, worldPosition);
     }
 
     private static Vec3 toShipSpace(Ship ship, Vec3 worldPos) {

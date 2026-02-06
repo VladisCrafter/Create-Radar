@@ -65,7 +65,7 @@ import static riftyboi.cbcmodernwarfare.cannon_control.compact_mount.CompactCann
 public class CannonUtil {
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final BallisticPropertiesComponent AC_FALLBACK = new BallisticPropertiesComponent(-0.025, 0.0, false, 0, 0, 0, 0);
+    private static final BallisticPropertiesComponent AC_FALLBACK = new BallisticPropertiesComponent(-0.025, 0.01, false, 0, 0, 0, 0);
 
     public static int getBarrelLength(AbstractMountedCannonContraption cannon) {
         if (cannon == null)
