@@ -196,37 +196,29 @@ public class WeaponFiringControl {
     private Vec3 findVisiblePointOnEntity(Entity e, Vec3 start, int budget) {
         AABB bb = inflatedAabb(e);
 
-
         Vec3 center = bb.getCenter();
         Vec3 toCannon = start.subtract(center);
-
 
         double ax = Math.abs(toCannon.x);
         double ay = Math.abs(toCannon.y);
         double az = Math.abs(toCannon.z);
 
-
         ArrayList<Vec3> candidates = new ArrayList<>(24);
-
 
         double xMin = bb.minX, xMax = bb.maxX;
         double yMin = bb.minY, yMax = bb.maxY;
         double zMin = bb.minZ, zMax = bb.maxZ;
 
-
         double yMid = (yMin + yMax) * 0.5;
         double yChest = yMin + (yMax - yMin) * 0.45;
 
-
         candidates.add(new Vec3(center.x, yChest, center.z));
         candidates.add(new Vec3(center.x, yMid, center.z));
-
 
         // Choose dominant face
         boolean useX = ax >= ay && ax >= az;
         boolean useY = ay > ax && ay >= az;
         boolean useZ = !useX && !useY;
-
 
         if (useX) {
             boolean maxFace = (toCannon.x >= 0);
@@ -280,21 +272,17 @@ public class WeaponFiringControl {
                                    char axis,
                                    boolean maxFace) {
 
-
         double uMid = (uMin + uMax) * 0.5;
         double vMid = (vMin + vMax) * 0.5;
 
-
         // Face center
         out.add(facePoint(axis, planeVal, uMid, vMid, maxFace));
-
 
         // 4 corners
         out.add(facePoint(axis, planeVal, uMin, vMin, maxFace));
         out.add(facePoint(axis, planeVal, uMin, vMax, maxFace));
         out.add(facePoint(axis, planeVal, uMax, vMin, maxFace));
         out.add(facePoint(axis, planeVal, uMax, vMax, maxFace));
-
 
         // 4 edge midpoints
         out.add(facePoint(axis, planeVal, uMin, vMid, maxFace));
