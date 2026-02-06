@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.item.ItemStack;
+import com.happysg.radar.compat.cbcwpf.CBCWPFCompat;
 
 import org.slf4j.Logger;
 
@@ -112,14 +113,17 @@ public class CannonUtil {
     public static BallisticPropertiesComponent getAutocannonBallistics(AbstractMountedCannonContraption cannon, Level level) {
         if (cannon == null || level == null) return AC_FALLBACK;
 
-        // Find breech on contraption
+        if (CBCWPFCompat.isShupapiumAutocannon(cannon)) {
+            BallisticPropertiesComponent bp = CBCWPFCompat.resolveAutocannonBallistics(cannon, level);
+            return bp != null ? bp : AC_FALLBACK;
+        }
+
         AutocannonBreechBlockEntity breech = null;
         for (BlockEntity be : cannon.presentBlockEntities.values()) {
             if (be instanceof AutocannonBreechBlockEntity b) { breech = b; break; }
         }
         if (breech == null) return AC_FALLBACK;
 
-        // Slot 0 = output buffer = chambered round
         ItemStack round = breech.createItemHandler().getStackInSlot(0);
         if (round == null || round.isEmpty()) return AC_FALLBACK;
 
@@ -204,6 +208,11 @@ public class CannonUtil {
                 isRotaryCannon(cannon), isMediumCannon(cannon)
         );
 
+        if (CBCWPFCompat.isShupapiumAutocannon(cannon)) {
+            LOGGER.debug("   • Shupapium WPF muzzle speed = {}", CBCWPFCompat.resolveShupapiumMuzzleSpeed(cannon));
+            return CBCWPFCompat.resolveShupapiumMuzzleSpeed(cannon);
+        }
+
         if (isBigCannon(cannon)) {
             LOGGER.debug("   • BigCannon speed = {}", getBigCannonSpeed(level,cannon, (PitchOrientedContraptionEntity)cannon.entity));
             return getBigCannonSpeed(level, cannon ,(PitchOrientedContraptionEntity)cannon.entity);
@@ -232,8 +241,13 @@ public class CannonUtil {
     public static int getAutocannonLifetimeTicks(AbstractMountedCannonContraption cannon) {
         if (cannon == null) return 100; // fallback
 
+        if (CBCWPFCompat.isShupapiumAutocannon(cannon)) {
+            int t = CBCWPFCompat.resolveLifetimeTicks(cannon);
+            return t > 0 ? t : 100;
+        }
+
         try {
-            AutocannonMaterial mat = ((AutoCannonAccessor) (Object) cannon).getMaterial();
+            AutocannonMaterial mat = ((AutoCannonAccessor) cannon).getMaterial();
             if (mat != null) {
                 int t = mat.properties().projectileLifetime();
                 if (t > 0) return t;
@@ -282,7 +296,10 @@ public class CannonUtil {
     }
 
     public static double getProjectileGravity(AbstractMountedCannonContraption cannon, ServerLevel level) {
-        if (isAutoCannon(cannon) || isRotaryCannon(cannon) || isMediumCannon(cannon) || isTwinAutocannon(cannon) || isHeavyAutocannon(cannon)) return -0.025;
+        if (isAutoCannon(cannon) || isRotaryCannon(cannon) || isMediumCannon(cannon) || isTwinAutocannon(cannon) || isHeavyAutocannon(cannon) || CBCWPFCompat.isShupapiumAutocannon(cannon)) {
+            return getAutocannonBallistics(cannon, level).gravity();
+        }
+
         Map<BlockPos, BlockEntity> presentBlockEntities = cannon.presentBlockEntities;
         for (BlockEntity blockEntity : presentBlockEntities.values()) {
             if (!(blockEntity instanceof IBigCannonBlockEntity cannonBlockEntity)) continue;
@@ -312,6 +329,13 @@ public class CannonUtil {
         Map<BlockPos, BlockEntity> presentBlockEntities = cannon.presentBlockEntities;
         double drag = 0.01;
         int rifledBarrelAmount = 0;
+
+        if (isAutoCannon(cannon) || isRotaryCannon(cannon) || isMediumCannon(cannon)
+                || isTwinAutocannon(cannon) || isHeavyAutocannon(cannon)
+                || CBCWPFCompat.isShupapiumAutocannon(cannon)) {
+            return getAutocannonBallistics(cannon, level).drag();
+        }
+
         for (BlockEntity blockEntity : presentBlockEntities.values()) {
             if (!(blockEntity instanceof IBigCannonBlockEntity cannonBlockEntity)) continue;
             if(Mods.CBC_AT.isLoaded() && blockEntity instanceof RifledBarrelBlockEntity){
