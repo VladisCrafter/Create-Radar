@@ -150,21 +150,11 @@ public class WeaponFiringControl {
         if (cannonMount == null || level == null)
             return Vec3.ZERO;
 
-        var ce = cannonMount.getContraption();
-        if (ce != null) {
-            return CBCMuzzleUtil.getCBCSpawnAnchorWorld(ce);
-        }
+        PitchOrientedContraptionEntity ce = cannonMount.getContraption();
+        if (ce == null)
+            return Vec3.ZERO;
 
-        Vec3 base = cannonMount.getBlockPos().getCenter();
-        boolean upsideDown = yawController != null && yawController.isUpsideDown();
-        Vec3 pos = base.add(0, upsideDown ? -2.0 : 2.0, 0);
-
-        if (Mods.VALKYRIENSKIES.isLoaded()
-                && VS2Utils.isBlockInShipyard(level, cannonMount.getBlockPos())) {
-            return VS2Utils.getWorldVec(level, pos);
-        }
-
-        return pos;
+        return CBCMuzzleUtil.getCBCSpawnAnchorWorld(ce);
     }
 
     public Vec3 getCannonRayStart() {
