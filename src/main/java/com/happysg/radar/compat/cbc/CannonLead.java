@@ -17,12 +17,12 @@ import java.util.Comparator;
 import java.util.List;
 
 public class CannonLead {
-    private static final double VEL_EPS = 1.0;
+    private static final double VEL_EPS = .01;
     private static final double VEL_EPS_SQR = VEL_EPS * VEL_EPS;
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public static class LeadSolution {
-        public final Vec3 aimPoint;      // i’m aiming at this world point (predicted intercept)
+        public final Vec3 aimPoint;
         public final double pitchDeg;    // pitch solution for the aimPoint
         public final double yawRad;      // yaw solution for the aimPoint
         public final int flightTicks;    // predicted time-of-flight in ticks
@@ -264,7 +264,7 @@ public class CannonLead {
             flightTicks = newFlightTicks;
             tGuessTicks = newFlightTicks;
         }
-
+        //logLeadByBlocks(targetPosNow,aimPoint,targetVelPerTick);
         return new LeadSolution(aimPoint, chosenPitchDeg, chosenYawRad, flightTicks);
     }
 

@@ -34,7 +34,7 @@ public class AutoYawControllerBlock extends DirectionalKineticBlock implements I
         boolean crouching = context.getPlayer() != null && context.getPlayer().isCrouching();
 
         Direction vertical = context.getPlayer() != null && context.getPlayer().getXRot() > 0
-                ? Direction.DOWN : Direction.UP;
+                ? Direction.UP : Direction.DOWN ;
 
         return defaultBlockState()
                 .setValue(FACING, crouching ? vertical : vertical.getOpposite());
