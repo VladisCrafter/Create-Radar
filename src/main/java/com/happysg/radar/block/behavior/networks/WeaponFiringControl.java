@@ -11,6 +11,7 @@ import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.AccelerationTracker;
 import com.happysg.radar.compat.cbc.CannonLead;
 import com.happysg.radar.compat.cbc.VelocityTracker;
+import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.compat.vs2.VS2ShipVelocityTracker;
 import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
@@ -146,12 +147,14 @@ public class WeaponFiringControl {
     }
 
     public Vec3 getCannonMuzzlePos() {
-        if(yawController != null && yawController.isUpsideDown()){
-            return cannonMount.getBlockPos().getCenter().add(0, -2.0, 0);
-        }else{
-            return cannonMount.getBlockPos().getCenter().add(0, 2.0, 0);
-        }
+        if (cannonMount == null || level == null)
+            return Vec3.ZERO;
 
+        PitchOrientedContraptionEntity ce = cannonMount.getContraption();
+        if (ce == null)
+            return Vec3.ZERO;
+
+        return CBCMuzzleUtil.getCBCSpawnAnchorWorld(ce);
     }
 
     public Vec3 getCannonRayStart() {
@@ -159,6 +162,16 @@ public class WeaponFiringControl {
             return null;
 
         PitchOrientedContraptionEntity poce = cannonMount.getContraption();
+
+        if (Mods.VALKYRIENSKIES.isLoaded() && VS2Utils.isBlockInShipyard(level, cannonMount.getBlockPos())) {
+            if (poce != null) {
+                // toGlobalVector gives shipyard-global coords
+                Vec3 shipyardPos = poce.toGlobalVector(VecHelper.getCenterOf(BlockPos.ZERO), 1.0f);
+                return VS2Utils.getWorldVec(level, shipyardPos);
+            }
+            return VS2Utils.getWorldVec(level, cannonMount.getBlockPos().getCenter());
+        }
+
         if (poce == null)
             return cannonMount.getBlockPos().getCenter();
 
@@ -373,7 +386,7 @@ public class WeaponFiringControl {
 
         if (max <= 0.0) return true;
 
-        Vec3 start = getCannonMuzzlePos();
+        Vec3 start = getCannonRayStart();
         double dx = point.x - start.x;
         double dz = point.z - start.z;
         double horiz2 = dx * dx + dz * dz;
@@ -647,7 +660,7 @@ public class WeaponFiringControl {
         }else{
             return;
         }
-        double dist = getCannonMuzzlePos().distanceTo(target);
+        double dist = getCannonRayStart().distanceTo(target);
         double noLeadDist = 8.0; // tune this
 
         Vec3 solvePos = target;

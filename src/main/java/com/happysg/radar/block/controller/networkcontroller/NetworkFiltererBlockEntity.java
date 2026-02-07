@@ -12,6 +12,7 @@ import com.happysg.radar.block.controller.pitch.AutoPitchControllerBlockEntity;
 import com.happysg.radar.block.radar.behavior.RadarScanningBlockBehavior;
 import com.happysg.radar.block.radar.track.RadarTrack;
 import com.happysg.radar.compat.Mods;
+import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.item.binos.Binoculars;
 import com.happysg.radar.block.radar.behavior.IRadar;
 import com.happysg.radar.block.radar.track.TrackCategory;
@@ -290,7 +291,11 @@ public class NetworkFiltererBlockEntity extends BlockEntity {
     }
 
     private double distSqFromFilterer(Vec3 pos) {
-        return worldPosition.getCenter().distanceToSqr(pos);
+        Vec3 filtererPos = worldPosition.getCenter();
+        if (Mods.VALKYRIENSKIES.isLoaded() && level != null && PhysicsHandler.isBlockInShipyard(level, worldPosition)) {
+            filtererPos = PhysicsHandler.getWorldVec(level, filtererPos);
+        }
+        return filtererPos.distanceToSqr(pos);
     }
 
     private boolean anyCannonCanEngage(ServerLevel sl, RadarTrack track, boolean requireLos) {

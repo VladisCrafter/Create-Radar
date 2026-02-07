@@ -455,7 +455,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         firingControl.setSafeZones(safeZones);
     }
 
-    // CBC behavior (aligned to yaw’s “snap + stop” flow)
+    // CBC behavior (aligned to yaw's "snap + stop" flow)
 
     private void rotateCBC(CannonMountBlockEntity mount) {
         if (!isRunning) {
@@ -479,7 +479,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
 
         double nearDeadbandDeg = CBC_TOLERANCE; // default
         if (firingControl != null) {
-            Vec3 muzzle = firingControl.getCannonMuzzlePos();
+            Vec3 muzzle = firingControl.getCannonRayStart();
             Vec3 target = lastTargetPos;
             if (target != null) {
                 double dist = muzzle.distanceTo(target);
@@ -950,18 +950,26 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
         double max = getMaxEngagementRangeBlocks();
         if (max > 0.0) {
             Vec3 start = firingControl.getCannonRayStart();
+            if (Mods.VALKYRIENSKIES.isLoaded() && PhysicsHandler.isBlockInShipyard(level, this.getBlockPos())) {
+                start = PhysicsHandler.getWorldVec(level, start);
+            }
             if (start.distanceToSqr(p) > (max * max)) return false;
         }
 
         if (mount.kind == MountKind.CBC && mount.cbc != null) {
-            Vec3 origin;
-            if (CannonUtil.isUp(mount.cbc)) {
-                origin = mount.cbc.getBlockPos().getCenter().add(0, 2.0, 0);
+            if (Mods.VALKYRIENSKIES.isLoaded() && PhysicsHandler.isBlockInShipyard(level, this.getBlockPos())) {
+                List<List<Double>> angles = VS2CannonTargeting.calculatePitchAndYawVS2(mount.cbc, p, sl);
+                if (angles == null || angles.isEmpty() || angles.get(0).isEmpty()) return false;
             } else {
-                origin = mount.cbc.getBlockPos().getCenter().add(0, -2.0, 0);
+                Vec3 origin;
+                if (CannonUtil.isUp(mount.cbc)) {
+                    origin = mount.cbc.getBlockPos().getCenter().add(0, 2.0, 0);
+                } else {
+                    origin = mount.cbc.getBlockPos().getCenter().add(0, -2.0, 0);
+                }
+                List<Double> pitches = CannonTargeting.calculatePitch(mount.cbc, origin, p, sl);
+                if (pitches == null || pitches.isEmpty()) return false;
             }
-            List<Double> pitches = CannonTargeting.calculatePitch(mount.cbc, origin, p, sl);
-            if (pitches == null || pitches.isEmpty()) return false;
         }
 
         if (requireLos) {
