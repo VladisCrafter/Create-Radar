@@ -147,19 +147,26 @@ public class WeaponFiringControl {
     }
 
     public Vec3 getCannonMuzzlePos() {
-        Vec3 pos;
-        if (yawController != null && yawController.isUpsideDown()) {
-            pos = cannonMount.getBlockPos().getCenter().add(0, -2.0, 0);
-        } else {
-            pos = cannonMount.getBlockPos().getCenter().add(0, 2.0, 0);
+        if (cannonMount == null || level == null)
+            return Vec3.ZERO;
+
+        var ce = cannonMount.getContraption();
+        if (ce != null) {
+            return CBCMuzzleUtil.getCBCSpawnAnchorWorld(ce);
         }
-        if (Mods.VALKYRIENSKIES.isLoaded() && VS2Utils.isBlockInShipyard(level, cannonMount.getBlockPos())) {
-            // pos is in shipyard space with the correct local offset,
-            // transform the whole thing to world space
+
+        Vec3 base = cannonMount.getBlockPos().getCenter();
+        boolean upsideDown = yawController != null && yawController.isUpsideDown();
+        Vec3 pos = base.add(0, upsideDown ? -2.0 : 2.0, 0);
+
+        if (Mods.VALKYRIENSKIES.isLoaded()
+                && VS2Utils.isBlockInShipyard(level, cannonMount.getBlockPos())) {
             return VS2Utils.getWorldVec(level, pos);
         }
+
         return pos;
     }
+
     public Vec3 getCannonRayStart() {
         if (cannonMount == null)
             return null;
@@ -389,7 +396,7 @@ public class WeaponFiringControl {
 
         if (max <= 0.0) return true;
 
-        Vec3 start = getCannonMuzzlePos();
+        Vec3 start = getCannonRayStart();
         double dx = point.x - start.x;
         double dz = point.z - start.z;
         double horiz2 = dx * dx + dz * dz;
@@ -663,7 +670,7 @@ public class WeaponFiringControl {
         }else{
             return;
         }
-        double dist = getCannonMuzzlePos().distanceTo(target);
+        double dist = getCannonRayStart().distanceTo(target);
         double noLeadDist = 8.0; // tune this
 
         Vec3 solvePos = target;
