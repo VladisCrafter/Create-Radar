@@ -479,7 +479,7 @@ public class AutoPitchControllerBlockEntity extends KineticBlockEntity {
 
         double nearDeadbandDeg = CBC_TOLERANCE; // default
         if (firingControl != null) {
-            Vec3 muzzle = firingControl.getCannonMuzzlePos();
+            Vec3 muzzle = firingControl.getCannonRayStart();
             Vec3 target = lastTargetPos;
             if (target != null) {
                 double dist = muzzle.distanceTo(target);
