@@ -11,6 +11,7 @@ import com.happysg.radar.compat.Mods;
 import com.happysg.radar.compat.cbc.AccelerationTracker;
 import com.happysg.radar.compat.cbc.CannonLead;
 import com.happysg.radar.compat.cbc.VelocityTracker;
+import com.happysg.radar.compat.vs2.PhysicsHandler;
 import com.happysg.radar.compat.vs2.VS2ShipVelocityTracker;
 import com.happysg.radar.compat.vs2.VS2Utils;
 import com.happysg.radar.config.RadarConfig;
@@ -146,19 +147,34 @@ public class WeaponFiringControl {
     }
 
     public Vec3 getCannonMuzzlePos() {
-        if(yawController != null && yawController.isUpsideDown()){
-            return cannonMount.getBlockPos().getCenter().add(0, -2.0, 0);
-        }else{
-            return cannonMount.getBlockPos().getCenter().add(0, 2.0, 0);
+        Vec3 pos;
+        if (yawController != null && yawController.isUpsideDown()) {
+            pos = cannonMount.getBlockPos().getCenter().add(0, -2.0, 0);
+        } else {
+            pos = cannonMount.getBlockPos().getCenter().add(0, 2.0, 0);
         }
-
+        if (Mods.VALKYRIENSKIES.isLoaded() && VS2Utils.isBlockInShipyard(level, cannonMount.getBlockPos())) {
+            // pos is in shipyard space with the correct local offset,
+            // transform the whole thing to world space
+            return VS2Utils.getWorldVec(level, pos);
+        }
+        return pos;
     }
-
     public Vec3 getCannonRayStart() {
         if (cannonMount == null)
             return null;
 
         PitchOrientedContraptionEntity poce = cannonMount.getContraption();
+
+        if (Mods.VALKYRIENSKIES.isLoaded() && VS2Utils.isBlockInShipyard(level, cannonMount.getBlockPos())) {
+            if (poce != null) {
+                // toGlobalVector gives shipyard-global coords
+                Vec3 shipyardPos = poce.toGlobalVector(VecHelper.getCenterOf(BlockPos.ZERO), 1.0f);
+                return VS2Utils.getWorldVec(level, shipyardPos);
+            }
+            return VS2Utils.getWorldVec(level, cannonMount.getBlockPos().getCenter());
+        }
+
         if (poce == null)
             return cannonMount.getBlockPos().getCenter();
 
